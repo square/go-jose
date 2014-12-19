@@ -74,13 +74,8 @@ func (sig signatureInfo) getHeader(name string) (value interface{}, present bool
 func (obj JwsObject) computeAuthData(signature *signatureInfo) []byte {
 	var serializedProtected string
 
-	if signature.original != nil {
-		raw, err := json.Marshal(signature.protected)
-		if err != nil {
-			// Should never happen, since we control the input.
-			panic(err)
-		}
-		serializedProtected = base64URLEncode(raw)
+	if signature.original == nil {
+		serializedProtected = base64URLEncode(serializeJSONChecked(signature.protected))
 	} else {
 		serializedProtected = signature.original.Protected
 	}
@@ -129,8 +124,11 @@ func parseSignedFull(input string) (*JwsObject, error) {
 			return nil, err
 		}
 
+		// Copy value of sig
+		original := sig
+
 		obj.signatures[i].header = sig.Header
-		obj.signatures[i].original = &sig
+		obj.signatures[i].original = &original
 	}
 
 	return obj, nil
@@ -185,11 +183,7 @@ func (obj JwsObject) CompactSerialize() (string, error) {
 		return "", ErrNotSupported
 	}
 
-	serializedProtected, err := json.Marshal(obj.signatures[0].protected)
-	if err != nil {
-		// We have full control over the input, so this should never happen.
-		panic("Error when serializing message header")
-	}
+	serializedProtected := serializeJSONChecked(obj.signatures[0].protected)
 
 	return fmt.Sprintf(
 		"%s.%s.%s",
@@ -206,11 +200,7 @@ func (obj JwsObject) FullSerialize() string {
 	}
 
 	for i, signature := range obj.signatures {
-		serializedProtected, err := json.Marshal(signature.protected)
-		if err != nil {
-			// We have full control over the input, so this should never happen.
-			panic("Error when serializing message header")
-		}
+		serializedProtected := serializeJSONChecked(signature.protected)
 
 		raw.Signatures[i] = rawSignatureInfo{
 			Protected: base64URLEncode(serializedProtected),
@@ -219,11 +209,5 @@ func (obj JwsObject) FullSerialize() string {
 		}
 	}
 
-	message, err := json.Marshal(raw)
-	if err != nil {
-		// We have full control over the input, so this should never happen.
-		panic("Error when serializing full message")
-	}
-
-	return string(message)
+	return string(serializeJSONChecked(raw))
 }

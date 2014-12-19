@@ -131,7 +131,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JwsObject, error) {
 		serializedProtected, err := json.Marshal(protected)
 		if err != nil {
 			// We have full control over the input, so this should never happen.
-			panic("Error when serializing message header")
+			panic("error when serializing message header")
 		}
 
 		input := []byte(fmt.Sprintf("%s.%s",

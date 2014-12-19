@@ -115,6 +115,8 @@ func TestFullParseJWE(t *testing.T) {
 		"{XX",
 		// Invalid protected header
 		"{\"protected\":\"###\"}",
+		// Invalid protected header
+		"{\"protected\":\"e1gK\"}",
 		// Invalid encrypted key
 		"{\"protected\":\"e30\",\"encrypted_key\":\"###\"}",
 		// Invalid IV

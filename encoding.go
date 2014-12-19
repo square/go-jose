@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io"
 	"regexp"
@@ -43,6 +44,15 @@ func base64URLDecode(data interface{}) ([]byte, error) {
 	}
 
 	return nil, errors.New("square/go-jose: invalid input data")
+}
+
+// Helper function to serialize known-good objects
+func serializeJSONChecked(value interface{}) []byte {
+	out, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	return out
 }
 
 // Strip all newlines and whitespace

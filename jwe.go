@@ -73,12 +73,7 @@ func (obj JweObject) computeAuthData() []byte {
 	if obj.original != nil {
 		protected = obj.original.Protected
 	} else {
-		marshaled, err := json.Marshal(obj.protected)
-		if err != nil {
-			// We have full control over the input, so this should never happen.
-			panic("Error when serializing message header")
-		}
-		protected = base64URLEncode(marshaled)
+		protected = base64URLEncode(serializeJSONChecked((obj.protected)))
 	}
 
 	output := []byte(protected)
@@ -272,11 +267,7 @@ func (obj JweObject) CompactSerialize() (string, error) {
 		return "", ErrNotSupported
 	}
 
-	serializedProtected, err := json.Marshal(obj.protected)
-	if err != nil {
-		// We have full control over the input, so this should never happen.
-		panic("Error when serializing message header")
-	}
+	serializedProtected := serializeJSONChecked(obj.protected)
 
 	return fmt.Sprintf(
 		"%s.%s.%s.%s.%s",
@@ -317,19 +308,8 @@ func (obj JweObject) FullSerialize() string {
 	}
 
 	if len(obj.protected) > 0 {
-		serializedProtected, err := json.Marshal(obj.protected)
-		if err != nil {
-			// We have full control over the input, so this should never happen.
-			panic("Error when serializing message header")
-		}
-		raw.Protected = base64URLEncode(serializedProtected)
+		raw.Protected = base64URLEncode(serializeJSONChecked(obj.protected))
 	}
 
-	message, err := json.Marshal(raw)
-	if err != nil {
-		// We have full control over the input, so this should never happen.
-		panic("Error when serializing full message")
-	}
-
-	return string(message)
+	return string(serializeJSONChecked(raw))
 }

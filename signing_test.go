@@ -125,7 +125,7 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	}
 }
 
-func TestMultieRecipientJWS(t *testing.T) {
+func TestMultiRecipientJWS(t *testing.T) {
 	signer := NewMultiSigner()
 
 	sharedKey := []byte{
@@ -141,6 +141,11 @@ func TestMultieRecipientJWS(t *testing.T) {
 	if err != nil {
 		t.Error("error on sign: ", err)
 		return
+	}
+
+	_, err = obj.CompactSerialize()
+	if err == nil {
+		t.Error("message with multiple recipient was compact serialized")
 	}
 
 	msg := obj.FullSerialize()
@@ -222,5 +227,58 @@ func TestInvalidSignerAlg(t *testing.T) {
 	_, err = NewVerifier(nil)
 	if err == nil {
 		t.Error("should not accept invalid algorithm")
+	}
+}
+
+type allowAllVerifier struct{}
+
+// Dummy verifier that allows everything
+func (ctx allowAllVerifier) verifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
+	return nil
+}
+
+func TestInvalidJWS(t *testing.T) {
+	signer, err := NewSigner(PS256, rsaTestKey)
+	if err != nil {
+		panic(err)
+	}
+
+	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
+	obj.signatures[0].header = map[string]interface{}{
+		"crit": []string{"TEST"},
+	}
+
+	ver, err := NewVerifier(&rsaTestKey.PublicKey)
+	if err != nil {
+		panic(err)
+	}
+
+	verifier := ver.(*genericVerifier)
+
+	// Mock out verifier
+	verifier.verifier = allowAllVerifier{}
+
+	_, err = verifier.Verify(obj)
+	if err == nil {
+		t.Error("should not verify message with unknown crit header")
+	}
+
+	// Try without alg header
+	obj.signatures[0].protected = map[string]interface{}{}
+	obj.signatures[0].header = map[string]interface{}{}
+
+	_, err = verifier.Verify(obj)
+	if err == nil {
+		t.Error("should not verify message with missing headers")
+	}
+
+	// Set an invalid header
+	obj.signatures[0].protected = map[string]interface{}{
+		"alg": []string{"X", "Y", "Z"},
+	}
+
+	_, err = verifier.Verify(obj)
+	if err == nil {
+		t.Error("should not verify message with invalid headers")
 	}
 }
