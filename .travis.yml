@@ -1,17 +1,29 @@
 language: go
 
+sudo: false
+
+env:
+  global:
+    secure: "DSNkH1T/OYbHTjrEZsVfU2C649ZiYiu/OytnVGlhR4ZFwTQpB5u1YydExqNLwzsmaju3S9dR7Pq1rNvrsMGa+fviXIQkgQb/iB3RO1w9Uz2OAU5d24vtTeBFWdsNCBEKSw1acJtS2YfrmAOR4U5Zdm/DyocZakFxZqJ5pw4J6pw="
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - go: tip
+
 go:
-  - 1.2
-  - 1.3
-  - 1.4
-  - tip
+- 1.2
+- 1.3
+- 1.4
+- tip
 
 before_install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
-  # Must install via code.google.com for go <= 1.3, golang.org for go >= 1.4. 
-  - go get golang.org/x/tools/cmd/cover || true
-  - go get code.google.com/p/go.tools/cmd/cover || true
+- go get github.com/axw/gocov/gocov
+- go get github.com/mattn/goveralls
+- go get golang.org/x/tools/cmd/cover || true
+- go get code.google.com/p/go.tools/cmd/cover || true
 
 script:
-  - $HOME/gopath/bin/goveralls -repotoken SUtdBlJVLZGVFk5XeIt6I7Rdi1OUTRMTN
+- go test -v -coverprofile=coverage.out
+- "$HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN || true"
+
