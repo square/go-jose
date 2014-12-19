@@ -1,0 +1,6 @@
+*~
+.*.swp
+*.out
+*.test
+*.pem
+jose-util/jose-util
