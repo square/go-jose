@@ -289,3 +289,45 @@ func BenchmarkAES256_CBCHMAC_4k(b *testing.B) {
 		aead.Seal(nil, nonce, make([]byte, 4096), nil)
 	}
 }
+
+func TestPadding(t *testing.T) {
+	for i := 0; i < 256; i++ {
+		slice := make([]byte, i)
+		padded := padBuffer(slice, 16)
+		if len(padded)%16 != 0 {
+			t.Error("failed to pad slice properly", i)
+			return
+		}
+		unpadded, err := unpadBuffer(padded, 16)
+		if err != nil || len(unpadded) != i {
+			t.Error("failed to unpad slice properly", i)
+			return
+		}
+	}
+}
+
+func TestInvalidPadding(t *testing.T) {
+	for i := 0; i < 256; i++ {
+		slice := make([]byte, i)
+		padded := padBuffer(slice, 16)
+		if len(padded)%16 != 0 {
+			t.Error("failed to pad slice properly", i)
+			return
+		}
+
+		paddingBytes := 16 - (i % 16)
+
+		// Mutate padding for testing
+		for j := 1; j <= paddingBytes; j++ {
+			mutated := make([]byte, len(padded))
+			copy(mutated, padded)
+			mutated[len(mutated)-j] ^= 0xFF
+
+			_, err := unpadBuffer(mutated, 16)
+			if err == nil {
+				t.Error("unpad on invalid padding should fail", i)
+				return
+			}
+		}
+	}
+}

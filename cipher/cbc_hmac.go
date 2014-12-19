@@ -17,6 +17,7 @@
 package josecipher
 
 import (
+	"bytes"
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -24,7 +25,6 @@ import (
 	"crypto/subtle"
 	"encoding/binary"
 	"errors"
-	"github.com/apexskier/cryptoPadding"
 	"hash"
 )
 
@@ -73,13 +73,9 @@ func (ctx *cbcAEAD) Seal(dst, nonce, plaintext, data []byte) []byte {
 	// Output buffer -- must take care not to mangle plaintext input.
 	ciphertext := make([]byte, len(plaintext)+ctx.Overhead())[:len(plaintext)]
 	copy(ciphertext, plaintext)
+	ciphertext = padBuffer(ciphertext, ctx.blockCipher.BlockSize())
 
 	cbc := cipher.NewCBCEncrypter(ctx.blockCipher, nonce)
-	padding := new(cryptoPadding.PKCS7)
-	ciphertext, err := padding.Pad(ciphertext, ctx.blockCipher.BlockSize())
-	if err != nil {
-		panic(err)
-	}
 
 	cbc.CryptBlocks(ciphertext, ciphertext)
 	authtag := ctx.computeAuthTag(data, nonce, ciphertext)
@@ -109,8 +105,7 @@ func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	cbc.CryptBlocks(buffer, buffer)
 
 	// Remove padding
-	padding := new(cryptoPadding.PKCS7)
-	plaintext, err := padding.Unpad(buffer, ctx.blockCipher.BlockSize())
+	plaintext, err := unpadBuffer(buffer, ctx.blockCipher.BlockSize())
 	if err != nil {
 		return nil, err
 	}
@@ -166,4 +161,34 @@ func resize(in []byte, n int) (head, tail []byte) {
 
 	tail = head[len(in):]
 	return
+}
+
+// Apply padding
+func padBuffer(buffer []byte, blockSize int) []byte {
+	missing := blockSize - (len(buffer) % blockSize)
+	ret, out := resize(buffer, len(buffer)+missing)
+	padding := bytes.Repeat([]byte{byte(missing)}, missing)
+	copy(out, padding)
+	return ret
+}
+
+// Remove padding
+func unpadBuffer(buffer []byte, blockSize int) ([]byte, error) {
+	if len(buffer)%blockSize != 0 {
+		return nil, errors.New("square/go-jose: invalid padding")
+	}
+
+	last := buffer[len(buffer)-1]
+	count := int(last)
+
+	if count > blockSize || count > len(buffer) {
+		return nil, errors.New("square/go-jose: invalid padding")
+	}
+
+	padding := bytes.Repeat([]byte{last}, count)
+	if bytes.Compare(buffer[len(buffer)-count:], padding) != 0 {
+		return nil, errors.New("square/go-jose: invalid padding")
+	}
+
+	return buffer[:len(buffer)-count], nil
 }
