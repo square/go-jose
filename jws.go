@@ -22,8 +22,8 @@ import (
 	"strings"
 )
 
-// rawJwsObject represents a raw JWS JSON object. Used for parsing/serializing.
-type rawJwsObject struct {
+// rawJsonWebSignature represents a raw JWS JSON object. Used for parsing/serializing.
+type rawJsonWebSignature struct {
 	Payload    string             `json:"payload,omitempty"`
 	Signatures []rawSignatureInfo `json:"signatures,omitempty"`
 }
@@ -35,8 +35,8 @@ type rawSignatureInfo struct {
 	Signature string                 `json:"signature,omitempty"`
 }
 
-// JwsObject represents a signed JWS object after parsing.
-type JwsObject struct {
+// JsonWebSignature represents a signed JWS object after parsing.
+type JsonWebSignature struct {
 	payload    []byte
 	signatures []signatureInfo
 }
@@ -50,7 +50,7 @@ type signatureInfo struct {
 }
 
 // ParseSigned parses an encrypted message in compact or full serialization format.
-func ParseSigned(input string) (*JwsObject, error) {
+func ParseSigned(input string) (*JsonWebSignature, error) {
 	input = stripWhitespace(input)
 	if strings.HasPrefix(input, "{") {
 		return parseSignedFull(input)
@@ -71,7 +71,7 @@ func (sig signatureInfo) getHeader(name string) (value interface{}, present bool
 }
 
 // Compute data to be signed
-func (obj JwsObject) computeAuthData(signature *signatureInfo) []byte {
+func (obj JsonWebSignature) computeAuthData(signature *signatureInfo) []byte {
 	var serializedProtected string
 
 	if signature.original == nil {
@@ -86,14 +86,14 @@ func (obj JwsObject) computeAuthData(signature *signatureInfo) []byte {
 }
 
 // parseSignedFull parses a message in full format.
-func parseSignedFull(input string) (*JwsObject, error) {
-	var parsed rawJwsObject
+func parseSignedFull(input string) (*JsonWebSignature, error) {
+	var parsed rawJsonWebSignature
 	err := json.Unmarshal([]byte(input), &parsed)
 	if err != nil {
 		return nil, err
 	}
 
-	obj := &JwsObject{}
+	obj := &JsonWebSignature{}
 
 	obj.payload, err = base64URLDecode(parsed.Payload)
 	if err != nil {
@@ -135,7 +135,7 @@ func parseSignedFull(input string) (*JwsObject, error) {
 }
 
 // parseSignedCompact parses a message in compact format.
-func parseSignedCompact(input string) (*JwsObject, error) {
+func parseSignedCompact(input string) (*JsonWebSignature, error) {
 	parts := strings.Split(input, ".")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("square/go-jose: compact JWS format must have three parts")
@@ -162,7 +162,7 @@ func parseSignedCompact(input string) (*JwsObject, error) {
 		return nil, err
 	}
 
-	return &JwsObject{
+	return &JsonWebSignature{
 		payload: payload,
 		signatures: []signatureInfo{
 			signatureInfo{
@@ -178,7 +178,7 @@ func parseSignedCompact(input string) (*JwsObject, error) {
 }
 
 // CompactSerialize serializes an object using the compact serialization format.
-func (obj JwsObject) CompactSerialize() (string, error) {
+func (obj JsonWebSignature) CompactSerialize() (string, error) {
 	if len(obj.signatures) > 1 || len(obj.signatures[0].header) > 0 {
 		return "", ErrNotSupported
 	}
@@ -193,8 +193,8 @@ func (obj JwsObject) CompactSerialize() (string, error) {
 }
 
 // FullSerialize serializes an object using the full JSON serialization format.
-func (obj JwsObject) FullSerialize() string {
-	raw := rawJwsObject{
+func (obj JsonWebSignature) FullSerialize() string {
+	raw := rawJsonWebSignature{
 		Payload:    base64URLEncode(obj.payload),
 		Signatures: make([]rawSignatureInfo, len(obj.signatures)),
 	}

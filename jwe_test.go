@@ -27,7 +27,7 @@ import (
 )
 
 func TestGetHeader(t *testing.T) {
-	obj := &JweObject{
+	obj := &JsonWebEncryption{
 		protected:   map[string]interface{}{"1": "P"},
 		unprotected: map[string]interface{}{"2": "U"},
 	}
@@ -149,7 +149,7 @@ func TestFullParseJWE(t *testing.T) {
 
 type dummyDecrypter struct{}
 
-func (dec *dummyDecrypter) decryptKey(alg KeyAlgorithm, obj *JweObject, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+func (dec *dummyDecrypter) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
 	return nil, errors.New("error")
 }
 
@@ -158,7 +158,7 @@ func TestDecryptDoesNotPropagateError(t *testing.T) {
 		keyDecrypter: &dummyDecrypter{},
 	}
 
-	obj := &JweObject{
+	obj := &JsonWebEncryption{
 		protected: map[string]interface{}{"alg": string(DIRECT), "enc": string(A128GCM)},
 		recipients: []recipientInfo{
 			recipientInfo{},
@@ -176,7 +176,7 @@ func TestMissingInvalidHeaders(t *testing.T) {
 		keyDecrypter: &dummyDecrypter{},
 	}
 
-	obj := &JweObject{
+	obj := &JsonWebEncryption{
 		protected: map[string]interface{}{"enc": "A128GCM"},
 		recipients: []recipientInfo{
 			recipientInfo{},
@@ -226,7 +226,7 @@ func TestMissingInvalidHeaders(t *testing.T) {
 
 func TestCompactSerialize(t *testing.T) {
 	// Compact serialization must fail if we have unprotected headers
-	obj := &JweObject{
+	obj := &JsonWebEncryption{
 		unprotected: map[string]interface{}{"test": "test"},
 	}
 

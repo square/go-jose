@@ -270,7 +270,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 }
 
 // Decrypt the content encryption key.
-func (ctx *symmetricKeyCipher) decryptKey(alg KeyAlgorithm, obj *JweObject, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+func (ctx *symmetricKeyCipher) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
 	switch alg {
 	case DIRECT:
 		cek := make([]byte, len(ctx.key))

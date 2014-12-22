@@ -64,7 +64,7 @@ func TestInvalidKey(t *testing.T) {
 }
 
 func TestInvalidWrappedKey(t *testing.T) {
-	obj := &JweObject{}
+	obj := &JsonWebEncryption{}
 	cipher := &symmetricKeyCipher{}
 
 	_, err := cipher.decryptKey(A128GCMKW, obj, &recipientInfo{}, nil)

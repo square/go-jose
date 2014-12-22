@@ -33,7 +33,7 @@ var ecTestKey256, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 var ecTestKey384, _ = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 var ecTestKey521, _ = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 
-func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JweObject) (string, error), corrupter func(*JweObject), aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
+func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption), aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
 	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
 	if err != nil {
 		return fmt.Errorf("error on new encrypter: %s", err)
@@ -89,12 +89,12 @@ func TestRoundtripsJWE(t *testing.T) {
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 	zipAlgs := []CompressionAlgorithm{NONE, DEFLATE}
 
-	serializers := []func(*JweObject) (string, error){
-		func(obj *JweObject) (string, error) { return obj.CompactSerialize() },
-		func(obj *JweObject) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JsonWebEncryption) (string, error){
+		func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() },
+		func(obj *JsonWebEncryption) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupter := func(obj *JweObject) {}
+	corrupter := func(obj *JsonWebEncryption) {}
 
 	// Note: can't use AAD with compact serialization
 	aads := [][]byte{
@@ -125,21 +125,21 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 	zipAlgs := []CompressionAlgorithm{NONE, DEFLATE}
 
-	serializers := []func(*JweObject) (string, error){
-		func(obj *JweObject) (string, error) { return obj.CompactSerialize() },
-		func(obj *JweObject) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JsonWebEncryption) (string, error){
+		func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() },
+		func(obj *JsonWebEncryption) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupters := []func(*JweObject){
-		func(obj *JweObject) {
+	corrupters := []func(*JsonWebEncryption){
+		func(obj *JsonWebEncryption) {
 			// Set invalid AAD
 			obj.aad = []byte("###")
 		},
-		func(obj *JweObject) {
+		func(obj *JsonWebEncryption) {
 			// Set invalid ciphertext
 			obj.ciphertext = []byte("###")
 		},
-		func(obj *JweObject) {
+		func(obj *JsonWebEncryption) {
 			// Set invalid auth tag
 			obj.tag = []byte("###")
 		},
@@ -343,11 +343,11 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 }
 
 func RunRoundtripsJWE(b *testing.B, alg KeyAlgorithm, enc ContentEncryption, zip CompressionAlgorithm, priv, pub interface{}) {
-	serializer := func(obj *JweObject) (string, error) {
+	serializer := func(obj *JsonWebEncryption) (string, error) {
 		return obj.CompactSerialize()
 	}
 
-	corrupter := func(obj *JweObject) {}
+	corrupter := func(obj *JsonWebEncryption) {}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

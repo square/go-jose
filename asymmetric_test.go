@@ -257,7 +257,7 @@ func TestInvalidECDecrypt(t *testing.T) {
 	generator := randomKeyGenerator{size: 16}
 
 	// Missing epk header
-	obj := &JweObject{}
+	obj := &JsonWebEncryption{}
 
 	_, err := dec.decryptKey(ECDH_ES, obj, nil, generator)
 	if err == nil {

@@ -25,18 +25,18 @@ import (
 
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
-	Sign(payload []byte) (*JwsObject, error)
+	Sign(payload []byte) (*JsonWebSignature, error)
 }
 
 // MultiSigner represents a signer which supports multiple recipients.
 type MultiSigner interface {
-	Sign(payload []byte) (*JwsObject, error)
+	Sign(payload []byte) (*JsonWebSignature, error)
 	AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error
 }
 
 // Verifier represents a verifier which checks signatures on JWS objects.
 type Verifier interface {
-	Verify(object *JwsObject) ([]byte, error)
+	Verify(object *JsonWebSignature) ([]byte, error)
 }
 
 type payloadSigner interface {
@@ -118,8 +118,8 @@ func (ctx *genericSigner) AddRecipient(alg SignatureAlgorithm, signingKey interf
 	return nil
 }
 
-func (ctx *genericSigner) Sign(payload []byte) (*JwsObject, error) {
-	obj := &JwsObject{}
+func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
+	obj := &JsonWebSignature{}
 	obj.payload = payload
 	obj.signatures = make([]signatureInfo, len(ctx.recipients))
 
@@ -150,7 +150,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JwsObject, error) {
 	return obj, nil
 }
 
-func (ctx *genericVerifier) Verify(obj *JwsObject) ([]byte, error) {
+func (ctx *genericVerifier) Verify(obj *JsonWebSignature) ([]byte, error) {
 	for _, signature := range obj.signatures {
 		if _, critPresent := signature.getHeader("crit"); critPresent {
 			// Unsupported crit header
