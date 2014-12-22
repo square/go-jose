@@ -358,86 +358,374 @@ func RunRoundtripsJWE(b *testing.B, alg KeyAlgorithm, enc ContentEncryption, zip
 	}
 }
 
-func BenchmarkRoundtripsWithOAEPAndGCM(b *testing.B) {
-	RunRoundtripsJWE(b, RSA_OAEP, A128GCM, NONE, rsaTestKey, &rsaTestKey.PublicKey)
+var (
+	chunks = map[string][]byte{
+		"1B":   make([]byte, 1),
+		"64B":  make([]byte, 64),
+		"1KB":  make([]byte, 1024),
+		"64KB": make([]byte, 65536),
+		"1MB":  make([]byte, 1048576),
+		"64MB": make([]byte, 67108864),
+	}
+
+	symKey, _, _ = randomKeyGenerator{size: 32}.genKey()
+
+	encrypters = map[string]Encrypter{
+		"OAEPAndGCM":          mustEncrypter(RSA_OAEP, A128GCM, &rsaTestKey.PublicKey),
+		"PKCSAndGCM":          mustEncrypter(RSA1_5, A128GCM, &rsaTestKey.PublicKey),
+		"OAEPAndCBC":          mustEncrypter(RSA_OAEP, A128CBC_HS256, &rsaTestKey.PublicKey),
+		"PKCSAndCBC":          mustEncrypter(RSA1_5, A128CBC_HS256, &rsaTestKey.PublicKey),
+		"DirectGCM128":        mustEncrypter(DIRECT, A128GCM, symKey),
+		"DirectCBC128":        mustEncrypter(DIRECT, A128CBC_HS256, symKey),
+		"DirectGCM256":        mustEncrypter(DIRECT, A256GCM, symKey),
+		"DirectCBC256":        mustEncrypter(DIRECT, A256CBC_HS512, symKey),
+		"AESKWAndGCM128":      mustEncrypter(A128KW, A128GCM, symKey),
+		"AESKWAndCBC256":      mustEncrypter(A256KW, A256GCM, symKey),
+		"ECDHOnP256AndGCM128": mustEncrypter(ECDH_ES, A128GCM, &ecTestKey256.PublicKey),
+		"ECDHOnP384AndGCM128": mustEncrypter(ECDH_ES, A128GCM, &ecTestKey384.PublicKey),
+		"ECDHOnP521AndGCM128": mustEncrypter(ECDH_ES, A128GCM, &ecTestKey521.PublicKey),
+	}
+)
+
+func BenchmarkEncrypt1BWithOAEPAndGCM(b *testing.B)   { benchEncrypt("1B", "OAEPAndGCM", b) }
+func BenchmarkEncrypt64BWithOAEPAndGCM(b *testing.B)  { benchEncrypt("64B", "OAEPAndGCM", b) }
+func BenchmarkEncrypt1KBWithOAEPAndGCM(b *testing.B)  { benchEncrypt("1KB", "OAEPAndGCM", b) }
+func BenchmarkEncrypt64KBWithOAEPAndGCM(b *testing.B) { benchEncrypt("64KB", "OAEPAndGCM", b) }
+func BenchmarkEncrypt1MBWithOAEPAndGCM(b *testing.B)  { benchEncrypt("1MB", "OAEPAndGCM", b) }
+func BenchmarkEncrypt64MBWithOAEPAndGCM(b *testing.B) { benchEncrypt("64MB", "OAEPAndGCM", b) }
+
+func BenchmarkEncrypt1BWithPKCSAndGCM(b *testing.B)   { benchEncrypt("1B", "PKCSAndGCM", b) }
+func BenchmarkEncrypt64BWithPKCSAndGCM(b *testing.B)  { benchEncrypt("64B", "PKCSAndGCM", b) }
+func BenchmarkEncrypt1KBWithPKCSAndGCM(b *testing.B)  { benchEncrypt("1KB", "PKCSAndGCM", b) }
+func BenchmarkEncrypt64KBWithPKCSAndGCM(b *testing.B) { benchEncrypt("64KB", "PKCSAndGCM", b) }
+func BenchmarkEncrypt1MBWithPKCSAndGCM(b *testing.B)  { benchEncrypt("1MB", "PKCSAndGCM", b) }
+func BenchmarkEncrypt64MBWithPKCSAndGCM(b *testing.B) { benchEncrypt("64MB", "PKCSAndGCM", b) }
+
+func BenchmarkEncrypt1BWithOAEPAndCBC(b *testing.B)   { benchEncrypt("1B", "OAEPAndCBC", b) }
+func BenchmarkEncrypt64BWithOAEPAndCBC(b *testing.B)  { benchEncrypt("64B", "OAEPAndCBC", b) }
+func BenchmarkEncrypt1KBWithOAEPAndCBC(b *testing.B)  { benchEncrypt("1KB", "OAEPAndCBC", b) }
+func BenchmarkEncrypt64KBWithOAEPAndCBC(b *testing.B) { benchEncrypt("64KB", "OAEPAndCBC", b) }
+func BenchmarkEncrypt1MBWithOAEPAndCBC(b *testing.B)  { benchEncrypt("1MB", "OAEPAndCBC", b) }
+func BenchmarkEncrypt64MBWithOAEPAndCBC(b *testing.B) { benchEncrypt("64MB", "OAEPAndCBC", b) }
+
+func BenchmarkEncrypt1BWithPKCSAndCBC(b *testing.B)   { benchEncrypt("1B", "PKCSAndCBC", b) }
+func BenchmarkEncrypt64BWithPKCSAndCBC(b *testing.B)  { benchEncrypt("64B", "PKCSAndCBC", b) }
+func BenchmarkEncrypt1KBWithPKCSAndCBC(b *testing.B)  { benchEncrypt("1KB", "PKCSAndCBC", b) }
+func BenchmarkEncrypt64KBWithPKCSAndCBC(b *testing.B) { benchEncrypt("64KB", "PKCSAndCBC", b) }
+func BenchmarkEncrypt1MBWithPKCSAndCBC(b *testing.B)  { benchEncrypt("1MB", "PKCSAndCBC", b) }
+func BenchmarkEncrypt64MBWithPKCSAndCBC(b *testing.B) { benchEncrypt("64MB", "PKCSAndCBC", b) }
+
+func BenchmarkEncrypt1BWithDirectGCM128(b *testing.B)   { benchEncrypt("1B", "DirectGCM128", b) }
+func BenchmarkEncrypt64BWithDirectGCM128(b *testing.B)  { benchEncrypt("64B", "DirectGCM128", b) }
+func BenchmarkEncrypt1KBWithDirectGCM128(b *testing.B)  { benchEncrypt("1KB", "DirectGCM128", b) }
+func BenchmarkEncrypt64KBWithDirectGCM128(b *testing.B) { benchEncrypt("64KB", "DirectGCM128", b) }
+func BenchmarkEncrypt1MBWithDirectGCM128(b *testing.B)  { benchEncrypt("1MB", "DirectGCM128", b) }
+func BenchmarkEncrypt64MBWithDirectGCM128(b *testing.B) { benchEncrypt("64MB", "DirectGCM128", b) }
+
+func BenchmarkEncrypt1BWithDirectCBC128(b *testing.B)   { benchEncrypt("1B", "DirectCBC128", b) }
+func BenchmarkEncrypt64BWithDirectCBC128(b *testing.B)  { benchEncrypt("64B", "DirectCBC128", b) }
+func BenchmarkEncrypt1KBWithDirectCBC128(b *testing.B)  { benchEncrypt("1KB", "DirectCBC128", b) }
+func BenchmarkEncrypt64KBWithDirectCBC128(b *testing.B) { benchEncrypt("64KB", "DirectCBC128", b) }
+func BenchmarkEncrypt1MBWithDirectCBC128(b *testing.B)  { benchEncrypt("1MB", "DirectCBC128", b) }
+func BenchmarkEncrypt64MBWithDirectCBC128(b *testing.B) { benchEncrypt("64MB", "DirectCBC128", b) }
+
+func BenchmarkEncrypt1BWithDirectGCM256(b *testing.B)   { benchEncrypt("1B", "DirectGCM256", b) }
+func BenchmarkEncrypt64BWithDirectGCM256(b *testing.B)  { benchEncrypt("64B", "DirectGCM256", b) }
+func BenchmarkEncrypt1KBWithDirectGCM256(b *testing.B)  { benchEncrypt("1KB", "DirectGCM256", b) }
+func BenchmarkEncrypt64KBWithDirectGCM256(b *testing.B) { benchEncrypt("64KB", "DirectGCM256", b) }
+func BenchmarkEncrypt1MBWithDirectGCM256(b *testing.B)  { benchEncrypt("1MB", "DirectGCM256", b) }
+func BenchmarkEncrypt64MBWithDirectGCM256(b *testing.B) { benchEncrypt("64MB", "DirectGCM256", b) }
+
+func BenchmarkEncrypt1BWithDirectCBC256(b *testing.B)   { benchEncrypt("1B", "DirectCBC256", b) }
+func BenchmarkEncrypt64BWithDirectCBC256(b *testing.B)  { benchEncrypt("64B", "DirectCBC256", b) }
+func BenchmarkEncrypt1KBWithDirectCBC256(b *testing.B)  { benchEncrypt("1KB", "DirectCBC256", b) }
+func BenchmarkEncrypt64KBWithDirectCBC256(b *testing.B) { benchEncrypt("64KB", "DirectCBC256", b) }
+func BenchmarkEncrypt1MBWithDirectCBC256(b *testing.B)  { benchEncrypt("1MB", "DirectCBC256", b) }
+func BenchmarkEncrypt64MBWithDirectCBC256(b *testing.B) { benchEncrypt("64MB", "DirectCBC256", b) }
+
+func BenchmarkEncrypt1BWithAESKWAndGCM128(b *testing.B)   { benchEncrypt("1B", "AESKWAndGCM128", b) }
+func BenchmarkEncrypt64BWithAESKWAndGCM128(b *testing.B)  { benchEncrypt("64B", "AESKWAndGCM128", b) }
+func BenchmarkEncrypt1KBWithAESKWAndGCM128(b *testing.B)  { benchEncrypt("1KB", "AESKWAndGCM128", b) }
+func BenchmarkEncrypt64KBWithAESKWAndGCM128(b *testing.B) { benchEncrypt("64KB", "AESKWAndGCM128", b) }
+func BenchmarkEncrypt1MBWithAESKWAndGCM128(b *testing.B)  { benchEncrypt("1MB", "AESKWAndGCM128", b) }
+func BenchmarkEncrypt64MBWithAESKWAndGCM128(b *testing.B) { benchEncrypt("64MB", "AESKWAndGCM128", b) }
+
+func BenchmarkEncrypt1BWithAESKWAndCBC256(b *testing.B)   { benchEncrypt("1B", "AESKWAndCBC256", b) }
+func BenchmarkEncrypt64BWithAESKWAndCBC256(b *testing.B)  { benchEncrypt("64B", "AESKWAndCBC256", b) }
+func BenchmarkEncrypt1KBWithAESKWAndCBC256(b *testing.B)  { benchEncrypt("1KB", "AESKWAndCBC256", b) }
+func BenchmarkEncrypt64KBWithAESKWAndCBC256(b *testing.B) { benchEncrypt("64KB", "AESKWAndCBC256", b) }
+func BenchmarkEncrypt1MBWithAESKWAndCBC256(b *testing.B)  { benchEncrypt("1MB", "AESKWAndCBC256", b) }
+func BenchmarkEncrypt64MBWithAESKWAndCBC256(b *testing.B) { benchEncrypt("64MB", "AESKWAndCBC256", b) }
+
+func BenchmarkEncrypt1BWithECDHOnP256AndGCM128(b *testing.B) {
+	benchEncrypt("1B", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkEncrypt64BWithECDHOnP256AndGCM128(b *testing.B) {
+	benchEncrypt("64B", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkEncrypt1KBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchEncrypt("1KB", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkEncrypt64KBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchEncrypt("64KB", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkEncrypt1MBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchEncrypt("1MB", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkEncrypt64MBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchEncrypt("64MB", "ECDHOnP256AndGCM128", b)
 }
 
-func BenchmarkRoundtripsWithPKCSAndGCM(b *testing.B) {
-	RunRoundtripsJWE(b, RSA1_5, A128GCM, NONE, rsaTestKey, &rsaTestKey.PublicKey)
+func BenchmarkEncrypt1BWithECDHOnP384AndGCM128(b *testing.B) {
+	benchEncrypt("1B", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkEncrypt64BWithECDHOnP384AndGCM128(b *testing.B) {
+	benchEncrypt("64B", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkEncrypt1KBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchEncrypt("1KB", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkEncrypt64KBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchEncrypt("64KB", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkEncrypt1MBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchEncrypt("1MB", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkEncrypt64MBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchEncrypt("64MB", "ECDHOnP384AndGCM128", b)
 }
 
-func BenchmarkRoundtripsWithOAEPAndCBC(b *testing.B) {
-	RunRoundtripsJWE(b, RSA_OAEP, A128CBC_HS256, NONE, rsaTestKey, &rsaTestKey.PublicKey)
+func BenchmarkEncrypt1BWithECDHOnP521AndGCM128(b *testing.B) {
+	benchEncrypt("1B", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkEncrypt64BWithECDHOnP521AndGCM128(b *testing.B) {
+	benchEncrypt("64B", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkEncrypt1KBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchEncrypt("1KB", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkEncrypt64KBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchEncrypt("64KB", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkEncrypt1MBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchEncrypt("1MB", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkEncrypt64MBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchEncrypt("64MB", "ECDHOnP521AndGCM128", b)
 }
 
-func BenchmarkRoundtripsWithPKCSAndCBC(b *testing.B) {
-	RunRoundtripsJWE(b, RSA1_5, A128CBC_HS256, NONE, rsaTestKey, &rsaTestKey.PublicKey)
+func benchEncrypt(chunkKey, primKey string, b *testing.B) {
+	data, ok := chunks[chunkKey]
+	if !ok {
+		b.Fatalf("unknown chunk size %s", chunkKey)
+	}
+
+	enc, ok := encrypters[primKey]
+	if !ok {
+		b.Fatalf("unknown encrypter %s", primKey)
+	}
+
+	b.SetBytes(int64(len(data)))
+	for i := 0; i < b.N; i++ {
+		enc.Encrypt(data)
+	}
 }
 
-func BenchmarkRoundtripsWithDirectGCM128(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 16}.genKey()
-	RunRoundtripsJWE(b, DIRECT, A128GCM, NONE, cek, cek)
+var (
+	decRSA   = mustDecrypter(rsaTestKey)
+	decSym   = mustDecrypter(symKey)
+	decEC256 = mustDecrypter(ecTestKey256)
+	decEC384 = mustDecrypter(ecTestKey384)
+	decEC521 = mustDecrypter(ecTestKey521)
+
+	decrypters = map[string]Decrypter{
+		"OAEPAndGCM": decRSA,
+		"PKCSAndGCM": decRSA,
+		"OAEPAndCBC": decRSA,
+		"PKCSAndCBC": decRSA,
+
+		"DirectGCM128": decSym,
+		"DirectCBC128": decSym,
+		"DirectGCM256": decSym,
+		"DirectCBC256": decSym,
+
+		"AESKWAndGCM128": decSym,
+		"AESKWAndCBC256": decSym,
+
+		"ECDHOnP256AndGCM128": decEC256,
+		"ECDHOnP384AndGCM128": decEC384,
+		"ECDHOnP521AndGCM128": decEC521,
+	}
+)
+
+func BenchmarkDecrypt1BWithOAEPAndGCM(b *testing.B)   { benchDecrypt("1B", "OAEPAndGCM", b) }
+func BenchmarkDecrypt64BWithOAEPAndGCM(b *testing.B)  { benchDecrypt("64B", "OAEPAndGCM", b) }
+func BenchmarkDecrypt1KBWithOAEPAndGCM(b *testing.B)  { benchDecrypt("1KB", "OAEPAndGCM", b) }
+func BenchmarkDecrypt64KBWithOAEPAndGCM(b *testing.B) { benchDecrypt("64KB", "OAEPAndGCM", b) }
+func BenchmarkDecrypt1MBWithOAEPAndGCM(b *testing.B)  { benchDecrypt("1MB", "OAEPAndGCM", b) }
+func BenchmarkDecrypt64MBWithOAEPAndGCM(b *testing.B) { benchDecrypt("64MB", "OAEPAndGCM", b) }
+
+func BenchmarkDecrypt1BWithPKCSAndGCM(b *testing.B)   { benchDecrypt("1B", "PKCSAndGCM", b) }
+func BenchmarkDecrypt64BWithPKCSAndGCM(b *testing.B)  { benchDecrypt("64B", "PKCSAndGCM", b) }
+func BenchmarkDecrypt1KBWithPKCSAndGCM(b *testing.B)  { benchDecrypt("1KB", "PKCSAndGCM", b) }
+func BenchmarkDecrypt64KBWithPKCSAndGCM(b *testing.B) { benchDecrypt("64KB", "PKCSAndGCM", b) }
+func BenchmarkDecrypt1MBWithPKCSAndGCM(b *testing.B)  { benchDecrypt("1MB", "PKCSAndGCM", b) }
+func BenchmarkDecrypt64MBWithPKCSAndGCM(b *testing.B) { benchDecrypt("64MB", "PKCSAndGCM", b) }
+
+func BenchmarkDecrypt1BWithOAEPAndCBC(b *testing.B)   { benchDecrypt("1B", "OAEPAndCBC", b) }
+func BenchmarkDecrypt64BWithOAEPAndCBC(b *testing.B)  { benchDecrypt("64B", "OAEPAndCBC", b) }
+func BenchmarkDecrypt1KBWithOAEPAndCBC(b *testing.B)  { benchDecrypt("1KB", "OAEPAndCBC", b) }
+func BenchmarkDecrypt64KBWithOAEPAndCBC(b *testing.B) { benchDecrypt("64KB", "OAEPAndCBC", b) }
+func BenchmarkDecrypt1MBWithOAEPAndCBC(b *testing.B)  { benchDecrypt("1MB", "OAEPAndCBC", b) }
+func BenchmarkDecrypt64MBWithOAEPAndCBC(b *testing.B) { benchDecrypt("64MB", "OAEPAndCBC", b) }
+
+func BenchmarkDecrypt1BWithPKCSAndCBC(b *testing.B)   { benchDecrypt("1B", "PKCSAndCBC", b) }
+func BenchmarkDecrypt64BWithPKCSAndCBC(b *testing.B)  { benchDecrypt("64B", "PKCSAndCBC", b) }
+func BenchmarkDecrypt1KBWithPKCSAndCBC(b *testing.B)  { benchDecrypt("1KB", "PKCSAndCBC", b) }
+func BenchmarkDecrypt64KBWithPKCSAndCBC(b *testing.B) { benchDecrypt("64KB", "PKCSAndCBC", b) }
+func BenchmarkDecrypt1MBWithPKCSAndCBC(b *testing.B)  { benchDecrypt("1MB", "PKCSAndCBC", b) }
+func BenchmarkDecrypt64MBWithPKCSAndCBC(b *testing.B) { benchDecrypt("64MB", "PKCSAndCBC", b) }
+
+func BenchmarkDecrypt1BWithDirectGCM128(b *testing.B)   { benchDecrypt("1B", "DirectGCM128", b) }
+func BenchmarkDecrypt64BWithDirectGCM128(b *testing.B)  { benchDecrypt("64B", "DirectGCM128", b) }
+func BenchmarkDecrypt1KBWithDirectGCM128(b *testing.B)  { benchDecrypt("1KB", "DirectGCM128", b) }
+func BenchmarkDecrypt64KBWithDirectGCM128(b *testing.B) { benchDecrypt("64KB", "DirectGCM128", b) }
+func BenchmarkDecrypt1MBWithDirectGCM128(b *testing.B)  { benchDecrypt("1MB", "DirectGCM128", b) }
+func BenchmarkDecrypt64MBWithDirectGCM128(b *testing.B) { benchDecrypt("64MB", "DirectGCM128", b) }
+
+func BenchmarkDecrypt1BWithDirectCBC128(b *testing.B)   { benchDecrypt("1B", "DirectCBC128", b) }
+func BenchmarkDecrypt64BWithDirectCBC128(b *testing.B)  { benchDecrypt("64B", "DirectCBC128", b) }
+func BenchmarkDecrypt1KBWithDirectCBC128(b *testing.B)  { benchDecrypt("1KB", "DirectCBC128", b) }
+func BenchmarkDecrypt64KBWithDirectCBC128(b *testing.B) { benchDecrypt("64KB", "DirectCBC128", b) }
+func BenchmarkDecrypt1MBWithDirectCBC128(b *testing.B)  { benchDecrypt("1MB", "DirectCBC128", b) }
+func BenchmarkDecrypt64MBWithDirectCBC128(b *testing.B) { benchDecrypt("64MB", "DirectCBC128", b) }
+
+func BenchmarkDecrypt1BWithDirectGCM256(b *testing.B)   { benchDecrypt("1B", "DirectGCM256", b) }
+func BenchmarkDecrypt64BWithDirectGCM256(b *testing.B)  { benchDecrypt("64B", "DirectGCM256", b) }
+func BenchmarkDecrypt1KBWithDirectGCM256(b *testing.B)  { benchDecrypt("1KB", "DirectGCM256", b) }
+func BenchmarkDecrypt64KBWithDirectGCM256(b *testing.B) { benchDecrypt("64KB", "DirectGCM256", b) }
+func BenchmarkDecrypt1MBWithDirectGCM256(b *testing.B)  { benchDecrypt("1MB", "DirectGCM256", b) }
+func BenchmarkDecrypt64MBWithDirectGCM256(b *testing.B) { benchDecrypt("64MB", "DirectGCM256", b) }
+
+func BenchmarkDecrypt1BWithDirectCBC256(b *testing.B)   { benchDecrypt("1B", "DirectCBC256", b) }
+func BenchmarkDecrypt64BWithDirectCBC256(b *testing.B)  { benchDecrypt("64B", "DirectCBC256", b) }
+func BenchmarkDecrypt1KBWithDirectCBC256(b *testing.B)  { benchDecrypt("1KB", "DirectCBC256", b) }
+func BenchmarkDecrypt64KBWithDirectCBC256(b *testing.B) { benchDecrypt("64KB", "DirectCBC256", b) }
+func BenchmarkDecrypt1MBWithDirectCBC256(b *testing.B)  { benchDecrypt("1MB", "DirectCBC256", b) }
+func BenchmarkDecrypt64MBWithDirectCBC256(b *testing.B) { benchDecrypt("64MB", "DirectCBC256", b) }
+
+func BenchmarkDecrypt1BWithAESKWAndGCM128(b *testing.B)   { benchDecrypt("1B", "AESKWAndGCM128", b) }
+func BenchmarkDecrypt64BWithAESKWAndGCM128(b *testing.B)  { benchDecrypt("64B", "AESKWAndGCM128", b) }
+func BenchmarkDecrypt1KBWithAESKWAndGCM128(b *testing.B)  { benchDecrypt("1KB", "AESKWAndGCM128", b) }
+func BenchmarkDecrypt64KBWithAESKWAndGCM128(b *testing.B) { benchDecrypt("64KB", "AESKWAndGCM128", b) }
+func BenchmarkDecrypt1MBWithAESKWAndGCM128(b *testing.B)  { benchDecrypt("1MB", "AESKWAndGCM128", b) }
+func BenchmarkDecrypt64MBWithAESKWAndGCM128(b *testing.B) { benchDecrypt("64MB", "AESKWAndGCM128", b) }
+
+func BenchmarkDecrypt1BWithAESKWAndCBC256(b *testing.B)   { benchDecrypt("1B", "AESKWAndCBC256", b) }
+func BenchmarkDecrypt64BWithAESKWAndCBC256(b *testing.B)  { benchDecrypt("64B", "AESKWAndCBC256", b) }
+func BenchmarkDecrypt1KBWithAESKWAndCBC256(b *testing.B)  { benchDecrypt("1KB", "AESKWAndCBC256", b) }
+func BenchmarkDecrypt64KBWithAESKWAndCBC256(b *testing.B) { benchDecrypt("64KB", "AESKWAndCBC256", b) }
+func BenchmarkDecrypt1MBWithAESKWAndCBC256(b *testing.B)  { benchDecrypt("1MB", "AESKWAndCBC256", b) }
+func BenchmarkDecrypt64MBWithAESKWAndCBC256(b *testing.B) { benchDecrypt("64MB", "AESKWAndCBC256", b) }
+
+func BenchmarkDecrypt1BWithECDHOnP256AndGCM128(b *testing.B) {
+	benchDecrypt("1B", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkDecrypt64BWithECDHOnP256AndGCM128(b *testing.B) {
+	benchDecrypt("64B", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkDecrypt1KBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchDecrypt("1KB", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkDecrypt64KBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchDecrypt("64KB", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkDecrypt1MBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchDecrypt("1MB", "ECDHOnP256AndGCM128", b)
+}
+func BenchmarkDecrypt64MBWithECDHOnP256AndGCM128(b *testing.B) {
+	benchDecrypt("64MB", "ECDHOnP256AndGCM128", b)
 }
 
-func BenchmarkRoundtripsWithDirectCBC128(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 32}.genKey()
-	RunRoundtripsJWE(b, DIRECT, A128CBC_HS256, NONE, cek, cek)
+func BenchmarkDecrypt1BWithECDHOnP384AndGCM128(b *testing.B) {
+	benchDecrypt("1B", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkDecrypt64BWithECDHOnP384AndGCM128(b *testing.B) {
+	benchDecrypt("64B", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkDecrypt1KBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchDecrypt("1KB", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkDecrypt64KBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchDecrypt("64KB", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkDecrypt1MBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchDecrypt("1MB", "ECDHOnP384AndGCM128", b)
+}
+func BenchmarkDecrypt64MBWithECDHOnP384AndGCM128(b *testing.B) {
+	benchDecrypt("64MB", "ECDHOnP384AndGCM128", b)
 }
 
-func BenchmarkRoundtripsWithDirectGCM256(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 32}.genKey()
-	RunRoundtripsJWE(b, DIRECT, A256GCM, NONE, cek, cek)
+func BenchmarkDecrypt1BWithECDHOnP521AndGCM128(b *testing.B) {
+	benchDecrypt("1B", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkDecrypt64BWithECDHOnP521AndGCM128(b *testing.B) {
+	benchDecrypt("64B", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkDecrypt1KBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchDecrypt("1KB", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkDecrypt64KBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchDecrypt("64KB", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkDecrypt1MBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchDecrypt("1MB", "ECDHOnP521AndGCM128", b)
+}
+func BenchmarkDecrypt64MBWithECDHOnP521AndGCM128(b *testing.B) {
+	benchDecrypt("64MB", "ECDHOnP521AndGCM128", b)
 }
 
-func BenchmarkRoundtripsWithDirectCBC256(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 64}.genKey()
-	RunRoundtripsJWE(b, DIRECT, A256CBC_HS512, NONE, cek, cek)
+func benchDecrypt(chunkKey, primKey string, b *testing.B) {
+	chunk, ok := chunks[chunkKey]
+	if !ok {
+		b.Fatalf("unknown chunk size %s", chunkKey)
+	}
+
+	enc, ok := encrypters[primKey]
+	if !ok {
+		b.Fatalf("unknown encrypter %s", primKey)
+	}
+
+	dec, ok := decrypters[primKey]
+	if !ok {
+		b.Fatalf("unknown decrypter %s", primKey)
+	}
+
+	data, err := enc.Encrypt(chunk)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.SetBytes(int64(len(chunk)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		dec.Decrypt(data)
+	}
 }
 
-func BenchmarkRoundtripsWithOAEPAndGCM128AndDEFLATE(b *testing.B) {
-	RunRoundtripsJWE(b, RSA_OAEP, A128GCM, DEFLATE, rsaTestKey, &rsaTestKey.PublicKey)
+func mustEncrypter(keyAlg KeyAlgorithm, encAlg ContentEncryption, encryptionKey interface{}) Encrypter {
+	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
+	if err != nil {
+		panic(err)
+	}
+	return enc
 }
 
-func BenchmarkRoundtripsWithPKCSAndGCM128AndDEFLATE(b *testing.B) {
-	RunRoundtripsJWE(b, RSA1_5, A128GCM, DEFLATE, rsaTestKey, &rsaTestKey.PublicKey)
-}
+func mustDecrypter(decryptionKey interface{}) Decrypter {
+	dec, err := NewDecrypter(decryptionKey)
+	if err != nil {
+		panic(err)
+	}
 
-func BenchmarkRoundtripsWithOAEPAndCBC128AndDEFLATE(b *testing.B) {
-	RunRoundtripsJWE(b, RSA_OAEP, A128CBC_HS256, DEFLATE, rsaTestKey, &rsaTestKey.PublicKey)
-}
-
-func BenchmarkRoundtripsWithPKCSAndCBC128AndDEFLATE(b *testing.B) {
-	RunRoundtripsJWE(b, RSA1_5, A128CBC_HS256, DEFLATE, rsaTestKey, &rsaTestKey.PublicKey)
-}
-
-func BenchmarkRoundtripsWithDirectGCM128AndDEFLATE(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 16}.genKey()
-	RunRoundtripsJWE(b, DIRECT, A128GCM, DEFLATE, cek, cek)
-}
-
-func BenchmarkRoundtripsWithDirectCBC128AndDEFLATE(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 32}.genKey()
-	RunRoundtripsJWE(b, DIRECT, A128CBC_HS256, DEFLATE, cek, cek)
-}
-
-func BenchmarkRoundtripsWithAESKWAndGCM128(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 16}.genKey()
-	RunRoundtripsJWE(b, A128KW, A128GCM, NONE, cek, cek)
-}
-
-func BenchmarkRoundtripsWithAESKWAndCBC256(b *testing.B) {
-	cek, _, _ := randomKeyGenerator{size: 32}.genKey()
-	RunRoundtripsJWE(b, A256KW, A256GCM, NONE, cek, cek)
-}
-
-func BenchmarkRoundtripsWithECDHOnP256AndGCM128(b *testing.B) {
-	RunRoundtripsJWE(b, ECDH_ES, A128GCM, DEFLATE, ecTestKey256, &ecTestKey256.PublicKey)
-}
-
-func BenchmarkRoundtripsWithECDHOnP384AndGCM128(b *testing.B) {
-	RunRoundtripsJWE(b, ECDH_ES, A128GCM, DEFLATE, ecTestKey384, &ecTestKey384.PublicKey)
-}
-
-func BenchmarkRoundtripsWithECDHOnP521AndGCM128(b *testing.B) {
-	RunRoundtripsJWE(b, ECDH_ES, A128GCM, DEFLATE, ecTestKey521, &ecTestKey521.PublicKey)
+	return dec
 }
