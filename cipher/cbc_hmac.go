@@ -186,7 +186,7 @@ func unpadBuffer(buffer []byte, blockSize int) ([]byte, error) {
 	}
 
 	padding := bytes.Repeat([]byte{last}, count)
-	if bytes.Compare(buffer[len(buffer)-count:], padding) != 0 {
+	if !bytes.HasSuffix(buffer, padding) {
 		return nil, errors.New("square/go-jose: invalid padding")
 	}
 
