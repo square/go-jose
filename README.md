@@ -146,13 +146,6 @@ if err != nil {
 // object.CompactSerialize() instead.
 serialized := object.FullSerialize()
 
-// Now let's instantiate a verifier to verify the object.
-publicKey := &privateKey.PublicKey
-verifier, err := NewVerifier(publicKey)
-if err != nil {
-	panic(err)
-}
-
 // Parse the serialized, protected JWS object. An error would indicate that
 // the given input did not represent a valid message.
 object, err = ParseSigned(serialized)
@@ -163,7 +156,7 @@ if err != nil {
 // Now we can verify the signature on the payload. An error here would
 // indicate the the message failed to verify, e.g. because the signature was
 // broken or the message was tampered with.
-output, err := verifier.Verify(object)
+output, err := object.Verify(&privateKey.PublicKey)
 if err != nil {
 	panic(err)
 }

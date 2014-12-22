@@ -99,15 +99,6 @@ func newRSASigner(sigAlg SignatureAlgorithm, privateKey *rsa.PrivateKey) (recipi
 	}, nil
 }
 
-// newRSAVerifier creates an RSA-based JWS verifier.
-func newRSAVerifier(publicKey *rsa.PublicKey) Verifier {
-	return &genericVerifier{
-		verifier: &rsaEncrypterVerifier{
-			publicKey: publicKey,
-		},
-	}
-}
-
 // newECDHRecipient creates recipientKeyInfo based on the given key.
 func newECDHRecipient(keyAlg KeyAlgorithm, publicKey *ecdsa.PublicKey) (recipientKeyInfo, error) {
 	// Verify that key management algorithm is supported by this encrypter
@@ -149,15 +140,6 @@ func newECDSASigner(sigAlg SignatureAlgorithm, privateKey *ecdsa.PrivateKey) (re
 			privateKey: privateKey,
 		},
 	}, nil
-}
-
-// newECDSAVerifier creates an ECDSA-based JWS verifier.
-func newECDSAVerifier(publicKey *ecdsa.PublicKey) Verifier {
-	return &genericVerifier{
-		verifier: &ecEncrypterVerifier{
-			publicKey: publicKey,
-		},
-	}
 }
 
 // Encrypt the given payload and update the object.

@@ -50,12 +50,7 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 	// (Maybe) mangle the object
 	corrupter(obj)
 
-	verifier, err := NewVerifier(verificationKey)
-	if err != nil {
-		return fmt.Errorf("error on new verifier: %s", err)
-	}
-
-	output, err := verifier.Verify(obj)
+	output, err := obj.Verify(verificationKey)
 	if err != nil {
 		return fmt.Errorf("error on verify: %s", err)
 	}
@@ -156,25 +151,18 @@ func TestMultiRecipientJWS(t *testing.T) {
 		return
 	}
 
-	verifierRSA, err := NewVerifier(&rsaTestKey.PublicKey)
-	if err != nil {
-		t.Error("error on new verifier: ", err)
-		return
-	}
-
-	verifierHMAC, err := NewVerifier(sharedKey)
-	if err != nil {
-		t.Error("error on new verifier: ", err)
-		return
-	}
-
-	output, err := verifierRSA.Verify(obj)
+	output, err := obj.Verify(&rsaTestKey.PublicKey)
 	if err != nil {
 		t.Error("error on verify: ", err)
 		return
 	}
 
-	output, err = verifierHMAC.Verify(obj)
+	if bytes.Compare(output, input) != 0 {
+		t.Error("input/output do not match", output, input)
+		return
+	}
+
+	output, err = obj.Verify(sharedKey)
 	if err != nil {
 		t.Error("error on verify: ", err)
 		return
@@ -223,18 +211,6 @@ func TestInvalidSignerAlg(t *testing.T) {
 	if err == nil {
 		t.Error("should not accept invalid algorithm")
 	}
-
-	_, err = NewVerifier(nil)
-	if err == nil {
-		t.Error("should not accept invalid algorithm")
-	}
-}
-
-type allowAllVerifier struct{}
-
-// Dummy verifier that allows everything
-func (ctx allowAllVerifier) verifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
-	return nil
 }
 
 func TestInvalidJWS(t *testing.T) {
@@ -248,17 +224,7 @@ func TestInvalidJWS(t *testing.T) {
 		"crit": []string{"TEST"},
 	}
 
-	ver, err := NewVerifier(&rsaTestKey.PublicKey)
-	if err != nil {
-		panic(err)
-	}
-
-	verifier := ver.(*genericVerifier)
-
-	// Mock out verifier
-	verifier.verifier = allowAllVerifier{}
-
-	_, err = verifier.Verify(obj)
+	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
 		t.Error("should not verify message with unknown crit header")
 	}
@@ -267,7 +233,7 @@ func TestInvalidJWS(t *testing.T) {
 	obj.signatures[0].protected = map[string]interface{}{}
 	obj.signatures[0].header = map[string]interface{}{}
 
-	_, err = verifier.Verify(obj)
+	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
 		t.Error("should not verify message with missing headers")
 	}
@@ -277,7 +243,7 @@ func TestInvalidJWS(t *testing.T) {
 		"alg": []string{"X", "Y", "Z"},
 	}
 
-	_, err = verifier.Verify(obj)
+	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
 		t.Error("should not verify message with invalid headers")
 	}

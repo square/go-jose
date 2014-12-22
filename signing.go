@@ -34,11 +34,6 @@ type MultiSigner interface {
 	AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error
 }
 
-// Verifier represents a verifier which checks signatures on JWS objects.
-type Verifier interface {
-	Verify(object *JsonWebSignature) ([]byte, error)
-}
-
 type payloadSigner interface {
 	signPayload(payload []byte, alg SignatureAlgorithm) (signatureInfo, error)
 }
@@ -49,10 +44,6 @@ type payloadVerifier interface {
 
 type genericSigner struct {
 	recipients []recipientSigInfo
-}
-
-type genericVerifier struct {
-	verifier payloadVerifier
 }
 
 type recipientSigInfo struct {
@@ -81,15 +72,21 @@ func NewMultiSigner() MultiSigner {
 	}
 }
 
-// NewVerifier creates a verifier based on the key type
-func NewVerifier(verificationKey interface{}) (Verifier, error) {
+// newVerifier creates a verifier based on the key type
+func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 	switch verificationKey := verificationKey.(type) {
 	case *rsa.PublicKey:
-		return newRSAVerifier(verificationKey), nil
+		return &rsaEncrypterVerifier{
+			publicKey: verificationKey,
+		}, nil
 	case *ecdsa.PublicKey:
-		return newECDSAVerifier(verificationKey), nil
+		return &ecEncrypterVerifier{
+			publicKey: verificationKey,
+		}, nil
 	case []byte:
-		return newSymmetricVerifier(verificationKey), nil
+		return &symmetricMac{
+			key: verificationKey,
+		}, nil
 	default:
 		return nil, ErrUnsupportedKeyType
 	}
@@ -150,7 +147,13 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	return obj, nil
 }
 
-func (ctx *genericVerifier) Verify(obj *JsonWebSignature) ([]byte, error) {
+// Verify validates the signature on the object and returns the payload.
+func (obj JsonWebSignature) Verify(verificationKey interface{}) ([]byte, error) {
+	verifier, err := newVerifier(verificationKey)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, signature := range obj.signatures {
 		if _, critPresent := signature.getHeader("crit"); critPresent {
 			// Unsupported crit header
@@ -166,7 +169,7 @@ func (ctx *genericVerifier) Verify(obj *JsonWebSignature) ([]byte, error) {
 
 		if algValue, ok := algValue.(string); ok {
 			alg := SignatureAlgorithm(algValue)
-			err := ctx.verifier.verifyPayload(input, signature.signature, alg)
+			err := verifier.verifyPayload(input, signature.signature, alg)
 			if err == nil {
 				return obj.payload, nil
 			}

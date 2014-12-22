@@ -155,15 +155,6 @@ func newSymmetricSigner(sigAlg SignatureAlgorithm, key []byte) (recipientSigInfo
 	}, nil
 }
 
-// newSymmetricVerifier creates an HMAC-based JWS verifier.
-func newSymmetricVerifier(key []byte) Verifier {
-	return &genericVerifier{
-		verifier: &symmetricMac{
-			key: key,
-		},
-	}
-}
-
 // Generate a random key for the given content cipher
 func (ctx randomKeyGenerator) genKey() ([]byte, map[string]interface{}, error) {
 	key := make([]byte, ctx.size)
