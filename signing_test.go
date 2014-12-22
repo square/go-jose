@@ -25,7 +25,7 @@ import (
 	"testing"
 )
 
-func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JwsObject) (string, error), corrupter func(*JwsObject), signingKey interface{}, verificationKey interface{}) error {
+func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) (string, error), corrupter func(*JsonWebSignature), signingKey interface{}, verificationKey interface{}) error {
 	signer, err := NewSigner(sigAlg, signingKey)
 	if err != nil {
 		return fmt.Errorf("error on new signer: %s", err)
@@ -71,12 +71,12 @@ func TestRoundtripsJWS(t *testing.T) {
 	// Test matrix
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512}
 
-	serializers := []func(*JwsObject) (string, error){
-		func(obj *JwsObject) (string, error) { return obj.CompactSerialize() },
-		func(obj *JwsObject) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JsonWebSignature) (string, error){
+		func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() },
+		func(obj *JsonWebSignature) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupter := func(obj *JwsObject) {}
+	corrupter := func(obj *JsonWebSignature) {}
 
 	for _, alg := range sigAlgs {
 		signingKey, verificationKey := GenerateSigningTestKey(alg)
@@ -94,17 +94,17 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	// Test matrix
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512}
 
-	serializers := []func(*JwsObject) (string, error){
-		func(obj *JwsObject) (string, error) { return obj.CompactSerialize() },
-		func(obj *JwsObject) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JsonWebSignature) (string, error){
+		func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() },
+		func(obj *JsonWebSignature) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupters := []func(*JwsObject){
-		func(obj *JwsObject) {
+	corrupters := []func(*JsonWebSignature){
+		func(obj *JsonWebSignature) {
 			// Changes bytes in signature
 			obj.signatures[0].signature[10]++
 		},
-		func(obj *JwsObject) {
+		func(obj *JsonWebSignature) {
 			// Set totally invalid signature
 			obj.signatures[0].signature = []byte("###")
 		},

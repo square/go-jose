@@ -25,22 +25,22 @@ import (
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.
 type Encrypter interface {
-	Encrypt(plaintext []byte) (*JweObject, error)
-	EncryptWithAuthData(plaintext []byte, aad []byte) (*JweObject, error)
+	Encrypt(plaintext []byte) (*JsonWebEncryption, error)
+	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
 	SetCompression(alg CompressionAlgorithm)
 }
 
 // MultiEncrypter represents an encrypter which supports multiple recipients.
 type MultiEncrypter interface {
-	Encrypt(plaintext []byte) (*JweObject, error)
-	EncryptWithAuthData(plaintext []byte, aad []byte) (*JweObject, error)
+	Encrypt(plaintext []byte) (*JsonWebEncryption, error)
+	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
 	SetCompression(alg CompressionAlgorithm)
 	AddRecipient(alg KeyAlgorithm, encryptionKey interface{}) error
 }
 
 // Decrypter represents a decrypter which consumes an encrypted JWE object.
 type Decrypter interface {
-	Decrypt(object *JweObject) ([]byte, error)
+	Decrypt(object *JsonWebEncryption) ([]byte, error)
 }
 
 // A generic content cipher
@@ -63,7 +63,7 @@ type keyEncrypter interface {
 
 // A generic key decrypter
 type keyDecrypter interface {
-	decryptKey(alg KeyAlgorithm, obj *JweObject, recipient *recipientInfo, generator keyGenerator) ([]byte, error) // Decrypt a key
+	decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) // Decrypt a key
 }
 
 // A generic encrypter based on the given key encrypter and content cipher.
@@ -206,13 +206,13 @@ func NewDecrypter(decryptionKey interface{}) (Decrypter, error) {
 }
 
 // Implementation of encrypt method producing a JWE object.
-func (ctx *genericEncrypter) Encrypt(plaintext []byte) (*JweObject, error) {
+func (ctx *genericEncrypter) Encrypt(plaintext []byte) (*JsonWebEncryption, error) {
 	return ctx.EncryptWithAuthData(plaintext, nil)
 }
 
 // Implementation of encrypt method producing a JWE object.
-func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JweObject, error) {
-	obj := &JweObject{}
+func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWebEncryption, error) {
+	obj := &JsonWebEncryption{}
 	obj.aad = aad
 
 	obj.protected = make(map[string]interface{})
@@ -275,7 +275,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JweObj
 }
 
 // Implementation of decrypt method consuming a JWE object.
-func (ctx *genericDecrypter) Decrypt(obj *JweObject) ([]byte, error) {
+func (ctx *genericDecrypter) Decrypt(obj *JsonWebEncryption) ([]byte, error) {
 	if _, critPresent := obj.getHeader("crit", nil); critPresent {
 		return nil, fmt.Errorf("square/go-jose: unsupported crit header")
 	}

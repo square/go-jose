@@ -189,7 +189,7 @@ func (ctx rsaEncrypterVerifier) encrypt(cek []byte, alg KeyAlgorithm) ([]byte, e
 }
 
 // Decrypt the given payload and return the content encryption key.
-func (ctx rsaDecrypterSigner) decryptKey(alg KeyAlgorithm, obj *JweObject, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+func (ctx rsaDecrypterSigner) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
 	return ctx.decrypt(recipient.encryptedKey, alg, generator)
 }
 
@@ -384,7 +384,7 @@ func (ctx ecKeyGenerator) genKey() ([]byte, map[string]interface{}, error) {
 }
 
 // Decrypt the given payload and return the content encryption key.
-func (ctx ecDecrypterSigner) decryptKey(alg KeyAlgorithm, obj *JweObject, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+func (ctx ecDecrypterSigner) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
 	var publicKey *ecdsa.PublicKey
 	epk, epkPresent := obj.getHeader("epk", recipient)
 	if epk, ok := epk.(map[string]interface{}); ok && epkPresent {
