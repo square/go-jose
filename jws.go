@@ -26,6 +26,9 @@ import (
 type rawJsonWebSignature struct {
 	Payload    *encodedBuffer     `json:"payload,omitempty"`
 	Signatures []rawSignatureInfo `json:"signatures,omitempty"`
+	Protected  *encodedBuffer     `json:"protected,omitempty"`
+	Header     *Header            `json:"header,omitempty"`
+	Signature  *encodedBuffer     `json:"signature,omitempty"`
 }
 
 // rawSignatureInfo represents a single JWS signature over the JWS payload and protected header.
@@ -90,14 +93,30 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 		return nil, err
 	}
 
-	obj := &JsonWebSignature{}
-	obj.payload = parsed.Payload.bytes()
-
-	if len(parsed.Signatures) == 0 {
-		return nil, fmt.Errorf("square/go-jose: JWS object did not have signatures")
+	if parsed.Payload == nil {
+		return nil, fmt.Errorf("square/go-jose: missing payload in JWS message")
 	}
 
+	obj := &JsonWebSignature{}
+	obj.payload = parsed.Payload.bytes()
 	obj.signatures = make([]signatureInfo, len(parsed.Signatures))
+
+	if len(parsed.Signatures) == 0 {
+		// No signatures array, must be flattened serialization
+		signature := signatureInfo{}
+		if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
+			signature.protected = &Header{}
+			err = json.Unmarshal(parsed.Protected.bytes(), signature.protected)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		signature.header = parsed.Header
+		signature.signature = parsed.Signature.bytes()
+		obj.signatures = append(obj.signatures, signature)
+	}
+
 	for i, sig := range parsed.Signatures {
 		if sig.Protected != nil && len(sig.Protected.bytes()) > 0 {
 			obj.signatures[i].protected = &Header{}
@@ -180,17 +199,24 @@ func (obj JsonWebSignature) CompactSerialize() (string, error) {
 // FullSerialize serializes an object using the full JSON serialization format.
 func (obj JsonWebSignature) FullSerialize() string {
 	raw := rawJsonWebSignature{
-		Payload:    newBuffer(obj.payload),
-		Signatures: make([]rawSignatureInfo, len(obj.signatures)),
+		Payload: newBuffer(obj.payload),
 	}
 
-	for i, signature := range obj.signatures {
-		serializedProtected := mustSerializeJSON(signature.protected)
+	if len(obj.signatures) == 1 {
+		serializedProtected := mustSerializeJSON(obj.signatures[0].protected)
+		raw.Protected = newBuffer(serializedProtected)
+		raw.Header = obj.signatures[0].header
+		raw.Signature = newBuffer(obj.signatures[0].signature)
+	} else {
+		raw.Signatures = make([]rawSignatureInfo, len(obj.signatures))
+		for i, signature := range obj.signatures {
+			serializedProtected := mustSerializeJSON(signature.protected)
 
-		raw.Signatures[i] = rawSignatureInfo{
-			Protected: newBuffer(serializedProtected),
-			Header:    signature.header,
-			Signature: newBuffer(signature.signature),
+			raw.Signatures[i] = rawSignatureInfo{
+				Protected: newBuffer(serializedProtected),
+				Header:    signature.header,
+				Signature: newBuffer(signature.signature),
+			}
 		}
 	}
 
