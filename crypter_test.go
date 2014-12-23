@@ -64,12 +64,7 @@ func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg 
 		return fmt.Errorf("auth data in parsed object does not match")
 	}
 
-	dec, err := NewDecrypter(decryptionKey)
-	if err != nil {
-		return fmt.Errorf("error on new decrypter: %s", err)
-	}
-
-	output, err := dec.Decrypt(parsed)
+	output, err := parsed.Decrypt(decryptionKey)
 	if err != nil {
 		return fmt.Errorf("error on decrypt: %s", err)
 	}
@@ -229,13 +224,7 @@ func TestMultiRecipientJWE(t *testing.T) {
 		return
 	}
 
-	dec, err := NewDecrypter(rsaTestKey)
-	if err != nil {
-		t.Error("error on new decrypter with RSA: ", err)
-		return
-	}
-
-	output, err := dec.Decrypt(parsed)
+	output, err := parsed.Decrypt(rsaTestKey)
 	if err != nil {
 		t.Error("error on decrypt with RSA: ", err)
 		return
@@ -246,13 +235,7 @@ func TestMultiRecipientJWE(t *testing.T) {
 		return
 	}
 
-	dec, err = NewDecrypter(sharedKey)
-	if err != nil {
-		t.Error("error on new decrypter with AES: ", err)
-		return
-	}
-
-	output, err = dec.Decrypt(parsed)
+	output, err = parsed.Decrypt(sharedKey)
 	if err != nil {
 		t.Error("error on decrypt with AES: ", err)
 		return
@@ -532,29 +515,23 @@ func benchEncrypt(chunkKey, primKey string, b *testing.B) {
 }
 
 var (
-	decRSA   = mustDecrypter(rsaTestKey)
-	decSym   = mustDecrypter(symKey)
-	decEC256 = mustDecrypter(ecTestKey256)
-	decEC384 = mustDecrypter(ecTestKey384)
-	decEC521 = mustDecrypter(ecTestKey521)
+	decryptionKeys = map[string]interface{}{
+		"OAEPAndGCM": rsaTestKey,
+		"PKCSAndGCM": rsaTestKey,
+		"OAEPAndCBC": rsaTestKey,
+		"PKCSAndCBC": rsaTestKey,
 
-	decrypters = map[string]Decrypter{
-		"OAEPAndGCM": decRSA,
-		"PKCSAndGCM": decRSA,
-		"OAEPAndCBC": decRSA,
-		"PKCSAndCBC": decRSA,
+		"DirectGCM128": symKey,
+		"DirectCBC128": symKey,
+		"DirectGCM256": symKey,
+		"DirectCBC256": symKey,
 
-		"DirectGCM128": decSym,
-		"DirectCBC128": decSym,
-		"DirectGCM256": decSym,
-		"DirectCBC256": decSym,
+		"AESKWAndGCM128": symKey,
+		"AESKWAndCBC256": symKey,
 
-		"AESKWAndGCM128": decSym,
-		"AESKWAndCBC256": decSym,
-
-		"ECDHOnP256AndGCM128": decEC256,
-		"ECDHOnP384AndGCM128": decEC384,
-		"ECDHOnP521AndGCM128": decEC521,
+		"ECDHOnP256AndGCM128": ecTestKey256,
+		"ECDHOnP384AndGCM128": ecTestKey384,
+		"ECDHOnP521AndGCM128": ecTestKey521,
 	}
 )
 
@@ -696,9 +673,9 @@ func benchDecrypt(chunkKey, primKey string, b *testing.B) {
 		b.Fatalf("unknown encrypter %s", primKey)
 	}
 
-	dec, ok := decrypters[primKey]
+	dec, ok := decryptionKeys[primKey]
 	if !ok {
-		b.Fatalf("unknown decrypter %s", primKey)
+		b.Fatalf("unknown decryption key %s", primKey)
 	}
 
 	data, err := enc.Encrypt(chunk)
@@ -709,7 +686,7 @@ func benchDecrypt(chunkKey, primKey string, b *testing.B) {
 	b.SetBytes(int64(len(chunk)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		dec.Decrypt(data)
+		data.Decrypt(dec)
 	}
 }
 
@@ -719,13 +696,4 @@ func mustEncrypter(keyAlg KeyAlgorithm, encAlg ContentEncryption, encryptionKey 
 		panic(err)
 	}
 	return enc
-}
-
-func mustDecrypter(decryptionKey interface{}) Decrypter {
-	dec, err := NewDecrypter(decryptionKey)
-	if err != nil {
-		panic(err)
-	}
-
-	return dec
 }

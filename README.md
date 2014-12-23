@@ -90,15 +90,9 @@ if err != nil {
 // object.CompactSerialize() instead.
 serialized, err := object.FullSerialize()
 
-// Now let's instantiate a decrypter so we can get back the plaintext.
-decrypter, err := NewDecrypter(privateKey)
-if err != nil {
-  panic(err)
-}
-
 // Parse the serialized, encrypted JWE object. An error would indicate that
 // the given input did not represent a valid message.
-object, err = Parse(serialized)
+object, err = ParseEncrypted(serialized)
 if err != nil {
   panic(err)
 }
@@ -106,7 +100,7 @@ if err != nil {
 // Now we can decrypt and get back our original plaintext. An error here
 // would indicate the the message failed to decrypt, e.g. because the auth
 // tag was broken and the message was tampered with.
-decrypted, err := decrypter.Decrypt(object)
+decrypted, err := object.Decrypt(privateKey)
 if err != nil {
   panic(err)
 }

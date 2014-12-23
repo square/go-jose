@@ -113,13 +113,10 @@ func main() {
 				priv, err := jose.LoadPrivateKey(keyBytes)
 				exitOnError(err, "unable to read private key")
 
-				crypter, err := jose.NewDecrypter(priv)
-				exitOnError(err, "unable to instantiate decrypter")
-
 				obj, err := jose.ParseEncrypted(string(readInput(c.String("input"))))
 				exitOnError(err, "unable to parse message")
 
-				plaintext, err := crypter.Decrypt(obj)
+				plaintext, err := obj.Decrypt(priv)
 				exitOnError(err, "unable to encrypt message")
 
 				writeOutput(c.String("output"), plaintext)

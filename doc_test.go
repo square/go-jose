@@ -57,12 +57,6 @@ func Example_jWE() {
 	// object.CompactSerialize() instead.
 	serialized := object.FullSerialize()
 
-	// Now let's instantiate a decrypter so we can get back the plaintext.
-	decrypter, err := NewDecrypter(privateKey)
-	if err != nil {
-		panic(err)
-	}
-
 	// Parse the serialized, encrypted JWE object. An error would indicate that
 	// the given input did not represent a valid message.
 	object, err = ParseEncrypted(serialized)
@@ -73,7 +67,7 @@ func Example_jWE() {
 	// Now we can decrypt and get back our original plaintext. An error here
 	// would indicate the the message failed to decrypt, e.g. because the auth
 	// tag was broken or the message was tampered with.
-	decrypted, err := decrypter.Decrypt(object)
+	decrypted, err := object.Decrypt(privateKey)
 	if err != nil {
 		panic(err)
 	}
@@ -212,22 +206,6 @@ func ExampleNewMultiSigner() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func ExampleNewDecrypter_publicKey() {
-	// Instantiate an decrypter using an RSA private key. The decrypter will
-	// be able to decrypt any messages that are using RSA as the key management
-	// algorithm, meaning PKCS1v1.5, OAEP, and OAEP-SHA256.
-	var privateKey *rsa.PrivateKey
-	NewDecrypter(privateKey)
-}
-
-func ExampleNewDecrypter_symmetric() {
-	// Instantiate an encrypter using a shared symmetric key. The decrypter will
-	// be able to decrypt direct encrypted messages or any messages that use
-	// supported symmetric algorithms for key wrapping.
-	var sharedKey []byte
-	NewDecrypter(sharedKey)
 }
 
 func ExampleEncrypter_encrypt() {

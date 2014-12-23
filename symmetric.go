@@ -129,15 +129,6 @@ func newSymmetricRecipient(keyAlg KeyAlgorithm, key []byte) (recipientKeyInfo, e
 	}, nil
 }
 
-// newSymmetricDecrypter creates a symmetric (shared key) JWE decrypter.
-func newSymmetricDecrypter(key []byte) Decrypter {
-	return &genericDecrypter{
-		keyDecrypter: &symmetricKeyCipher{
-			key: key,
-		},
-	}
-}
-
 // newSymmetricSigner creates a recipientSigInfo based on the given key.
 func newSymmetricSigner(sigAlg SignatureAlgorithm, key []byte) (recipientSigInfo, error) {
 	// Verify that key management algorithm is supported by this encrypter
