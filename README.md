@@ -90,15 +90,9 @@ if err != nil {
 // object.CompactSerialize() instead.
 serialized, err := object.FullSerialize()
 
-// Now let's instantiate a decrypter so we can get back the plaintext.
-decrypter, err := NewDecrypter(privateKey)
-if err != nil {
-  panic(err)
-}
-
 // Parse the serialized, encrypted JWE object. An error would indicate that
 // the given input did not represent a valid message.
-object, err = Parse(serialized)
+object, err = ParseEncrypted(serialized)
 if err != nil {
   panic(err)
 }
@@ -106,7 +100,7 @@ if err != nil {
 // Now we can decrypt and get back our original plaintext. An error here
 // would indicate the the message failed to decrypt, e.g. because the auth
 // tag was broken and the message was tampered with.
-decrypted, err := decrypter.Decrypt(object)
+decrypted, err := object.Decrypt(privateKey)
 if err != nil {
   panic(err)
 }
@@ -146,13 +140,6 @@ if err != nil {
 // object.CompactSerialize() instead.
 serialized := object.FullSerialize()
 
-// Now let's instantiate a verifier to verify the object.
-publicKey := &privateKey.PublicKey
-verifier, err := NewVerifier(publicKey)
-if err != nil {
-	panic(err)
-}
-
 // Parse the serialized, protected JWS object. An error would indicate that
 // the given input did not represent a valid message.
 object, err = ParseSigned(serialized)
@@ -163,7 +150,7 @@ if err != nil {
 // Now we can verify the signature on the payload. An error here would
 // indicate the the message failed to verify, e.g. because the signature was
 // broken or the message was tampered with.
-output, err := verifier.Verify(object)
+output, err := object.Verify(&privateKey.PublicKey)
 if err != nil {
 	panic(err)
 }

@@ -96,6 +96,9 @@ func TestSampleNimbusJWSMessagesRSA(t *testing.T) {
 		NKoEcR0HjmvzzdMoUChhkGH5TaNbZyollULTggepaYUKS8QphqdSDMWiSetKG+g6V87lv6
 		CVYyK1FF6g7Esp5OOj5pNn3/bmF+7V+b7TvK91NCIlURCjE9toRgNoIP4TDnWRn/vvfZ3G
 		zNrtWmlizqz3r5KdvIs71ahWgMUSD4wfazrwIDAQAB`))
+	if err != nil {
+		panic(err)
+	}
 
 	rsaSampleMessages := []string{
 		"eyJhbGciOiJSUzI1NiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.YHX849fvekz6wJGeyqnQhFqyHFcUXNJKj3o2w3ddR46YLlsCopUJrlifRU_ZuTWzpYxt5oC--T2eoqMhlCvltSWrE5_1_EumqiMfAYsZULx9E6Jns7q3w7mttonYFSIh7aR3-yg2HMMfTCgoAY1y_AZ4VjXwHDcZ5gu1oZDYgvZF4uXtCmwT6e5YtR1m8abiWPF8BgoTG_BD3KV6ClLj_QQiNFdfdxAMDw7vKVOKG1T7BFtz6cDs2Q3ILS4To5E2IjcVSSYS8mi77EitCrWmrqbK_G3WCdKeUFGnMnyuKXaCDy_7FLpAZ6Z5RomRr5iskXeJZdZqIKcJV8zl4fpsPA",
@@ -106,18 +109,13 @@ func TestSampleNimbusJWSMessagesRSA(t *testing.T) {
 		"eyJhbGciOiJSUzUxMiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.rQPz0PDh8KyE2AX6JorgI0MLwv-qi1tcWlz6tuZuWQG1hdrlzq5tR1tQg1evYNc_SDDX87DWTSKXT7JEqhKoFixLfZa13IJrOc7FB8r5ZLx7OwOBC4F--OWrvxMA9Y3MTJjPN3FemQePUo-na2vNUZv-YgkcbuOgbO3hTxwQ7j1JGuqy-YutXOFnccdXvntp3t8zYZ4Mg1It_IyL9pzgGqHIEmMV1pCFGHsDa-wStB4ffmdhrADdYZc0q_SvxUdobyC_XzZCz9ENzGIhgwYxyyrqg7kjqUGoKmCLmoSlUFW7goTk9IC5SXdUyLPuESxOWNfHoRClGav230GYjPFQFA",
 	}
 
-	ver, err := NewVerifier(rsaPublicKey)
-	if err != nil {
-		panic(err)
-	}
-
 	for _, msg := range rsaSampleMessages {
 		obj, err := ParseSigned(msg)
 		if err != nil {
 			t.Error("unable to parse message", msg, err)
 			continue
 		}
-		payload, err := ver.Verify(obj)
+		payload, err := obj.Verify(rsaPublicKey)
 		if err != nil {
 			continue
 			t.Error("unable to verify message", msg, err)
@@ -164,18 +162,13 @@ func TestSampleNimbusJWSMessagesEC(t *testing.T) {
 	}
 
 	for i, msgs := range ecSampleMessages {
-		ver, err := NewVerifier(ecPublicKeys[i])
-		if err != nil {
-			panic(err)
-		}
-
 		for _, msg := range msgs {
 			obj, err := ParseSigned(msg)
 			if err != nil {
 				t.Error("unable to parse message", msg, err)
 				continue
 			}
-			payload, err := ver.Verify(obj)
+			payload, err := obj.Verify(ecPublicKeys[i])
 			if err != nil {
 				continue
 				t.Error("unable to verify message", msg, err)
@@ -197,18 +190,13 @@ func TestSampleNimbusJWSMessagesHMAC(t *testing.T) {
 		"eyJhbGciOiJIUzUxMiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.M0yR4tmipsORIix-BitIbxEPGaxPchDfj8UNOpKuhDEfnb7URjGvCKn4nOlyQ1z9mG1FKbwnqR1hOVAWSzAU_w",
 	}
 
-	ver, err := NewVerifier(hmacTestKey)
-	if err != nil {
-		panic(err)
-	}
-
 	for _, msg := range hmacSampleMessages {
 		obj, err := ParseSigned(msg)
 		if err != nil {
 			t.Error("unable to parse message", msg, err)
 			continue
 		}
-		payload, err := ver.Verify(obj)
+		payload, err := obj.Verify(hmacTestKey)
 		if err != nil {
 			continue
 			t.Error("unable to verify message", msg, err)

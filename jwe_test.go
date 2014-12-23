@@ -21,7 +21,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"errors"
 	"math/big"
 	"testing"
 )
@@ -147,35 +146,7 @@ func TestFullParseJWE(t *testing.T) {
 	}
 }
 
-type dummyDecrypter struct{}
-
-func (dec *dummyDecrypter) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	return nil, errors.New("error")
-}
-
-func TestDecryptDoesNotPropagateError(t *testing.T) {
-	dec := &genericDecrypter{
-		keyDecrypter: &dummyDecrypter{},
-	}
-
-	obj := &JsonWebEncryption{
-		protected: map[string]interface{}{"alg": string(DIRECT), "enc": string(A128GCM)},
-		recipients: []recipientInfo{
-			recipientInfo{},
-		},
-	}
-
-	_, err := dec.Decrypt(obj)
-	if err != ErrCryptoFailure {
-		t.Error("should not propagate underlying error")
-	}
-}
-
 func TestMissingInvalidHeaders(t *testing.T) {
-	dec := &genericDecrypter{
-		keyDecrypter: &dummyDecrypter{},
-	}
-
 	obj := &JsonWebEncryption{
 		protected: map[string]interface{}{"enc": "A128GCM"},
 		recipients: []recipientInfo{
@@ -183,43 +154,48 @@ func TestMissingInvalidHeaders(t *testing.T) {
 		},
 	}
 
-	_, err := dec.Decrypt(obj)
-	if err == nil {
+	_, err := obj.Decrypt(nil)
+	if err != ErrUnsupportedKeyType {
+		t.Error("should detect invalid key")
+	}
+
+	_, err = obj.Decrypt(rsaTestKey)
+	if err == nil || err == ErrCryptoFailure {
 		t.Error("should detect missing alg header")
 	}
 
 	obj.protected = map[string]interface{}{"alg": "RSA1_5"}
 
-	_, err = dec.Decrypt(obj)
-	if err == nil {
+	_, err = obj.Decrypt(rsaTestKey)
+	if err == nil || err == ErrCryptoFailure {
 		t.Error("should detect missing enc header")
 	}
 
 	obj.protected = map[string]interface{}{"alg": "RSA1_5", "enc": []string{"1", "2"}}
 
-	_, err = dec.Decrypt(obj)
-	if err == nil {
+	_, err = obj.Decrypt(rsaTestKey)
+	if err == nil || err == ErrCryptoFailure {
 		t.Error("should detect invalid enc header")
 	}
 
 	obj.protected = map[string]interface{}{"alg": []string{"1", "2"}, "enc": "A128GCM"}
 
-	_, err = dec.Decrypt(obj)
-	if err == nil {
+	_, err = obj.Decrypt(rsaTestKey)
+	if err == nil || err == ErrCryptoFailure {
 		t.Error("should detect invalid alg header")
 	}
 
 	obj.protected = map[string]interface{}{"alg": []string{"1", "2"}, "enc": "A128GCM"}
 
-	_, err = dec.Decrypt(obj)
-	if err == nil {
+	_, err = obj.Decrypt(rsaTestKey)
+	if err == nil || err == ErrCryptoFailure {
 		t.Error("should detect invalid alg header")
 	}
 
 	obj.protected = map[string]interface{}{"alg": "RSA1_5", "enc": "A128GCM", "crit": []string{"test"}}
 
-	_, err = dec.Decrypt(obj)
-	if err == nil {
+	_, err = obj.Decrypt(rsaTestKey)
+	if err == nil || err == ErrCryptoFailure {
 		t.Error("should detect unsupported crit header values")
 	}
 }
@@ -354,16 +330,14 @@ func TestVectorsJWECorrupt(t *testing.T) {
 		PhDO6ufSC7kV4bNqgHR-4ziS7KNwzN83_5kogXqxUpymUoJDNc.tk-GT
 		W_VVhiTIKFF.D_BE6ImZUl9F.52a-zFnRb3YQwiC7UrhVyQ`)
 
-	dec, _ := NewDecrypter(priv)
-
 	msg, _ := ParseEncrypted(corruptCiphertext)
-	_, err := dec.Decrypt(msg)
+	_, err := msg.Decrypt(priv)
 	if err != ErrCryptoFailure {
 		t.Error("should detect corrupt ciphertext")
 	}
 
 	msg, _ = ParseEncrypted(corruptAuthtag)
-	_, err = dec.Decrypt(msg)
+	_, err = msg.Decrypt(priv)
 	if err != ErrCryptoFailure {
 		t.Error("should detect corrupt auth tag")
 	}
@@ -421,18 +395,13 @@ func TestSampleNimbusJWEMessagesRSA(t *testing.T) {
 		"eyJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwiYWxnIjoiUlNBLU9BRVAtMjU2In0.ECulJArWFsPL2FlpCN0W8E7IseSjJg1cZqE3wz5jk9gvwgNForAUEv5KYZqhNI-p5IxkGV0f8K6Y2X8pWzbLwiPIjZe8_dVqHYJoINxqCSgWLBhz0V36qL9Nc_xARTBk4-ZteIu75NoXVeos9gNvFnkOCj4tm-jGo8z8EFO9XfODgjhiR4xv8VqUtvrkjo9GQConaga5zpV-J4JQlXbdqbDjnuwacnJAxYpFyuemqcgqsl6BnFX3tovGkmSUPqcvF1A6tiHqr-TEmcgVqo5C3xswknRBKTQRM00iAmJ92WlVdkoOCx6E6O7cVHFawZ14BLzWzm66Crb4tv0ucYvk_Q.mxolwUaoj5S5kHCfph0w8g.nFpgYdnYg3blHCCEi2XXQGkkKQBXs2OkZaH11m3PRvk.k8BAVT4EcyrUFVIKr-KOSPbF89xyL0Vri2rFTu2iIWM",
 	}
 
-	rsaDecrypter, err := NewDecrypter(rsaPrivateKey)
-	if err != nil {
-		panic(err)
-	}
-
 	for _, msg := range rsaSampleMessages {
 		obj, err := ParseEncrypted(msg)
 		if err != nil {
 			t.Error("unable to parse message", msg, err)
 			continue
 		}
-		plaintext, err := rsaDecrypter.Decrypt(obj)
+		plaintext, err := obj.Decrypt(rsaPrivateKey)
 		if err != nil {
 			t.Error("unable to decrypt message", msg, err)
 			continue
@@ -497,14 +466,13 @@ func TestSampleNimbusJWEMessagesAESKW(t *testing.T) {
 	}
 
 	for i, msgs := range aesSampleMessages {
-		dec, _ := NewDecrypter(aesTestKeys[i])
 		for _, msg := range msgs {
 			obj, err := ParseEncrypted(msg)
 			if err != nil {
 				t.Error("unable to parse message", msg, err)
 				continue
 			}
-			plaintext, err := dec.Decrypt(obj)
+			plaintext, err := obj.Decrypt(aesTestKeys[i])
 			if err != nil {
 				t.Error("unable to decrypt message", msg, err)
 				continue
@@ -542,18 +510,13 @@ func TestSampleJose4jJWEMessagesECDH(t *testing.T) {
 		"eyJhbGciOiJFQ0RILUVTK0ExMjhLVyIsImVuYyI6IkEyNTZDQkMtSFM1MTIiLCJlcGsiOnsia3R5IjoiRUMiLCJ4IjoiN0xZRzZZWTJkel9ZaGNvNnRCcG1IX0tPREQ2X2hwX05tajdEc1c2RXgxcyIsInkiOiI5Y2lPeDcwUkdGT0tpVnBRX0NHQXB5NVlyeThDazBmUkpwNHVrQ2tjNmQ0IiwiY3J2IjoiUC0yNTYifX0.bWwW3J80k46HG1fQAZxUroko2OO8OKkeRavr_o3AnhJDMvp78OR229x-fZUaBm4uWv27_Yjm0X9T2H2lhlIli2Rl9v1PNC77.1NmsJBDGI1fDjRzyc4mtyA.9KfCFynQj7LmJq08qxAG4c-6ZPz1Lh3h3nUbgVwB0TI.cqech0d8XHzWfkWqgKZq1SlAfmO0PUwOsNVkuByVGWk",
 	}
 
-	ecDecrypter, err := NewDecrypter(ecTestKey)
-	if err != nil {
-		panic(err)
-	}
-
 	for _, msg := range ecSampleMessages {
 		obj, err := ParseEncrypted(msg)
 		if err != nil {
 			t.Error("unable to parse message", msg, err)
 			continue
 		}
-		plaintext, err := ecDecrypter.Decrypt(obj)
+		plaintext, err := obj.Decrypt(ecTestKey)
 		if err != nil {
 			t.Error("unable to decrypt message", msg, err)
 			continue
