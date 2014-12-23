@@ -83,17 +83,12 @@ func decompress(algorithm CompressionAlgorithm, input []byte) ([]byte, error) {
 // Compress with DEFLATE
 func deflate(input []byte) ([]byte, error) {
 	output := new(bytes.Buffer)
-	writer, err := flate.NewWriter(output, 1)
-	if err != nil {
-		return nil, err
-	}
 
-	_, err = io.Copy(writer, bytes.NewBuffer(input))
-	if err != nil {
-		return nil, err
-	}
+	// Writing to byte buffer, err is always nil
+	writer, _ := flate.NewWriter(output, 1)
+	_, _ = io.Copy(writer, bytes.NewBuffer(input))
 
-	err = writer.Close()
+	err := writer.Close()
 	return output.Bytes(), err
 }
 
