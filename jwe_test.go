@@ -25,33 +25,6 @@ import (
 	"testing"
 )
 
-func TestGetHeader(t *testing.T) {
-	obj := &JsonWebEncryption{
-		protected:   map[string]interface{}{"1": "P"},
-		unprotected: map[string]interface{}{"2": "U"},
-	}
-
-	recipient := &recipientInfo{
-		header: map[string]interface{}{"1": "H", "2": "H", "3": "H"},
-	}
-
-	// Protected must have precedence
-	val, _ := obj.getHeader("1", recipient)
-	if val != "P" {
-		t.Error("header value 1 read incorrectly")
-	}
-
-	val, _ = obj.getHeader("2", recipient)
-	if val != "U" {
-		t.Error("header value 2 read incorrectly")
-	}
-
-	val, _ = obj.getHeader("3", recipient)
-	if val != "H" {
-		t.Error("header value 3 read incorrectly")
-	}
-}
-
 func TestCompactParseJWE(t *testing.T) {
 	// Should parse
 	msg := "eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkExMjhHQ00ifQ.dGVzdA.dGVzdA.dGVzdA.dGVzdA"
@@ -148,7 +121,7 @@ func TestFullParseJWE(t *testing.T) {
 
 func TestMissingInvalidHeaders(t *testing.T) {
 	obj := &JsonWebEncryption{
-		protected: map[string]interface{}{"enc": "A128GCM"},
+		protected: &JoseHeader{Enc: A128GCM},
 		recipients: []recipientInfo{
 			recipientInfo{},
 		},
@@ -159,51 +132,18 @@ func TestMissingInvalidHeaders(t *testing.T) {
 		t.Error("should detect invalid key")
 	}
 
-	_, err = obj.Decrypt(rsaTestKey)
-	if err == nil || err == ErrCryptoFailure {
-		t.Error("should detect missing alg header")
-	}
-
-	obj.protected = map[string]interface{}{"alg": "RSA1_5"}
+	obj.protected = &JoseHeader{Alg: RSA1_5}
 
 	_, err = obj.Decrypt(rsaTestKey)
 	if err == nil || err == ErrCryptoFailure {
 		t.Error("should detect missing enc header")
-	}
-
-	obj.protected = map[string]interface{}{"alg": "RSA1_5", "enc": []string{"1", "2"}}
-
-	_, err = obj.Decrypt(rsaTestKey)
-	if err == nil || err == ErrCryptoFailure {
-		t.Error("should detect invalid enc header")
-	}
-
-	obj.protected = map[string]interface{}{"alg": []string{"1", "2"}, "enc": "A128GCM"}
-
-	_, err = obj.Decrypt(rsaTestKey)
-	if err == nil || err == ErrCryptoFailure {
-		t.Error("should detect invalid alg header")
-	}
-
-	obj.protected = map[string]interface{}{"alg": []string{"1", "2"}, "enc": "A128GCM"}
-
-	_, err = obj.Decrypt(rsaTestKey)
-	if err == nil || err == ErrCryptoFailure {
-		t.Error("should detect invalid alg header")
-	}
-
-	obj.protected = map[string]interface{}{"alg": "RSA1_5", "enc": "A128GCM", "crit": []string{"test"}}
-
-	_, err = obj.Decrypt(rsaTestKey)
-	if err == nil || err == ErrCryptoFailure {
-		t.Error("should detect unsupported crit header values")
 	}
 }
 
 func TestCompactSerialize(t *testing.T) {
 	// Compact serialization must fail if we have unprotected headers
 	obj := &JsonWebEncryption{
-		unprotected: map[string]interface{}{"test": "test"},
+		unprotected: &JoseHeader{Alg: "XYZ"},
 	}
 
 	_, err := obj.CompactSerialize()

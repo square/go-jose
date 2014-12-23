@@ -48,7 +48,7 @@ type contentCipher interface {
 // A key generator (for generating/getting a CEK)
 type keyGenerator interface {
 	keySize() int
-	genKey() ([]byte, map[string]interface{}, error)
+	genKey() ([]byte, JoseHeader, error)
 }
 
 // A generic key encrypter
@@ -58,7 +58,7 @@ type keyEncrypter interface {
 
 // A generic key decrypter
 type keyDecrypter interface {
-	decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) // Decrypt a key
+	decryptKey(headers JoseHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) // Decrypt a key
 }
 
 // A generic encrypter based on the given key encrypter and content cipher.
@@ -216,8 +216,9 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 	obj := &JsonWebEncryption{}
 	obj.aad = aad
 
-	obj.protected = make(map[string]interface{})
-	obj.protected["enc"] = string(ctx.contentAlg)
+	obj.protected = &JoseHeader{
+		Enc: ctx.contentAlg,
+	}
 	obj.recipients = make([]recipientInfo, len(ctx.recipients))
 
 	if len(ctx.recipients) == 0 {
@@ -229,9 +230,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 		return nil, err
 	}
 
-	for key, val := range headers {
-		obj.protected[key] = val
-	}
+	obj.protected.merge(&headers)
 
 	for i, info := range ctx.recipients {
 		recipient, err := info.keyEncrypter.encryptKey(cek, info.keyAlg)
@@ -239,17 +238,14 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 			return nil, err
 		}
 
-		recipient.header["alg"] = string(info.keyAlg)
+		recipient.header.Alg = info.keyAlg
 		obj.recipients[i] = recipient
 	}
 
 	if len(ctx.recipients) == 1 {
 		// Move per-recipient headers into main protected header if there's
 		// only a single recipient.
-		for name := range obj.recipients[0].header {
-			obj.protected[name] = obj.recipients[0].header[name]
-		}
-
+		obj.protected.merge(obj.recipients[0].header)
 		obj.recipients[0].header = nil
 	}
 
@@ -259,7 +255,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 			return nil, err
 		}
 
-		obj.protected["zip"] = string(ctx.compressionAlg)
+		obj.protected.Zip = ctx.compressionAlg
 	}
 
 	authData := obj.computeAuthData()
@@ -277,7 +273,9 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 
 // Decrypt and validate the object and return the plaintext.
 func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) {
-	if _, critPresent := obj.getHeader("crit", nil); critPresent {
+	headers := obj.mergedHeaders(nil)
+
+	if len(headers.Crit) > 0 {
 		return nil, fmt.Errorf("square/go-jose: unsupported crit header")
 	}
 
@@ -286,19 +284,10 @@ func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 		return nil, err
 	}
 
-	encValue, encPresent := obj.getHeader("enc", nil)
-	if !encPresent {
-		return nil, fmt.Errorf("square/go-jose: invalid, missing enc header")
+	cipher := getContentCipher(headers.Enc)
+	if cipher == nil {
+		return nil, fmt.Errorf("square/go-jose: unsupported enc value '%s'", string(headers.Enc))
 	}
-
-	var contentAlgorithm ContentEncryption
-	if encValue, ok := encValue.(string); ok {
-		contentAlgorithm = ContentEncryption(encValue)
-	} else {
-		return nil, fmt.Errorf("square/go-jose: invalid, missing enc header")
-	}
-
-	cipher := getContentCipher(contentAlgorithm)
 
 	generator := randomKeyGenerator{
 		size: cipher.keySize(),
@@ -314,19 +303,9 @@ func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 
 	var plaintext []byte
 	for _, recipient := range obj.recipients {
-		algValue, algPresent := obj.getHeader("alg", &recipient)
-		if !algPresent {
-			return nil, fmt.Errorf("square/go-jose: invalid, missing alg header")
-		}
+		recipientHeaders := obj.mergedHeaders(&recipient)
 
-		var keyAlgorithm KeyAlgorithm
-		if algValue, ok := algValue.(string); ok {
-			keyAlgorithm = KeyAlgorithm(algValue)
-		} else {
-			return nil, fmt.Errorf("square/go-jose: invalid, missing alg header")
-		}
-
-		cek, err := decrypter.decryptKey(keyAlgorithm, &obj, &recipient, generator)
+		cek, err := decrypter.decryptKey(recipientHeaders, &recipient, generator)
 		if err == nil {
 			// Found a valid CEK -- let's try to decrypt.
 			plaintext, err = cipher.decrypt(cek, authData, parts)
@@ -341,16 +320,8 @@ func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 	}
 
 	// The "zip" header paramter may only be present in the protected header.
-	zipValue, zipPresent := obj.protected["zip"]
-
-	if zipPresent {
-		// Compression was applied before encryption, so we must decompress before returning.
-		if zipValue, ok := zipValue.(string); ok {
-			algorithm := CompressionAlgorithm(zipValue)
-			plaintext, err = decompress(algorithm, plaintext)
-		} else {
-			return nil, fmt.Errorf("square/go-jose: invalid zip header")
-		}
+	if obj.protected.Zip != "" {
+		plaintext, err = decompress(obj.protected.Zip, plaintext)
 	}
 
 	return plaintext, err

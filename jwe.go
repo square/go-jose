@@ -24,26 +24,26 @@ import (
 
 // rawJsonWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
 type rawJsonWebEncryption struct {
-	Protected    string                 `json:"protected,omitempty"`
-	Unprotected  map[string]interface{} `json:"unprotected,omitempty"`
-	Header       map[string]interface{} `json:"header,omitempty"`
-	Recipients   []rawRecipientInfo     `json:"recipients,omitempty"`
-	Aad          string                 `json:"aad,omitempty"`
-	EncryptedKey string                 `json:"encrypted_key,omitempty"`
-	Iv           string                 `json:"iv,omitempty"`
-	Ciphertext   string                 `json:"ciphertext,omitempty"`
-	Tag          string                 `json:"tag,omitempty"`
+	Protected    *encodedBuffer     `json:"protected,omitempty"`
+	Unprotected  *JoseHeader        `json:"unprotected,omitempty"`
+	Header       *JoseHeader        `json:"header,omitempty"`
+	Recipients   []rawRecipientInfo `json:"recipients,omitempty"`
+	Aad          *encodedBuffer     `json:"aad,omitempty"`
+	EncryptedKey *encodedBuffer     `json:"encrypted_key,omitempty"`
+	Iv           *encodedBuffer     `json:"iv,omitempty"`
+	Ciphertext   *encodedBuffer     `json:"ciphertext,omitempty"`
+	Tag          *encodedBuffer     `json:"tag,omitempty"`
 }
 
 // rawRecipientInfo represents a raw JWE Per-Recipient Header JSON object. Used for parsing/serializing.
 type rawRecipientInfo struct {
-	Header       map[string]interface{} `json:"header,omitempty"`
-	EncryptedKey string                 `json:"encrypted_key,omitempty"`
+	Header       *JoseHeader `json:"header,omitempty"`
+	EncryptedKey string      `json:"encrypted_key,omitempty"`
 }
 
 // JsonWebEncryption represents an encrypted JWE object after parsing.
 type JsonWebEncryption struct {
-	protected, unprotected   map[string]interface{}
+	protected, unprotected   *JoseHeader
 	recipients               []recipientInfo
 	aad, iv, ciphertext, tag []byte
 	original                 *rawJsonWebEncryption
@@ -51,7 +51,7 @@ type JsonWebEncryption struct {
 
 // recipientInfo represents a raw JWE Per-Recipient Header JSON object after parsing.
 type recipientInfo struct {
-	header       map[string]interface{}
+	header       *JoseHeader
 	encryptedKey []byte
 }
 
@@ -66,12 +66,25 @@ func (obj JsonWebEncryption) GetAuthData() []byte {
 	return nil
 }
 
+// Get the merged header values
+func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) JoseHeader {
+	out := JoseHeader{}
+	out.merge(obj.protected)
+	out.merge(obj.unprotected)
+
+	if recipient != nil {
+		out.merge(recipient.header)
+	}
+
+	return out
+}
+
 // Get the additional authenticated data from a JWE object.
 func (obj JsonWebEncryption) computeAuthData() []byte {
 	var protected string
 
 	if obj.original != nil {
-		protected = obj.original.Protected
+		protected = obj.original.Protected.base64()
 	} else {
 		protected = base64URLEncode(mustSerializeJSON((obj.protected)))
 	}
@@ -83,21 +96,6 @@ func (obj JsonWebEncryption) computeAuthData() []byte {
 	}
 
 	return output
-}
-
-// Get a header value from a JWE object.
-func (obj JsonWebEncryption) getHeader(name string, recipient *recipientInfo) (value interface{}, present bool) {
-	value, present = obj.protected[name]
-
-	if !present {
-		value, present = obj.unprotected[name]
-	}
-
-	if !present && recipient != nil {
-		value, present = recipient.header[name]
-	}
-
-	return
 }
 
 // ParseEncrypted parses an encrypted message in compact or full serialization format.
@@ -119,32 +117,21 @@ func parseEncryptedFull(input string) (*JsonWebEncryption, error) {
 	}
 
 	obj := &JsonWebEncryption{}
-	obj.unprotected = parsed.Unprotected
 	obj.original = &parsed
+	obj.unprotected = parsed.Unprotected
 
-	rawProtected, err := base64URLDecode(parsed.Protected)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rawProtected) > 0 {
-		obj.protected = make(map[string]interface{})
-		err = json.Unmarshal(rawProtected, &obj.protected)
+	if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
+		err = json.Unmarshal(parsed.Protected.bytes(), &obj.protected)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("square/go-jose: invalid protected header: %s, %s", err, parsed.Protected.base64())
 		}
 	}
 
 	if len(parsed.Recipients) == 0 {
-		encryptedKey, err := base64URLDecode(parsed.EncryptedKey)
-		if err != nil {
-			return nil, err
-		}
-
 		obj.recipients = []recipientInfo{
 			recipientInfo{
 				header:       parsed.Header,
-				encryptedKey: encryptedKey,
+				encryptedKey: parsed.EncryptedKey.bytes(),
 			},
 		}
 	} else {
@@ -160,39 +147,17 @@ func parseEncryptedFull(input string) (*JsonWebEncryption, error) {
 		}
 	}
 
-	obj.iv, err = base64URLDecode(parsed.Iv)
-	if err != nil {
-		return nil, err
-	}
-
-	obj.ciphertext, err = base64URLDecode(parsed.Ciphertext)
-	if err != nil {
-		return nil, err
-	}
-
-	obj.tag, err = base64URLDecode(parsed.Tag)
-	if err != nil {
-		return nil, err
-	}
-
-	if parsed.Aad != "" {
-		obj.aad, err = base64URLDecode(parsed.Aad)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	_, encPresent := obj.getHeader("enc", nil)
-	if !encPresent {
-		return nil, fmt.Errorf("square/go-jose: invalid, missing enc header")
-	}
-
 	for _, recipient := range obj.recipients {
-		_, algPresent := obj.getHeader("alg", &recipient)
-		if !algPresent {
-			return nil, fmt.Errorf("square/go-jose: invalid, missing alg header")
+		headers := obj.mergedHeaders(&recipient)
+		if headers.Alg == "" || headers.Enc == "" {
+			return nil, fmt.Errorf("square/go-jose: message is missing alg/enc headers")
 		}
 	}
+
+	obj.iv = parsed.Iv.bytes()
+	obj.ciphertext = parsed.Ciphertext.bytes()
+	obj.tag = parsed.Tag.bytes()
+	obj.aad = parsed.Aad.bytes()
 
 	return obj, nil
 }
@@ -209,10 +174,14 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	var protected map[string]interface{}
+	var protected JoseHeader
 	err = json.Unmarshal(rawProtected, &protected)
 	if err != nil {
 		return nil, err
+	}
+
+	if protected.Alg == "" || protected.Enc == "" {
+		return nil, fmt.Errorf("square/go-jose: message is missing alg/enc headers")
 	}
 
 	encryptedKey, err := base64URLDecode(parts[1])
@@ -235,14 +204,8 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	_, algPresent := protected["alg"]
-	_, encPresent := protected["enc"]
-	if !algPresent || !encPresent {
-		return nil, fmt.Errorf("square/go-jose: invalid, missing alg or enc header")
-	}
-
 	return &JsonWebEncryption{
-		protected: protected,
+		protected: &protected,
 		recipients: []recipientInfo{
 			recipientInfo{
 				encryptedKey: encryptedKey,
@@ -252,18 +215,18 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		ciphertext: ciphertext,
 		tag:        tag,
 		original: &rawJsonWebEncryption{
-			Protected:    parts[0],
-			EncryptedKey: parts[1],
-			Iv:           parts[2],
-			Ciphertext:   parts[3],
-			Tag:          parts[4],
+			Protected:    newBuffer(rawProtected),
+			EncryptedKey: newBuffer(encryptedKey),
+			Iv:           newBuffer(iv),
+			Ciphertext:   newBuffer(ciphertext),
+			Tag:          newBuffer(tag),
 		},
 	}, nil
 }
 
 // CompactSerialize serializes an object using the compact serialization format.
 func (obj JsonWebEncryption) CompactSerialize() (string, error) {
-	if len(obj.recipients) > 1 || len(obj.unprotected) > 0 || len(obj.recipients[0].header) > 0 {
+	if len(obj.recipients) > 1 || obj.unprotected != nil || obj.recipients[0].header != nil {
 		return "", ErrNotSupported
 	}
 
@@ -282,10 +245,11 @@ func (obj JsonWebEncryption) CompactSerialize() (string, error) {
 func (obj JsonWebEncryption) FullSerialize() string {
 	raw := rawJsonWebEncryption{
 		Unprotected:  obj.unprotected,
-		Iv:           base64URLEncode(obj.iv),
-		Ciphertext:   base64URLEncode(obj.ciphertext),
-		EncryptedKey: base64URLEncode(obj.recipients[0].encryptedKey),
-		Tag:          base64URLEncode(obj.tag),
+		Iv:           newBuffer(obj.iv),
+		Ciphertext:   newBuffer(obj.ciphertext),
+		EncryptedKey: newBuffer(obj.recipients[0].encryptedKey),
+		Tag:          newBuffer(obj.tag),
+		Aad:          newBuffer(obj.aad),
 		Recipients:   []rawRecipientInfo{},
 	}
 
@@ -300,16 +264,10 @@ func (obj JsonWebEncryption) FullSerialize() string {
 	} else {
 		// Use flattened serialization
 		raw.Header = obj.recipients[0].header
-		raw.EncryptedKey = base64URLEncode(obj.recipients[0].encryptedKey)
+		raw.EncryptedKey = newBuffer(obj.recipients[0].encryptedKey)
 	}
 
-	if obj.aad != nil {
-		raw.Aad = base64URLEncode(obj.aad)
-	}
-
-	if len(obj.protected) > 0 {
-		raw.Protected = base64URLEncode(mustSerializeJSON(obj.protected))
-	}
+	raw.Protected = newBuffer(mustSerializeJSON(obj.protected))
 
 	return string(mustSerializeJSON(raw))
 }

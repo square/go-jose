@@ -79,11 +79,15 @@ func LoadPrivateKey(data []byte) (interface{}, error) {
 
 // Build big int from base64-encoded string.
 func parseBigInt(input interface{}) (*big.Int, error) {
-	val, err := base64URLDecode(input)
-	if err != nil {
-		return nil, err
+	if input, ok := input.(string); ok {
+		val, err := base64URLDecode(input)
+		if err != nil {
+			return nil, err
+		}
+		return new(big.Int).SetBytes(val), nil
 	}
-	return new(big.Int).SetBytes(val), nil
+	// TODO(cs): add proper jwk support
+	return nil, fmt.Errorf("square/go-jose: invalid value in json web key")
 }
 
 // parseECPublicKey loads an elliptic curve public key from a JWK object.

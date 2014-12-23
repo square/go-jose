@@ -133,7 +133,7 @@ func (ctx rsaEncrypterVerifier) encryptKey(cek []byte, alg KeyAlgorithm) (recipi
 
 	return recipientInfo{
 		encryptedKey: encryptedKey,
-		header:       map[string]interface{}{},
+		header:       &JoseHeader{},
 	}, nil
 }
 
@@ -153,8 +153,8 @@ func (ctx rsaEncrypterVerifier) encrypt(cek []byte, alg KeyAlgorithm) ([]byte, e
 }
 
 // Decrypt the given payload and return the content encryption key.
-func (ctx rsaDecrypterSigner) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	return ctx.decrypt(recipient.encryptedKey, alg, generator)
+func (ctx rsaDecrypterSigner) decryptKey(headers JoseHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+	return ctx.decrypt(recipient.encryptedKey, headers.Alg, generator)
 }
 
 // Decrypt the given payload. Based on the key encryption algorithm,
@@ -285,7 +285,9 @@ func (ctx ecEncrypterVerifier) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 	switch alg {
 	case ECDH_ES:
 		// ECDH-ES mode doesn't wrap a key, the shared secret is used directly as the key.
-		return recipientInfo{header: map[string]interface{}{}}, nil
+		return recipientInfo{
+			header: &JoseHeader{},
+		}, nil
 	case ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW:
 	default:
 		return recipientInfo{}, ErrUnsupportedAlgorithm
@@ -307,17 +309,17 @@ func (ctx ecEncrypterVerifier) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 
 	kek, header, err := generator.genKey()
 	if err != nil {
-		return recipientInfo{}, nil
+		return recipientInfo{}, err
 	}
 
 	jek, err := josecipher.AesKeyWrap(kek, cek)
 	if err != nil {
-		return recipientInfo{}, nil
+		return recipientInfo{}, err
 	}
 
 	return recipientInfo{
 		encryptedKey: jek,
-		header:       header,
+		header:       &header,
 	}, nil
 }
 
@@ -327,87 +329,49 @@ func (ctx ecKeyGenerator) keySize() int {
 }
 
 // Get a content encryption key for ECDH-ES
-func (ctx ecKeyGenerator) genKey() ([]byte, map[string]interface{}, error) {
+func (ctx ecKeyGenerator) genKey() ([]byte, JoseHeader, error) {
 	priv, err := ecdsa.GenerateKey(ctx.publicKey.Curve, rand.Reader)
 	if err != nil {
-		return nil, nil, err
+		return nil, JoseHeader{}, err
 	}
 
 	out := josecipher.DeriveECDHES(ctx.algID, []byte{}, []byte{}, priv, ctx.publicKey, ctx.size)
 
 	epk, err := serializeECPublicKey(&priv.PublicKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, JoseHeader{}, err
 	}
 
-	headers := map[string]interface{}{
-		"epk": epk,
+	headers := JoseHeader{
+		Epk: epk,
 	}
 
 	return out, headers, nil
 }
 
 // Decrypt the given payload and return the content encryption key.
-func (ctx ecDecrypterSigner) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	var publicKey *ecdsa.PublicKey
-	epk, epkPresent := obj.getHeader("epk", recipient)
-	if epk, ok := epk.(map[string]interface{}); ok && epkPresent {
-		parsed, err := parseECPublicKey(epk)
-		if err != nil {
-			return nil, err
-		}
-		publicKey = parsed
-	} else {
-		return nil, fmt.Errorf("square/go-jose: missing 'epk' header value")
+func (ctx ecDecrypterSigner) decryptKey(headers JoseHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+	publicKey, err := parseECPublicKey(headers.Epk)
+	if err != nil {
+		return nil, err
 	}
 
-	rawApu, apuPresent := obj.getHeader("apu", recipient)
-	rawApv, apvPresent := obj.getHeader("apv", recipient)
+	apuData := headers.Apu.bytes()
+	apvData := headers.Apv.bytes()
 
-	var err error
-	var apuData []byte
-	var apvData []byte
-
-	if apuPresent {
-		apuData, err = base64URLDecode(rawApu)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if apvPresent {
-		apvData, err = base64URLDecode(rawApv)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	algID := string(alg)
-
-	switch alg {
-	case ECDH_ES:
-		// ECDH-ES uses a different algorithm ID as derivation input.
-		encValue, encPresent := obj.getHeader("enc", recipient)
-		if encValue, ok := encValue.(string); ok && encPresent {
-			algID = encValue
-		} else {
-			return nil, fmt.Errorf("square/go-jose: missing/invalid enc header")
-		}
-	}
-
-	genKey := func(size int) []byte {
+	genKey := func(algID string, size int) []byte {
 		return josecipher.DeriveECDHES(algID, apuData, apvData, ctx.privateKey, publicKey, size)
 	}
 
-	switch alg {
+	switch headers.Alg {
 	case ECDH_ES:
-		return genKey(generator.keySize()), nil
+		return genKey(string(headers.Enc), generator.keySize()), nil
 	case ECDH_ES_A128KW:
-		return josecipher.AesKeyUnwrap(genKey(16), recipient.encryptedKey)
+		return josecipher.AesKeyUnwrap(genKey(string(headers.Alg), 16), recipient.encryptedKey)
 	case ECDH_ES_A192KW:
-		return josecipher.AesKeyUnwrap(genKey(24), recipient.encryptedKey)
+		return josecipher.AesKeyUnwrap(genKey(string(headers.Alg), 24), recipient.encryptedKey)
 	case ECDH_ES_A256KW:
-		return josecipher.AesKeyUnwrap(genKey(32), recipient.encryptedKey)
+		return josecipher.AesKeyUnwrap(genKey(string(headers.Alg), 32), recipient.encryptedKey)
 	}
 
 	return nil, ErrUnsupportedAlgorithm

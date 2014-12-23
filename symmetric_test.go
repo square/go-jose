@@ -63,34 +63,6 @@ func TestInvalidKey(t *testing.T) {
 	}
 }
 
-func TestInvalidWrappedKey(t *testing.T) {
-	obj := &JsonWebEncryption{}
-	cipher := &symmetricKeyCipher{}
-
-	_, err := cipher.decryptKey(A128GCMKW, obj, &recipientInfo{}, nil)
-	if err == nil {
-		t.Error("should handle missing iv header")
-	}
-
-	obj.protected = map[string]interface{}{"iv": "####"}
-	_, err = cipher.decryptKey(A128GCMKW, obj, &recipientInfo{}, nil)
-	if err == nil {
-		t.Error("should handle invalid iv header")
-	}
-
-	obj.protected = map[string]interface{}{"iv": "QUJD"}
-	_, err = cipher.decryptKey(A128GCMKW, obj, &recipientInfo{}, nil)
-	if err == nil {
-		t.Error("should handle missing tag header")
-	}
-
-	obj.protected = map[string]interface{}{"iv": "QUJD", "tag": "####"}
-	_, err = cipher.decryptKey(A128GCMKW, obj, &recipientInfo{}, nil)
-	if err == nil {
-		t.Error("should handle invalid tag header")
-	}
-}
-
 func TestVectorsAESGCM(t *testing.T) {
 	// Source: http://tools.ietf.org/html/draft-ietf-jose-json-web-encryption-29#appendix-A.1
 	plaintext := []byte{

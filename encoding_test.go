@@ -70,11 +70,6 @@ func TestBase64URLDecode(t *testing.T) {
 	if err != nil || !bytes.Equal(val, []byte{0, 1, 2, 3}) {
 		t.Error("failed to decode [0x00, 0x01, 0x02, 0x03]")
 	}
-
-	val, err = base64URLDecode(nil)
-	if err == nil {
-		t.Error("should not decode nil value")
-	}
 }
 
 func TestDeflateRoundtrip(t *testing.T) {

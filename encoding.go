@@ -21,7 +21,6 @@ import (
 	"compress/flate"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"regexp"
 	"strings"
@@ -36,14 +35,10 @@ func base64URLEncode(data []byte) string {
 }
 
 // Url-safe base64 decoder that adds padding
-func base64URLDecode(data interface{}) ([]byte, error) {
-	if data, ok := data.(string); ok {
-		var missing = (4 - len(data)%4) % 4
-		data += strings.Repeat("=", missing)
-		return base64.URLEncoding.DecodeString(data)
-	}
-
-	return nil, errors.New("square/go-jose: invalid input data")
+func base64URLDecode(data string) ([]byte, error) {
+	var missing = (4 - len(data)%4) % 4
+	data += strings.Repeat("=", missing)
+	return base64.URLEncoding.DecodeString(data)
 }
 
 // Helper function to serialize known-good objects
@@ -104,4 +99,55 @@ func inflate(input []byte) ([]byte, error) {
 
 	err = reader.Close()
 	return output.Bytes(), err
+}
+
+// A byte buffer that can be represented as urlsafe base64 when serialized.
+type encodedBuffer struct {
+	data []byte
+}
+
+func newBuffer(data []byte) *encodedBuffer {
+	if data == nil {
+		return nil
+	}
+	return &encodedBuffer{
+		data: data,
+	}
+}
+
+func (b *encodedBuffer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.base64())
+}
+
+func (b *encodedBuffer) UnmarshalJSON(data []byte) error {
+	var encoded string
+	err := json.Unmarshal(data, &encoded)
+	if err != nil {
+		return err
+	}
+
+	if encoded == "" {
+		return nil
+	}
+
+	decoded, err := base64URLDecode(encoded)
+	if err != nil {
+		return err
+	}
+
+	*b = *newBuffer(decoded)
+
+	return nil
+}
+
+func (b *encodedBuffer) base64() string {
+	return base64URLEncode(b.data)
+}
+
+func (b *encodedBuffer) bytes() []byte {
+	// Handling nil here allows us to transparently handle nil slices when serializing.
+	if b == nil {
+		return nil
+	}
+	return b.data
 }

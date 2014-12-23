@@ -106,3 +106,54 @@ const (
 	NONE    = CompressionAlgorithm("")    // No compression
 	DEFLATE = CompressionAlgorithm("DEF") // DEFLATE (RFC 1951)
 )
+
+// JsonWebEncryptionHeader represents the JOSE header for JWE objects.
+type JoseHeader struct {
+	Alg  KeyAlgorithm           `json:"alg,omitempty"`
+	Enc  ContentEncryption      `json:"enc,omitempty"`
+	Zip  CompressionAlgorithm   `json:"zip,omitempty"`
+	Crit []string               `json:"crit,omitempty"`
+	Apu  *encodedBuffer         `json:"apu,omitempty"`
+	Apv  *encodedBuffer         `json:"apv,omitempty"`
+	Epk  map[string]interface{} `json:"epk,omitempty"`
+	Iv   *encodedBuffer         `json:"iv,omitempty"`
+	Tag  *encodedBuffer         `json:"tag,omitempty"`
+}
+
+// Merge headers from l and r, giving precedence to headers from l.
+func (l *JoseHeader) merge(r *JoseHeader) {
+	if r == nil {
+		return
+	}
+
+	if l.Alg == "" {
+		l.Alg = r.Alg
+	}
+	if l.Enc == "" {
+		l.Enc = r.Enc
+	}
+	if l.Zip == "" {
+		l.Zip = r.Zip
+	}
+	if l.Crit == nil {
+		l.Crit = r.Crit
+	}
+	if l.Crit == nil {
+		l.Crit = r.Crit
+	}
+	if l.Apu == nil {
+		l.Apu = r.Apu
+	}
+	if l.Apv == nil {
+		l.Apv = r.Apv
+	}
+	if l.Epk == nil {
+		l.Epk = r.Epk
+	}
+	if l.Iv == nil {
+		l.Iv = r.Iv
+	}
+	if l.Tag == nil {
+		l.Tag = r.Tag
+	}
+}

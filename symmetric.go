@@ -25,7 +25,6 @@ import (
 	"crypto/sha512"
 	"crypto/subtle"
 	"errors"
-	"fmt"
 	"github.com/square/go-jose/cipher"
 	"hash"
 	"io"
@@ -147,14 +146,14 @@ func newSymmetricSigner(sigAlg SignatureAlgorithm, key []byte) (recipientSigInfo
 }
 
 // Generate a random key for the given content cipher
-func (ctx randomKeyGenerator) genKey() ([]byte, map[string]interface{}, error) {
+func (ctx randomKeyGenerator) genKey() ([]byte, JoseHeader, error) {
 	key := make([]byte, ctx.size)
 	_, err := io.ReadFull(randReader, key)
 	if err != nil {
-		return nil, nil, err
+		return nil, JoseHeader{}, err
 	}
 
-	return key, map[string]interface{}{}, nil
+	return key, JoseHeader{}, nil
 }
 
 // Key size for random generator
@@ -163,10 +162,10 @@ func (ctx randomKeyGenerator) keySize() int {
 }
 
 // Generate a static key (for direct mode)
-func (ctx staticKeyGenerator) genKey() ([]byte, map[string]interface{}, error) {
+func (ctx staticKeyGenerator) genKey() ([]byte, JoseHeader, error) {
 	cek := make([]byte, len(ctx.key))
 	copy(cek, ctx.key)
-	return cek, map[string]interface{}{}, nil
+	return cek, JoseHeader{}, nil
 }
 
 // Key size for static generator
@@ -219,7 +218,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 	switch alg {
 	case DIRECT:
 		return recipientInfo{
-			header: map[string]interface{}{},
+			header: &JoseHeader{},
 		}, nil
 	case A128GCMKW, A192GCMKW, A256GCMKW:
 		aead := newAESGCM(len(ctx.key))
@@ -230,9 +229,9 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 		}
 
 		return recipientInfo{
-			header: map[string]interface{}{
-				"iv":  base64URLEncode(parts.iv),
-				"tag": base64URLEncode(parts.tag),
+			header: &JoseHeader{
+				Iv:  newBuffer(parts.iv),
+				Tag: newBuffer(parts.tag),
 			},
 			encryptedKey: parts.ciphertext,
 		}, nil
@@ -243,8 +242,8 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 		}
 
 		return recipientInfo{
-			header:       map[string]interface{}{},
 			encryptedKey: jek,
+			header:       &JoseHeader{},
 		}, nil
 	}
 
@@ -252,8 +251,8 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 }
 
 // Decrypt the content encryption key.
-func (ctx *symmetricKeyCipher) decryptKey(alg KeyAlgorithm, obj *JsonWebEncryption, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	switch alg {
+func (ctx *symmetricKeyCipher) decryptKey(headers JoseHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+	switch headers.Alg {
 	case DIRECT:
 		cek := make([]byte, len(ctx.key))
 		copy(cek, ctx.key)
@@ -261,30 +260,10 @@ func (ctx *symmetricKeyCipher) decryptKey(alg KeyAlgorithm, obj *JsonWebEncrypti
 	case A128GCMKW, A192GCMKW, A256GCMKW:
 		aead := newAESGCM(len(ctx.key))
 
-		rawIv, present := obj.getHeader("iv", recipient)
-		if !present {
-			return nil, fmt.Errorf("square/go-jose: missing iv header")
-		}
-
-		iv, err := base64URLDecode(rawIv)
-		if err != nil {
-			return nil, err
-		}
-
-		rawTag, present := obj.getHeader("tag", recipient)
-		if !present {
-			return nil, fmt.Errorf("square/go-jose: missing tag header")
-		}
-
-		tag, err := base64URLDecode(rawTag)
-		if err != nil {
-			return nil, err
-		}
-
 		parts := &aeadParts{
-			iv:         iv,
+			iv:         headers.Iv.bytes(),
 			ciphertext: recipient.encryptedKey,
-			tag:        tag,
+			tag:        headers.Tag.bytes(),
 		}
 
 		cek, err := aead.decrypt(ctx.key, []byte{}, parts)

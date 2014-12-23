@@ -184,8 +184,8 @@ func (ctx failingKeyGenerator) keySize() int {
 	return 0
 }
 
-func (ctx failingKeyGenerator) genKey() ([]byte, map[string]interface{}, error) {
-	return nil, nil, errors.New("failed to generate key")
+func (ctx failingKeyGenerator) genKey() ([]byte, JoseHeader, error) {
+	return nil, JoseHeader{}, errors.New("failed to generate key")
 }
 
 func TestPKCSKeyGeneratorFailure(t *testing.T) {
@@ -257,68 +257,23 @@ func TestInvalidECDecrypt(t *testing.T) {
 	generator := randomKeyGenerator{size: 16}
 
 	// Missing epk header
-	obj := &JsonWebEncryption{}
+	headers := JoseHeader{
+		Alg: ECDH_ES,
+	}
 
-	_, err := dec.decryptKey(ECDH_ES, obj, nil, generator)
+	_, err := dec.decryptKey(headers, nil, generator)
 	if err == nil {
 		t.Error("ec decrypter accepted object with missing epk header")
 	}
 
 	// Invalid epk header
-	obj.protected = map[string]interface{}{
-		"epk": "XYZ",
+	headers.Epk = map[string]interface{}{
+		"kty": "XYZ",
 	}
 
-	_, err = dec.decryptKey(ECDH_ES, obj, nil, generator)
+	_, err = dec.decryptKey(headers, nil, generator)
 	if err == nil {
 		t.Error("ec decrypter accepted object with invalid epk header")
-	}
-
-	// Invalid apu header
-	obj.protected = map[string]interface{}{
-		"epk": `{
-			"kty":"EC",
-			"crv":"P-256",
-			"x":"gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0",
-			"y":"SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps",
-		 }`,
-		"apu": "###",
-	}
-
-	_, err = dec.decryptKey(ECDH_ES, obj, nil, generator)
-	if err == nil {
-		t.Error("ec decrypter accepted object with invalid apu header")
-	}
-
-	// Invalid apv header
-	obj.protected = map[string]interface{}{
-		"epk": `{
-			"kty":"EC",
-			"crv":"P-256",
-			"x":"gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0",
-			"y":"SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps",
-		 }`,
-		"apv": "###",
-	}
-
-	_, err = dec.decryptKey(ECDH_ES, obj, nil, generator)
-	if err == nil {
-		t.Error("ec decrypter accepted object with invalid apv header")
-	}
-
-	// Missing enc header
-	obj.protected = map[string]interface{}{
-		"epk": `{
-			"kty":"EC",
-			"crv":"P-256",
-			"x":"gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0",
-			"y":"SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps",
-		 }`,
-	}
-
-	_, err = dec.decryptKey(ECDH_ES, obj, nil, generator)
-	if err == nil {
-		t.Error("ec decrypter accepted object with missing enc header")
 	}
 }
 

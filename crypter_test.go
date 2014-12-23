@@ -54,7 +54,7 @@ func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg 
 
 	parsed, err := ParseEncrypted(msg)
 	if err != nil {
-		return fmt.Errorf("error in parse: %s", err)
+		return fmt.Errorf("error in parse: %s, on msg '%s'", err, msg)
 	}
 
 	// (Maybe) mangle object
