@@ -102,25 +102,25 @@ func inflate(input []byte) ([]byte, error) {
 	return output.Bytes(), err
 }
 
-// A byte buffer that can be represented as urlsafe base64 when serialized.
-type encodedBuffer struct {
+// byteBuffer represents a slice of bytes that can be serialized to url-safe base64.
+type byteBuffer struct {
 	data []byte
 }
 
-func newBuffer(data []byte) *encodedBuffer {
+func newBuffer(data []byte) *byteBuffer {
 	if data == nil {
 		return nil
 	}
-	return &encodedBuffer{
+	return &byteBuffer{
 		data: data,
 	}
 }
 
-func (b *encodedBuffer) MarshalJSON() ([]byte, error) {
+func (b *byteBuffer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(b.base64())
 }
 
-func (b *encodedBuffer) UnmarshalJSON(data []byte) error {
+func (b *byteBuffer) UnmarshalJSON(data []byte) error {
 	var encoded string
 	err := json.Unmarshal(data, &encoded)
 	if err != nil {
@@ -141,11 +141,11 @@ func (b *encodedBuffer) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (b *encodedBuffer) base64() string {
+func (b *byteBuffer) base64() string {
 	return base64URLEncode(b.data)
 }
 
-func (b *encodedBuffer) bytes() []byte {
+func (b *byteBuffer) bytes() []byte {
 	// Handling nil here allows us to transparently handle nil slices when serializing.
 	if b == nil {
 		return nil
@@ -153,6 +153,6 @@ func (b *encodedBuffer) bytes() []byte {
 	return b.data
 }
 
-func (b encodedBuffer) bigInt() *big.Int {
+func (b byteBuffer) bigInt() *big.Int {
 	return new(big.Int).SetBytes(b.data)
 }

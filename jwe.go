@@ -24,15 +24,15 @@ import (
 
 // rawJsonWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
 type rawJsonWebEncryption struct {
-	Protected    *encodedBuffer     `json:"protected,omitempty"`
+	Protected    *byteBuffer     `json:"protected,omitempty"`
 	Unprotected  *Header            `json:"unprotected,omitempty"`
 	Header       *Header            `json:"header,omitempty"`
 	Recipients   []rawRecipientInfo `json:"recipients,omitempty"`
-	Aad          *encodedBuffer     `json:"aad,omitempty"`
-	EncryptedKey *encodedBuffer     `json:"encrypted_key,omitempty"`
-	Iv           *encodedBuffer     `json:"iv,omitempty"`
-	Ciphertext   *encodedBuffer     `json:"ciphertext,omitempty"`
-	Tag          *encodedBuffer     `json:"tag,omitempty"`
+	Aad          *byteBuffer     `json:"aad,omitempty"`
+	EncryptedKey *byteBuffer     `json:"encrypted_key,omitempty"`
+	Iv           *byteBuffer     `json:"iv,omitempty"`
+	Ciphertext   *byteBuffer     `json:"ciphertext,omitempty"`
+	Tag          *byteBuffer     `json:"tag,omitempty"`
 }
 
 // rawRecipientInfo represents a raw JWE Per-Recipient Header JSON object. Used for parsing/serializing.

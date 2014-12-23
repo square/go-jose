@@ -113,11 +113,11 @@ type Header struct {
 	Enc  ContentEncryption    `json:"enc,omitempty"`
 	Zip  CompressionAlgorithm `json:"zip,omitempty"`
 	Crit []string             `json:"crit,omitempty"`
-	Apu  *encodedBuffer       `json:"apu,omitempty"`
-	Apv  *encodedBuffer       `json:"apv,omitempty"`
+	Apu  *byteBuffer          `json:"apu,omitempty"`
+	Apv  *byteBuffer          `json:"apv,omitempty"`
 	Epk  *rawJsonWebKey       `json:"epk,omitempty"`
-	Iv   *encodedBuffer       `json:"iv,omitempty"`
-	Tag  *encodedBuffer       `json:"tag,omitempty"`
+	Iv   *byteBuffer          `json:"iv,omitempty"`
+	Tag  *byteBuffer          `json:"tag,omitempty"`
 }
 
 // Merge headers from src into dst, giving precedence to headers from l.

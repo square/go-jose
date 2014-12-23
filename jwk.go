@@ -25,10 +25,10 @@ import (
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
 type rawJsonWebKey struct {
 	// TODO(cs): Add support for private keys, non-EC keys.
-	Kty string         `json:"kty,omitempty"`
-	Crv string         `json:"crv,omitempty"`
-	X   *encodedBuffer `json:"x,omitempty"`
-	Y   *encodedBuffer `json:"y,omitempty"`
+	Kty string      `json:"kty,omitempty"`
+	Crv string      `json:"crv,omitempty"`
+	X   *byteBuffer `json:"x,omitempty"`
+	Y   *byteBuffer `json:"y,omitempty"`
 }
 
 func (key *rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {

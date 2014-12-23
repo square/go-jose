@@ -24,18 +24,18 @@ import (
 
 // rawJsonWebSignature represents a raw JWS JSON object. Used for parsing/serializing.
 type rawJsonWebSignature struct {
-	Payload    *encodedBuffer     `json:"payload,omitempty"`
+	Payload    *byteBuffer     `json:"payload,omitempty"`
 	Signatures []rawSignatureInfo `json:"signatures,omitempty"`
-	Protected  *encodedBuffer     `json:"protected,omitempty"`
+	Protected  *byteBuffer     `json:"protected,omitempty"`
 	Header     *Header            `json:"header,omitempty"`
-	Signature  *encodedBuffer     `json:"signature,omitempty"`
+	Signature  *byteBuffer     `json:"signature,omitempty"`
 }
 
 // rawSignatureInfo represents a single JWS signature over the JWS payload and protected header.
 type rawSignatureInfo struct {
-	Protected *encodedBuffer `json:"protected,omitempty"`
+	Protected *byteBuffer `json:"protected,omitempty"`
 	Header    *Header        `json:"header,omitempty"`
-	Signature *encodedBuffer `json:"signature,omitempty"`
+	Signature *byteBuffer `json:"signature,omitempty"`
 }
 
 // JsonWebSignature represents a signed JWS object after parsing.
