@@ -119,9 +119,9 @@ func TestFullParseJWE(t *testing.T) {
 	}
 }
 
-func TestMissingInvalidHeaders(t *testing.T) {
+func TestMissingInvalidheaders(t *testing.T) {
 	obj := &JsonWebEncryption{
-		protected: &Header{Enc: A128GCM},
+		protected: &rawHeader{Enc: A128GCM},
 		recipients: []recipientInfo{
 			recipientInfo{},
 		},
@@ -132,7 +132,7 @@ func TestMissingInvalidHeaders(t *testing.T) {
 		t.Error("should detect invalid key")
 	}
 
-	obj.protected = &Header{Alg: string(RSA1_5)}
+	obj.protected = &rawHeader{Alg: string(RSA1_5)}
 
 	_, err = obj.Decrypt(rsaTestKey)
 	if err == nil || err == ErrCryptoFailure {
@@ -143,7 +143,7 @@ func TestMissingInvalidHeaders(t *testing.T) {
 func TestCompactSerialize(t *testing.T) {
 	// Compact serialization must fail if we have unprotected headers
 	obj := &JsonWebEncryption{
-		unprotected: &Header{Alg: "XYZ"},
+		unprotected: &rawHeader{Alg: "XYZ"},
 	}
 
 	_, err := obj.CompactSerialize()

@@ -133,7 +133,7 @@ func (ctx rsaEncrypterVerifier) encryptKey(cek []byte, alg KeyAlgorithm) (recipi
 
 	return recipientInfo{
 		encryptedKey: encryptedKey,
-		header:       &Header{},
+		header:       &rawHeader{},
 	}, nil
 }
 
@@ -153,7 +153,7 @@ func (ctx rsaEncrypterVerifier) encrypt(cek []byte, alg KeyAlgorithm) ([]byte, e
 }
 
 // Decrypt the given payload and return the content encryption key.
-func (ctx rsaDecrypterSigner) decryptKey(headers Header, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+func (ctx rsaDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
 	return ctx.decrypt(recipient.encryptedKey, KeyAlgorithm(headers.Alg), generator)
 }
 
@@ -245,7 +245,7 @@ func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm
 
 	return signatureInfo{
 		signature: out,
-		protected: &Header{},
+		protected: &rawHeader{},
 	}, nil
 }
 
@@ -286,7 +286,7 @@ func (ctx ecEncrypterVerifier) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 	case ECDH_ES:
 		// ECDH-ES mode doesn't wrap a key, the shared secret is used directly as the key.
 		return recipientInfo{
-			header: &Header{},
+			header: &rawHeader{},
 		}, nil
 	case ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW:
 	default:
@@ -329,10 +329,10 @@ func (ctx ecKeyGenerator) keySize() int {
 }
 
 // Get a content encryption key for ECDH-ES
-func (ctx ecKeyGenerator) genKey() ([]byte, Header, error) {
+func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
 	priv, err := ecdsa.GenerateKey(ctx.publicKey.Curve, rand.Reader)
 	if err != nil {
-		return nil, Header{}, err
+		return nil, rawHeader{}, err
 	}
 
 	out := josecipher.DeriveECDHES(ctx.algID, []byte{}, []byte{}, priv, ctx.publicKey, ctx.size)
@@ -340,10 +340,10 @@ func (ctx ecKeyGenerator) genKey() ([]byte, Header, error) {
 	var epk rawJsonWebKey
 	err = epk.fromEcPublicKey(&priv.PublicKey)
 	if err != nil {
-		return nil, Header{}, err
+		return nil, rawHeader{}, err
 	}
 
-	headers := Header{
+	headers := rawHeader{
 		Epk: &epk,
 	}
 
@@ -351,7 +351,7 @@ func (ctx ecKeyGenerator) genKey() ([]byte, Header, error) {
 }
 
 // Decrypt the given payload and return the content encryption key.
-func (ctx ecDecrypterSigner) decryptKey(headers Header, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
 	publicKey, err := headers.Epk.ecPublicKey()
 	if err != nil {
 		return nil, err
@@ -418,7 +418,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 
 	return signatureInfo{
 		signature: out,
-		protected: &Header{},
+		protected: &rawHeader{},
 	}, nil
 }
 

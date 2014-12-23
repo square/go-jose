@@ -24,34 +24,34 @@ import (
 
 // rawJsonWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
 type rawJsonWebEncryption struct {
-	Protected    *byteBuffer     `json:"protected,omitempty"`
-	Unprotected  *Header            `json:"unprotected,omitempty"`
-	Header       *Header            `json:"header,omitempty"`
+	Protected    *byteBuffer        `json:"protected,omitempty"`
+	Unprotected  *rawHeader         `json:"unprotected,omitempty"`
+	Header       *rawHeader         `json:"header,omitempty"`
 	Recipients   []rawRecipientInfo `json:"recipients,omitempty"`
-	Aad          *byteBuffer     `json:"aad,omitempty"`
-	EncryptedKey *byteBuffer     `json:"encrypted_key,omitempty"`
-	Iv           *byteBuffer     `json:"iv,omitempty"`
-	Ciphertext   *byteBuffer     `json:"ciphertext,omitempty"`
-	Tag          *byteBuffer     `json:"tag,omitempty"`
+	Aad          *byteBuffer        `json:"aad,omitempty"`
+	EncryptedKey *byteBuffer        `json:"encrypted_key,omitempty"`
+	Iv           *byteBuffer        `json:"iv,omitempty"`
+	Ciphertext   *byteBuffer        `json:"ciphertext,omitempty"`
+	Tag          *byteBuffer        `json:"tag,omitempty"`
 }
 
-// rawRecipientInfo represents a raw JWE Per-Recipient Header JSON object. Used for parsing/serializing.
+// rawRecipientInfo represents a raw JWE Per-Recipient header JSON object. Used for parsing/serializing.
 type rawRecipientInfo struct {
-	Header       *Header `json:"header,omitempty"`
-	EncryptedKey string  `json:"encrypted_key,omitempty"`
+	Header       *rawHeader `json:"header,omitempty"`
+	EncryptedKey string     `json:"encrypted_key,omitempty"`
 }
 
 // JsonWebEncryption represents an encrypted JWE object after parsing.
 type JsonWebEncryption struct {
-	protected, unprotected   *Header
+	protected, unprotected   *rawHeader
 	recipients               []recipientInfo
 	aad, iv, ciphertext, tag []byte
 	original                 *rawJsonWebEncryption
 }
 
-// recipientInfo represents a raw JWE Per-Recipient Header JSON object after parsing.
+// recipientInfo represents a raw JWE Per-Recipient header JSON object after parsing.
 type recipientInfo struct {
-	header       *Header
+	header       *rawHeader
 	encryptedKey []byte
 }
 
@@ -67,8 +67,8 @@ func (obj JsonWebEncryption) GetAuthData() []byte {
 }
 
 // Get the merged header values
-func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) Header {
-	out := Header{}
+func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) rawHeader {
+	out := rawHeader{}
 	out.merge(obj.protected)
 	out.merge(obj.unprotected)
 
@@ -174,7 +174,7 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	var protected Header
+	var protected rawHeader
 	err = json.Unmarshal(rawProtected, &protected)
 	if err != nil {
 		return nil, err

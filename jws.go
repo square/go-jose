@@ -24,17 +24,17 @@ import (
 
 // rawJsonWebSignature represents a raw JWS JSON object. Used for parsing/serializing.
 type rawJsonWebSignature struct {
-	Payload    *byteBuffer     `json:"payload,omitempty"`
+	Payload    *byteBuffer        `json:"payload,omitempty"`
 	Signatures []rawSignatureInfo `json:"signatures,omitempty"`
-	Protected  *byteBuffer     `json:"protected,omitempty"`
-	Header     *Header            `json:"header,omitempty"`
-	Signature  *byteBuffer     `json:"signature,omitempty"`
+	Protected  *byteBuffer        `json:"protected,omitempty"`
+	Header     *rawHeader         `json:"header,omitempty"`
+	Signature  *byteBuffer        `json:"signature,omitempty"`
 }
 
 // rawSignatureInfo represents a single JWS signature over the JWS payload and protected header.
 type rawSignatureInfo struct {
 	Protected *byteBuffer `json:"protected,omitempty"`
-	Header    *Header        `json:"header,omitempty"`
+	Header    *rawHeader  `json:"header,omitempty"`
 	Signature *byteBuffer `json:"signature,omitempty"`
 }
 
@@ -46,8 +46,8 @@ type JsonWebSignature struct {
 
 // signatureInfo represents a single JWS signature over the JWS payload and protected header after parsing.
 type signatureInfo struct {
-	protected *Header
-	header    *Header
+	protected *rawHeader
+	header    *rawHeader
 	signature []byte
 	original  *rawSignatureInfo
 }
@@ -63,8 +63,8 @@ func ParseSigned(input string) (*JsonWebSignature, error) {
 }
 
 // Get a header value
-func (sig signatureInfo) mergedHeaders() Header {
-	out := Header{}
+func (sig signatureInfo) mergedHeaders() rawHeader {
+	out := rawHeader{}
 	out.merge(sig.protected)
 	out.merge(sig.header)
 	return out
@@ -105,7 +105,7 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 		// No signatures array, must be flattened serialization
 		signature := signatureInfo{}
 		if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
-			signature.protected = &Header{}
+			signature.protected = &rawHeader{}
 			err = json.Unmarshal(parsed.Protected.bytes(), signature.protected)
 			if err != nil {
 				return nil, err
@@ -119,7 +119,7 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 
 	for i, sig := range parsed.Signatures {
 		if sig.Protected != nil && len(sig.Protected.bytes()) > 0 {
-			obj.signatures[i].protected = &Header{}
+			obj.signatures[i].protected = &rawHeader{}
 			err = json.Unmarshal(sig.Protected.bytes(), obj.signatures[i].protected)
 			if err != nil {
 				return nil, err
@@ -150,7 +150,7 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 		return nil, err
 	}
 
-	var protected Header
+	var protected rawHeader
 	err = json.Unmarshal(rawProtected, &protected)
 	if err != nil {
 		return nil, err

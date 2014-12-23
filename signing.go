@@ -120,7 +120,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	obj.signatures = make([]signatureInfo, len(ctx.recipients))
 
 	for i, recipient := range ctx.recipients {
-		protected := &Header{
+		protected := &rawHeader{
 			Alg: string(recipient.sigAlg),
 		}
 

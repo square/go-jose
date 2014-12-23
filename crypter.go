@@ -48,7 +48,7 @@ type contentCipher interface {
 // A key generator (for generating/getting a CEK)
 type keyGenerator interface {
 	keySize() int
-	genKey() ([]byte, Header, error)
+	genKey() ([]byte, rawHeader, error)
 }
 
 // A generic key encrypter
@@ -58,7 +58,7 @@ type keyEncrypter interface {
 
 // A generic key decrypter
 type keyDecrypter interface {
-	decryptKey(headers Header, recipient *recipientInfo, generator keyGenerator) ([]byte, error) // Decrypt a key
+	decryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) // Decrypt a key
 }
 
 // A generic encrypter based on the given key encrypter and content cipher.
@@ -216,7 +216,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 	obj := &JsonWebEncryption{}
 	obj.aad = aad
 
-	obj.protected = &Header{
+	obj.protected = &rawHeader{
 		Enc: ctx.contentAlg,
 	}
 	obj.recipients = make([]recipientInfo, len(ctx.recipients))

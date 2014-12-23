@@ -107,8 +107,8 @@ const (
 	DEFLATE = CompressionAlgorithm("DEF") // DEFLATE (RFC 1951)
 )
 
-// Header represents the JOSE header for JWE/JWS objects.
-type Header struct {
+// rawHeader represents the JOSE header for JWE/JWS objects.
+type rawHeader struct {
 	Alg  string               `json:"alg,omitempty"`
 	Enc  ContentEncryption    `json:"enc,omitempty"`
 	Zip  CompressionAlgorithm `json:"zip,omitempty"`
@@ -121,7 +121,7 @@ type Header struct {
 }
 
 // Merge headers from src into dst, giving precedence to headers from l.
-func (dst *Header) merge(src *Header) {
+func (dst *rawHeader) merge(src *rawHeader) {
 	if src == nil {
 		return
 	}
