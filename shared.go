@@ -109,15 +109,15 @@ const (
 
 // Header represents the JOSE header for JWE/JWS objects.
 type Header struct {
-	Alg  string                 `json:"alg,omitempty"`
-	Enc  ContentEncryption      `json:"enc,omitempty"`
-	Zip  CompressionAlgorithm   `json:"zip,omitempty"`
-	Crit []string               `json:"crit,omitempty"`
-	Apu  *encodedBuffer         `json:"apu,omitempty"`
-	Apv  *encodedBuffer         `json:"apv,omitempty"`
-	Epk  map[string]interface{} `json:"epk,omitempty"`
-	Iv   *encodedBuffer         `json:"iv,omitempty"`
-	Tag  *encodedBuffer         `json:"tag,omitempty"`
+	Alg  string               `json:"alg,omitempty"`
+	Enc  ContentEncryption    `json:"enc,omitempty"`
+	Zip  CompressionAlgorithm `json:"zip,omitempty"`
+	Crit []string             `json:"crit,omitempty"`
+	Apu  *encodedBuffer       `json:"apu,omitempty"`
+	Apv  *encodedBuffer       `json:"apv,omitempty"`
+	Epk  *rawJsonWebKey       `json:"epk,omitempty"`
+	Iv   *encodedBuffer       `json:"iv,omitempty"`
+	Tag  *encodedBuffer       `json:"tag,omitempty"`
 }
 
 // Merge headers from src into dst, giving precedence to headers from l.

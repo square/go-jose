@@ -31,7 +31,7 @@ type rawJsonWebSignature struct {
 // rawSignatureInfo represents a single JWS signature over the JWS payload and protected header.
 type rawSignatureInfo struct {
 	Protected *encodedBuffer `json:"protected,omitempty"`
-	Header    *Header    `json:"header,omitempty"`
+	Header    *Header        `json:"header,omitempty"`
 	Signature *encodedBuffer `json:"signature,omitempty"`
 }
 

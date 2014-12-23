@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"math/big"
 	"regexp"
 	"strings"
 )
@@ -150,4 +151,8 @@ func (b *encodedBuffer) bytes() []byte {
 		return nil
 	}
 	return b.data
+}
+
+func (b encodedBuffer) bigInt() *big.Int {
+	return new(big.Int).SetBytes(b.data)
 }

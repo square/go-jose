@@ -267,8 +267,8 @@ func TestInvalidECDecrypt(t *testing.T) {
 	}
 
 	// Invalid epk header
-	headers.Epk = map[string]interface{}{
-		"kty": "XYZ",
+	headers.Epk = &rawJsonWebKey{
+		Kty: "XYZ",
 	}
 
 	_, err = dec.decryptKey(headers, nil, generator)

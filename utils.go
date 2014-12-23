@@ -17,13 +17,9 @@
 package jose
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"fmt"
-	"math/big"
 )
 
 // LoadPublicKey loads a public key from PEM/DER-encoded data.
@@ -75,84 +71,4 @@ func LoadPrivateKey(data []byte) (interface{}, error) {
 	}
 
 	return nil, errors.New("square/go-jose: unable to parse private key")
-}
-
-// Build big int from base64-encoded string.
-func parseBigInt(input interface{}) (*big.Int, error) {
-	if input, ok := input.(string); ok {
-		val, err := base64URLDecode(input)
-		if err != nil {
-			return nil, err
-		}
-		return new(big.Int).SetBytes(val), nil
-	}
-	// TODO(cs): add proper jwk support
-	return nil, fmt.Errorf("square/go-jose: invalid value in json web key")
-}
-
-// parseECPublicKey loads an elliptic curve public key from a JWK object.
-func parseECPublicKey(jwk map[string]interface{}) (*ecdsa.PublicKey, error) {
-	kty, _ := jwk["kty"]
-	if kty != "EC" {
-		return nil, fmt.Errorf("square/go-jose: expecting EC key, found '%s' instead", kty)
-	}
-
-	crv, _ := jwk["crv"]
-
-	var curve elliptic.Curve
-	switch crv {
-	case "P-256":
-		curve = elliptic.P256()
-	case "P-384":
-		curve = elliptic.P384()
-	case "P-521":
-		curve = elliptic.P521()
-	default:
-		return nil, fmt.Errorf("square/go-jose: unsupported elliptic curve '%s'", crv)
-	}
-
-	rawX, xPresent := jwk["x"]
-	rawY, yPresent := jwk["y"]
-
-	if !xPresent || !yPresent {
-		return nil, fmt.Errorf("square/go-jose: invalid EC key, missing x/y values")
-	}
-
-	x, err := parseBigInt(rawX)
-	if err != nil {
-		return nil, err
-	}
-
-	y, err := parseBigInt(rawY)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ecdsa.PublicKey{
-		Curve: curve,
-		X:     x,
-		Y:     y,
-	}, nil
-}
-
-// serializeECPublicKey loads an elliptic curve public key from a JWK object.
-func serializeECPublicKey(key *ecdsa.PublicKey) (map[string]interface{}, error) {
-	jwk := map[string]interface{}{
-		"kty": "EC",
-		"x":   base64URLEncode(key.X.Bytes()),
-		"y":   base64URLEncode(key.Y.Bytes()),
-	}
-
-	switch key.Curve {
-	case elliptic.P256():
-		jwk["crv"] = "P-256"
-	case elliptic.P384():
-		jwk["crv"] = "P-384"
-	case elliptic.P521():
-		jwk["crv"] = "P-521"
-	default:
-		return nil, fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
-	}
-
-	return jwk, nil
 }

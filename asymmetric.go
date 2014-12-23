@@ -337,13 +337,14 @@ func (ctx ecKeyGenerator) genKey() ([]byte, Header, error) {
 
 	out := josecipher.DeriveECDHES(ctx.algID, []byte{}, []byte{}, priv, ctx.publicKey, ctx.size)
 
-	epk, err := serializeECPublicKey(&priv.PublicKey)
+	var epk rawJsonWebKey
+	err = epk.fromEcPublicKey(&priv.PublicKey)
 	if err != nil {
 		return nil, Header{}, err
 	}
 
 	headers := Header{
-		Epk: epk,
+		Epk: &epk,
 	}
 
 	return out, headers, nil
@@ -351,7 +352,7 @@ func (ctx ecKeyGenerator) genKey() ([]byte, Header, error) {
 
 // Decrypt the given payload and return the content encryption key.
 func (ctx ecDecrypterSigner) decryptKey(headers Header, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	publicKey, err := parseECPublicKey(headers.Epk)
+	publicKey, err := headers.Epk.ecPublicKey()
 	if err != nil {
 		return nil, err
 	}

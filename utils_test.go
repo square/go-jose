@@ -22,7 +22,6 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"math/big"
 	"regexp"
 	"testing"
@@ -228,24 +227,5 @@ func TestLoadPrivateKey(t *testing.T) {
 	priv, err = LoadPrivateKey([]byte(invalidPemKey))
 	if err == nil {
 		t.Error("should not parse invalid key")
-	}
-}
-
-func TestParseInvalidECKey(t *testing.T) {
-	invalids := []string{
-		`{"kty":"RSA"}`,
-		`{"kty":"EC","crv":"XXX"}`,
-		`{"kty":"EC","crv":"P-256","x":""}`,
-		`{"kty":"EC","crv":"P-256","x":"###","y":""}`,
-		`{"kty":"EC","crv":"P-256","x":"","y":"###"}`,
-	}
-
-	for _, invalid := range invalids {
-		var jwk map[string]interface{}
-		json.Unmarshal([]byte(invalid), &jwk)
-		_, err := parseECPublicKey(jwk)
-		if err == nil {
-			t.Error("ec parser incorrectly parsed invalid key", jwk)
-		}
 	}
 }
