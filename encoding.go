@@ -47,7 +47,7 @@ func base64URLDecode(data interface{}) ([]byte, error) {
 }
 
 // Helper function to serialize known-good objects
-func serializeJSONChecked(value interface{}) []byte {
+func mustSerializeJSON(value interface{}) []byte {
 	out, err := json.Marshal(value)
 	if err != nil {
 		panic(err)

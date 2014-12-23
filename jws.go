@@ -75,7 +75,7 @@ func (obj JsonWebSignature) computeAuthData(signature *signatureInfo) []byte {
 	var serializedProtected string
 
 	if signature.original == nil {
-		serializedProtected = base64URLEncode(serializeJSONChecked(signature.protected))
+		serializedProtected = base64URLEncode(mustSerializeJSON(signature.protected))
 	} else {
 		serializedProtected = signature.original.Protected
 	}
@@ -183,7 +183,7 @@ func (obj JsonWebSignature) CompactSerialize() (string, error) {
 		return "", ErrNotSupported
 	}
 
-	serializedProtected := serializeJSONChecked(obj.signatures[0].protected)
+	serializedProtected := mustSerializeJSON(obj.signatures[0].protected)
 
 	return fmt.Sprintf(
 		"%s.%s.%s",
@@ -200,7 +200,7 @@ func (obj JsonWebSignature) FullSerialize() string {
 	}
 
 	for i, signature := range obj.signatures {
-		serializedProtected := serializeJSONChecked(signature.protected)
+		serializedProtected := mustSerializeJSON(signature.protected)
 
 		raw.Signatures[i] = rawSignatureInfo{
 			Protected: base64URLEncode(serializedProtected),
@@ -209,5 +209,5 @@ func (obj JsonWebSignature) FullSerialize() string {
 		}
 	}
 
-	return string(serializeJSONChecked(raw))
+	return string(mustSerializeJSON(raw))
 }

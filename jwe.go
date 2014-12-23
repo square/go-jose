@@ -73,7 +73,7 @@ func (obj JsonWebEncryption) computeAuthData() []byte {
 	if obj.original != nil {
 		protected = obj.original.Protected
 	} else {
-		protected = base64URLEncode(serializeJSONChecked((obj.protected)))
+		protected = base64URLEncode(mustSerializeJSON((obj.protected)))
 	}
 
 	output := []byte(protected)
@@ -267,7 +267,7 @@ func (obj JsonWebEncryption) CompactSerialize() (string, error) {
 		return "", ErrNotSupported
 	}
 
-	serializedProtected := serializeJSONChecked(obj.protected)
+	serializedProtected := mustSerializeJSON(obj.protected)
 
 	return fmt.Sprintf(
 		"%s.%s.%s.%s.%s",
@@ -308,8 +308,8 @@ func (obj JsonWebEncryption) FullSerialize() string {
 	}
 
 	if len(obj.protected) > 0 {
-		raw.Protected = base64URLEncode(serializeJSONChecked(obj.protected))
+		raw.Protected = base64URLEncode(mustSerializeJSON(obj.protected))
 	}
 
-	return string(serializeJSONChecked(raw))
+	return string(mustSerializeJSON(raw))
 }

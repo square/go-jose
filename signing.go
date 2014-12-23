@@ -19,7 +19,6 @@ package jose
 import (
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 )
 
@@ -128,11 +127,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 			"alg": string(recipient.sigAlg),
 		}
 
-		serializedProtected, err := json.Marshal(protected)
-		if err != nil {
-			// We have full control over the input, so this should never happen.
-			panic("error when serializing message header")
-		}
+		serializedProtected := mustSerializeJSON(protected)
 
 		input := []byte(fmt.Sprintf("%s.%s",
 			base64URLEncode(serializedProtected),
