@@ -24,15 +24,15 @@ import (
 
 // rawJsonWebSignature represents a raw JWS JSON object. Used for parsing/serializing.
 type rawJsonWebSignature struct {
-	Payload    string             `json:"payload,omitempty"`
+	Payload    *encodedBuffer     `json:"payload,omitempty"`
 	Signatures []rawSignatureInfo `json:"signatures,omitempty"`
 }
 
 // rawSignatureInfo represents a single JWS signature over the JWS payload and protected header.
 type rawSignatureInfo struct {
-	Protected string                 `json:"protected,omitempty"`
-	Header    map[string]interface{} `json:"header,omitempty"`
-	Signature string                 `json:"signature,omitempty"`
+	Protected *encodedBuffer `json:"protected,omitempty"`
+	Header    *JoseHeader    `json:"header,omitempty"`
+	Signature *encodedBuffer `json:"signature,omitempty"`
 }
 
 // JsonWebSignature represents a signed JWS object after parsing.
@@ -43,8 +43,8 @@ type JsonWebSignature struct {
 
 // signatureInfo represents a single JWS signature over the JWS payload and protected header after parsing.
 type signatureInfo struct {
-	protected map[string]interface{}
-	header    map[string]interface{}
+	protected *JoseHeader
+	header    *JoseHeader
 	signature []byte
 	original  *rawSignatureInfo
 }
@@ -60,14 +60,11 @@ func ParseSigned(input string) (*JsonWebSignature, error) {
 }
 
 // Get a header value
-func (sig signatureInfo) getHeader(name string) (value interface{}, present bool) {
-	value, present = sig.protected[name]
-
-	if !present {
-		value, present = sig.header[name]
-	}
-
-	return
+func (sig signatureInfo) mergedHeaders() JoseHeader {
+	out := JoseHeader{}
+	out.merge(sig.protected)
+	out.merge(sig.header)
+	return out
 }
 
 // Compute data to be signed
@@ -77,7 +74,7 @@ func (obj JsonWebSignature) computeAuthData(signature *signatureInfo) []byte {
 	if signature.original == nil {
 		serializedProtected = base64URLEncode(mustSerializeJSON(signature.protected))
 	} else {
-		serializedProtected = signature.original.Protected
+		serializedProtected = signature.original.Protected.base64()
 	}
 
 	return []byte(fmt.Sprintf("%s.%s",
@@ -94,11 +91,7 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 	}
 
 	obj := &JsonWebSignature{}
-
-	obj.payload, err = base64URLDecode(parsed.Payload)
-	if err != nil {
-		return nil, err
-	}
+	obj.payload = parsed.Payload.bytes()
 
 	if len(parsed.Signatures) == 0 {
 		return nil, fmt.Errorf("square/go-jose: JWS object did not have signatures")
@@ -106,23 +99,15 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 
 	obj.signatures = make([]signatureInfo, len(parsed.Signatures))
 	for i, sig := range parsed.Signatures {
-		rawProtected, err := base64URLDecode(sig.Protected)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(rawProtected) > 0 {
-			obj.signatures[i].protected = make(map[string]interface{})
-			err = json.Unmarshal(rawProtected, &obj.signatures[i].protected)
+		if sig.Protected != nil && len(sig.Protected.bytes()) > 0 {
+			obj.signatures[i].protected = &JoseHeader{}
+			err = json.Unmarshal(sig.Protected.bytes(), obj.signatures[i].protected)
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		obj.signatures[i].signature, err = base64URLDecode(sig.Signature)
-		if err != nil {
-			return nil, err
-		}
+		obj.signatures[i].signature = sig.Signature.bytes()
 
 		// Copy value of sig
 		original := sig
@@ -146,7 +131,7 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 		return nil, err
 	}
 
-	var protected map[string]interface{}
+	var protected JoseHeader
 	err = json.Unmarshal(rawProtected, &protected)
 	if err != nil {
 		return nil, err
@@ -166,11 +151,11 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 		payload: payload,
 		signatures: []signatureInfo{
 			signatureInfo{
-				protected: protected,
+				protected: &protected,
 				signature: signature,
 				original: &rawSignatureInfo{
-					Protected: parts[0],
-					Signature: parts[2],
+					Protected: newBuffer(rawProtected),
+					Signature: newBuffer(signature),
 				},
 			},
 		},
@@ -179,7 +164,7 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 
 // CompactSerialize serializes an object using the compact serialization format.
 func (obj JsonWebSignature) CompactSerialize() (string, error) {
-	if len(obj.signatures) > 1 || len(obj.signatures[0].header) > 0 {
+	if len(obj.signatures) > 1 || obj.signatures[0].header != nil {
 		return "", ErrNotSupported
 	}
 
@@ -195,7 +180,7 @@ func (obj JsonWebSignature) CompactSerialize() (string, error) {
 // FullSerialize serializes an object using the full JSON serialization format.
 func (obj JsonWebSignature) FullSerialize() string {
 	raw := rawJsonWebSignature{
-		Payload:    base64URLEncode(obj.payload),
+		Payload:    newBuffer(obj.payload),
 		Signatures: make([]rawSignatureInfo, len(obj.signatures)),
 	}
 
@@ -203,9 +188,9 @@ func (obj JsonWebSignature) FullSerialize() string {
 		serializedProtected := mustSerializeJSON(signature.protected)
 
 		raw.Signatures[i] = rawSignatureInfo{
-			Protected: base64URLEncode(serializedProtected),
+			Protected: newBuffer(serializedProtected),
 			Header:    signature.header,
-			Signature: base64URLEncode(signature.signature),
+			Signature: newBuffer(signature.signature),
 		}
 	}
 

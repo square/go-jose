@@ -238,7 +238,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 			return nil, err
 		}
 
-		recipient.header.Alg = info.keyAlg
+		recipient.header.Alg = string(info.keyAlg)
 		obj.recipients[i] = recipient
 	}
 

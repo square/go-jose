@@ -132,7 +132,7 @@ func TestMissingInvalidHeaders(t *testing.T) {
 		t.Error("should detect invalid key")
 	}
 
-	obj.protected = &JoseHeader{Alg: RSA1_5}
+	obj.protected = &JoseHeader{Alg: string(RSA1_5)}
 
 	_, err = obj.Decrypt(rsaTestKey)
 	if err == nil || err == ErrCryptoFailure {

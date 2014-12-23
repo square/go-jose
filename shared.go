@@ -109,7 +109,7 @@ const (
 
 // JsonWebEncryptionHeader represents the JOSE header for JWE objects.
 type JoseHeader struct {
-	Alg  KeyAlgorithm           `json:"alg,omitempty"`
+	Alg  string                 `json:"alg,omitempty"`
 	Enc  ContentEncryption      `json:"enc,omitempty"`
 	Zip  CompressionAlgorithm   `json:"zip,omitempty"`
 	Crit []string               `json:"crit,omitempty"`
@@ -120,40 +120,40 @@ type JoseHeader struct {
 	Tag  *encodedBuffer         `json:"tag,omitempty"`
 }
 
-// Merge headers from l and r, giving precedence to headers from l.
-func (l *JoseHeader) merge(r *JoseHeader) {
-	if r == nil {
+// Merge headers from src into dst, giving precedence to headers from l.
+func (dst *JoseHeader) merge(src *JoseHeader) {
+	if src == nil {
 		return
 	}
 
-	if l.Alg == "" {
-		l.Alg = r.Alg
+	if dst.Alg == "" {
+		dst.Alg = src.Alg
 	}
-	if l.Enc == "" {
-		l.Enc = r.Enc
+	if dst.Enc == "" {
+		dst.Enc = src.Enc
 	}
-	if l.Zip == "" {
-		l.Zip = r.Zip
+	if dst.Zip == "" {
+		dst.Zip = src.Zip
 	}
-	if l.Crit == nil {
-		l.Crit = r.Crit
+	if dst.Crit == nil {
+		dst.Crit = src.Crit
 	}
-	if l.Crit == nil {
-		l.Crit = r.Crit
+	if dst.Crit == nil {
+		dst.Crit = src.Crit
 	}
-	if l.Apu == nil {
-		l.Apu = r.Apu
+	if dst.Apu == nil {
+		dst.Apu = src.Apu
 	}
-	if l.Apv == nil {
-		l.Apv = r.Apv
+	if dst.Apv == nil {
+		dst.Apv = src.Apv
 	}
-	if l.Epk == nil {
-		l.Epk = r.Epk
+	if dst.Epk == nil {
+		dst.Epk = src.Epk
 	}
-	if l.Iv == nil {
-		l.Iv = r.Iv
+	if dst.Iv == nil {
+		dst.Iv = src.Iv
 	}
-	if l.Tag == nil {
-		l.Tag = r.Tag
+	if dst.Tag == nil {
+		dst.Tag = src.Tag
 	}
 }

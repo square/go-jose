@@ -252,7 +252,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 
 // Decrypt the content encryption key.
 func (ctx *symmetricKeyCipher) decryptKey(headers JoseHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	switch headers.Alg {
+	switch KeyAlgorithm(headers.Alg) {
 	case DIRECT:
 		cek := make([]byte, len(ctx.key))
 		copy(cek, ctx.key)
@@ -292,7 +292,7 @@ func (ctx symmetricMac) signPayload(payload []byte, alg SignatureAlgorithm) (sig
 
 	return signatureInfo{
 		signature: mac,
-		protected: map[string]interface{}{},
+		protected: &JoseHeader{},
 	}, nil
 }
 

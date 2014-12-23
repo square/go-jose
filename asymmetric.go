@@ -154,7 +154,7 @@ func (ctx rsaEncrypterVerifier) encrypt(cek []byte, alg KeyAlgorithm) ([]byte, e
 
 // Decrypt the given payload and return the content encryption key.
 func (ctx rsaDecrypterSigner) decryptKey(headers JoseHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	return ctx.decrypt(recipient.encryptedKey, headers.Alg, generator)
+	return ctx.decrypt(recipient.encryptedKey, KeyAlgorithm(headers.Alg), generator)
 }
 
 // Decrypt the given payload. Based on the key encryption algorithm,
@@ -245,7 +245,7 @@ func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm
 
 	return signatureInfo{
 		signature: out,
-		protected: map[string]interface{}{},
+		protected: &JoseHeader{},
 	}, nil
 }
 
@@ -363,7 +363,7 @@ func (ctx ecDecrypterSigner) decryptKey(headers JoseHeader, recipient *recipient
 		return josecipher.DeriveECDHES(algID, apuData, apvData, ctx.privateKey, publicKey, size)
 	}
 
-	switch headers.Alg {
+	switch KeyAlgorithm(headers.Alg) {
 	case ECDH_ES:
 		return genKey(string(headers.Enc), generator.keySize()), nil
 	case ECDH_ES_A128KW:
@@ -417,7 +417,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 
 	return signatureInfo{
 		signature: out,
-		header:    map[string]interface{}{},
+		protected: &JoseHeader{},
 	}, nil
 }
 

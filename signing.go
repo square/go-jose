@@ -120,8 +120,8 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	obj.signatures = make([]signatureInfo, len(ctx.recipients))
 
 	for i, recipient := range ctx.recipients {
-		protected := map[string]interface{}{
-			"alg": string(recipient.sigAlg),
+		protected := &JoseHeader{
+			Alg: string(recipient.sigAlg),
 		}
 
 		serializedProtected := mustSerializeJSON(protected)
@@ -150,26 +150,17 @@ func (obj JsonWebSignature) Verify(verificationKey interface{}) ([]byte, error) 
 	}
 
 	for _, signature := range obj.signatures {
-		if _, critPresent := signature.getHeader("crit"); critPresent {
+		headers := signature.mergedHeaders()
+		if len(headers.Crit) > 0 {
 			// Unsupported crit header
 			continue
 		}
 
 		input := obj.computeAuthData(&signature)
-
-		algValue, algPresent := signature.getHeader("alg")
-		if !algPresent {
-			continue
-		}
-
-		if algValue, ok := algValue.(string); ok {
-			alg := SignatureAlgorithm(algValue)
-			err := verifier.verifyPayload(input, signature.signature, alg)
-			if err == nil {
-				return obj.payload, nil
-			}
-		} else {
-			return nil, fmt.Errorf("square/go-jose: invalid alg header")
+		alg := SignatureAlgorithm(headers.Alg)
+		err := verifier.verifyPayload(input, signature.signature, alg)
+		if err == nil {
+			return obj.payload, nil
 		}
 	}
 

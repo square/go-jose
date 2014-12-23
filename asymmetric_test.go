@@ -258,7 +258,7 @@ func TestInvalidECDecrypt(t *testing.T) {
 
 	// Missing epk header
 	headers := JoseHeader{
-		Alg: ECDH_ES,
+		Alg: string(ECDH_ES),
 	}
 
 	_, err := dec.decryptKey(headers, nil, generator)

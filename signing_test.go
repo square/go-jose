@@ -220,8 +220,8 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
-	obj.signatures[0].header = map[string]interface{}{
-		"crit": []string{"TEST"},
+	obj.signatures[0].header = &JoseHeader{
+		Crit: []string{"TEST"},
 	}
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
@@ -230,21 +230,11 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	// Try without alg header
-	obj.signatures[0].protected = map[string]interface{}{}
-	obj.signatures[0].header = map[string]interface{}{}
+	obj.signatures[0].protected = &JoseHeader{}
+	obj.signatures[0].header = &JoseHeader{}
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
 		t.Error("should not verify message with missing headers")
-	}
-
-	// Set an invalid header
-	obj.signatures[0].protected = map[string]interface{}{
-		"alg": []string{"X", "Y", "Z"},
-	}
-
-	_, err = obj.Verify(&rsaTestKey.PublicKey)
-	if err == nil {
-		t.Error("should not verify message with invalid headers")
 	}
 }
