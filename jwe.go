@@ -25,8 +25,8 @@ import (
 // rawJsonWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
 type rawJsonWebEncryption struct {
 	Protected    *encodedBuffer     `json:"protected,omitempty"`
-	Unprotected  *JoseHeader        `json:"unprotected,omitempty"`
-	Header       *JoseHeader        `json:"header,omitempty"`
+	Unprotected  *Header        `json:"unprotected,omitempty"`
+	Header       *Header        `json:"header,omitempty"`
 	Recipients   []rawRecipientInfo `json:"recipients,omitempty"`
 	Aad          *encodedBuffer     `json:"aad,omitempty"`
 	EncryptedKey *encodedBuffer     `json:"encrypted_key,omitempty"`
@@ -37,13 +37,13 @@ type rawJsonWebEncryption struct {
 
 // rawRecipientInfo represents a raw JWE Per-Recipient Header JSON object. Used for parsing/serializing.
 type rawRecipientInfo struct {
-	Header       *JoseHeader `json:"header,omitempty"`
+	Header       *Header `json:"header,omitempty"`
 	EncryptedKey string      `json:"encrypted_key,omitempty"`
 }
 
 // JsonWebEncryption represents an encrypted JWE object after parsing.
 type JsonWebEncryption struct {
-	protected, unprotected   *JoseHeader
+	protected, unprotected   *Header
 	recipients               []recipientInfo
 	aad, iv, ciphertext, tag []byte
 	original                 *rawJsonWebEncryption
@@ -51,7 +51,7 @@ type JsonWebEncryption struct {
 
 // recipientInfo represents a raw JWE Per-Recipient Header JSON object after parsing.
 type recipientInfo struct {
-	header       *JoseHeader
+	header       *Header
 	encryptedKey []byte
 }
 
@@ -67,8 +67,8 @@ func (obj JsonWebEncryption) GetAuthData() []byte {
 }
 
 // Get the merged header values
-func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) JoseHeader {
-	out := JoseHeader{}
+func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) Header {
+	out := Header{}
 	out.merge(obj.protected)
 	out.merge(obj.unprotected)
 
@@ -174,7 +174,7 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	var protected JoseHeader
+	var protected Header
 	err = json.Unmarshal(rawProtected, &protected)
 	if err != nil {
 		return nil, err

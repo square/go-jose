@@ -184,8 +184,8 @@ func (ctx failingKeyGenerator) keySize() int {
 	return 0
 }
 
-func (ctx failingKeyGenerator) genKey() ([]byte, JoseHeader, error) {
-	return nil, JoseHeader{}, errors.New("failed to generate key")
+func (ctx failingKeyGenerator) genKey() ([]byte, Header, error) {
+	return nil, Header{}, errors.New("failed to generate key")
 }
 
 func TestPKCSKeyGeneratorFailure(t *testing.T) {
@@ -257,7 +257,7 @@ func TestInvalidECDecrypt(t *testing.T) {
 	generator := randomKeyGenerator{size: 16}
 
 	// Missing epk header
-	headers := JoseHeader{
+	headers := Header{
 		Alg: string(ECDH_ES),
 	}
 

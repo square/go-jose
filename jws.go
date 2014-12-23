@@ -31,7 +31,7 @@ type rawJsonWebSignature struct {
 // rawSignatureInfo represents a single JWS signature over the JWS payload and protected header.
 type rawSignatureInfo struct {
 	Protected *encodedBuffer `json:"protected,omitempty"`
-	Header    *JoseHeader    `json:"header,omitempty"`
+	Header    *Header    `json:"header,omitempty"`
 	Signature *encodedBuffer `json:"signature,omitempty"`
 }
 
@@ -43,8 +43,8 @@ type JsonWebSignature struct {
 
 // signatureInfo represents a single JWS signature over the JWS payload and protected header after parsing.
 type signatureInfo struct {
-	protected *JoseHeader
-	header    *JoseHeader
+	protected *Header
+	header    *Header
 	signature []byte
 	original  *rawSignatureInfo
 }
@@ -60,8 +60,8 @@ func ParseSigned(input string) (*JsonWebSignature, error) {
 }
 
 // Get a header value
-func (sig signatureInfo) mergedHeaders() JoseHeader {
-	out := JoseHeader{}
+func (sig signatureInfo) mergedHeaders() Header {
+	out := Header{}
 	out.merge(sig.protected)
 	out.merge(sig.header)
 	return out
@@ -100,7 +100,7 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 	obj.signatures = make([]signatureInfo, len(parsed.Signatures))
 	for i, sig := range parsed.Signatures {
 		if sig.Protected != nil && len(sig.Protected.bytes()) > 0 {
-			obj.signatures[i].protected = &JoseHeader{}
+			obj.signatures[i].protected = &Header{}
 			err = json.Unmarshal(sig.Protected.bytes(), obj.signatures[i].protected)
 			if err != nil {
 				return nil, err
@@ -131,7 +131,7 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 		return nil, err
 	}
 
-	var protected JoseHeader
+	var protected Header
 	err = json.Unmarshal(rawProtected, &protected)
 	if err != nil {
 		return nil, err

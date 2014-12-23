@@ -146,14 +146,14 @@ func newSymmetricSigner(sigAlg SignatureAlgorithm, key []byte) (recipientSigInfo
 }
 
 // Generate a random key for the given content cipher
-func (ctx randomKeyGenerator) genKey() ([]byte, JoseHeader, error) {
+func (ctx randomKeyGenerator) genKey() ([]byte, Header, error) {
 	key := make([]byte, ctx.size)
 	_, err := io.ReadFull(randReader, key)
 	if err != nil {
-		return nil, JoseHeader{}, err
+		return nil, Header{}, err
 	}
 
-	return key, JoseHeader{}, nil
+	return key, Header{}, nil
 }
 
 // Key size for random generator
@@ -162,10 +162,10 @@ func (ctx randomKeyGenerator) keySize() int {
 }
 
 // Generate a static key (for direct mode)
-func (ctx staticKeyGenerator) genKey() ([]byte, JoseHeader, error) {
+func (ctx staticKeyGenerator) genKey() ([]byte, Header, error) {
 	cek := make([]byte, len(ctx.key))
 	copy(cek, ctx.key)
-	return cek, JoseHeader{}, nil
+	return cek, Header{}, nil
 }
 
 // Key size for static generator
@@ -218,7 +218,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 	switch alg {
 	case DIRECT:
 		return recipientInfo{
-			header: &JoseHeader{},
+			header: &Header{},
 		}, nil
 	case A128GCMKW, A192GCMKW, A256GCMKW:
 		aead := newAESGCM(len(ctx.key))
@@ -229,7 +229,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 		}
 
 		return recipientInfo{
-			header: &JoseHeader{
+			header: &Header{
 				Iv:  newBuffer(parts.iv),
 				Tag: newBuffer(parts.tag),
 			},
@@ -243,7 +243,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 
 		return recipientInfo{
 			encryptedKey: jek,
-			header:       &JoseHeader{},
+			header:       &Header{},
 		}, nil
 	}
 
@@ -251,7 +251,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 }
 
 // Decrypt the content encryption key.
-func (ctx *symmetricKeyCipher) decryptKey(headers JoseHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
+func (ctx *symmetricKeyCipher) decryptKey(headers Header, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
 	switch KeyAlgorithm(headers.Alg) {
 	case DIRECT:
 		cek := make([]byte, len(ctx.key))
@@ -292,7 +292,7 @@ func (ctx symmetricMac) signPayload(payload []byte, alg SignatureAlgorithm) (sig
 
 	return signatureInfo{
 		signature: mac,
-		protected: &JoseHeader{},
+		protected: &Header{},
 	}, nil
 }
 

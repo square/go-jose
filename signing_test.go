@@ -220,7 +220,7 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
-	obj.signatures[0].header = &JoseHeader{
+	obj.signatures[0].header = &Header{
 		Crit: []string{"TEST"},
 	}
 
@@ -230,8 +230,8 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	// Try without alg header
-	obj.signatures[0].protected = &JoseHeader{}
-	obj.signatures[0].header = &JoseHeader{}
+	obj.signatures[0].protected = &Header{}
+	obj.signatures[0].header = &Header{}
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
