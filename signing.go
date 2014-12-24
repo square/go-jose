@@ -46,9 +46,8 @@ type genericSigner struct {
 }
 
 type recipientSigInfo struct {
-	sigAlg   SignatureAlgorithm
-	signer   payloadSigner
-	verifier payloadVerifier
+	sigAlg SignatureAlgorithm
+	signer payloadSigner
 }
 
 // NewSigner creates an appropriate signer based on the key type

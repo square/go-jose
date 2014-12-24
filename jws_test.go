@@ -119,8 +119,8 @@ func TestSampleNimbusJWSMessagesRSA(t *testing.T) {
 		}
 		payload, err := obj.Verify(rsaPublicKey)
 		if err != nil {
-			continue
 			t.Error("unable to verify message", msg, err)
+			continue
 		}
 		if string(payload) != "Lorem ipsum dolor sit amet" {
 			t.Error("payload is not what we expected for msg", msg)
@@ -145,39 +145,25 @@ func TestSampleNimbusJWSMessagesEC(t *testing.T) {
 
 	ecPublicKeys := []interface{}{ecPublicKeyP256, ecPublicKeyP384, ecPublicKeyP521}
 
-	ecSampleMessages := [][]string{
-		[]string{
-			"eyJhbGciOiJFUzI1NiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.MEWJVlvGRQyzMEGOYm4rwuiwxrX-6LjnlbaRDAuhwmnBm2Gtn7pRpGXRTMFZUXsSGDz2L1p-Hz1qn8j9bFIBtQ",
-			"eyJhbGciOiJFUzM4NCJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.s74STTlSytsUoS5dMd-Z8EfWaDCVrN75GYcf5utVzT_uJgpskGzuLBg2BfEZBxx34GetKj_wkCU5DBG5c25WJpzhfsLmbWRIi5RosP0H0-ukPMTS1dH_jCQGncW86-ub",
-			"eyJhbGciOiJFUzUxMiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.AfX1HEGrgxbpldS_O21e3nFQ9tfiaNvCPuzKOGEFpfeZAzABtcyO10qAO4IZfe6ml5IMMDe6DJNChW9QW0vvP_LaAeAWixMdQ-rEGnIe-b1bbIqcND_bfKcYwYhrWm4V8rVveyX7fq9FY7L4TAeibbNzZsqvVBGv7an1VMw_d3lPMAqL",
-		},
-		[]string{
-			"eyJhbGciOiJFUzI1NiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.OR-iPW-hXArJQuKRyNNS7vUenv-HsOuoloRlrZOarXP-pgWF21eoiWlxhDI9P0ryJM6zcedQ1dujDuohrmzyTQ",
-			"eyJhbGciOiJFUzM4NCJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.nbdjPnJPYQtVNNdBIx8-KbFKplTxrz-hnW5UNhYUY7SBkwHK4NZnqc2Lv4DXoA0aWHq9eiypgOh1kmyPWGEmqKAHUx0xdIEkBoHk3ZsbmhOQuq2jL_wcMUG6nTWNhLrB",
-			"eyJhbGciOiJFUzUxMiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.AWurIw21EWYtJx6dPYAkHPvoUETRtcANnTmR5tdbi7d4wDwSyJ9OZ8EnUL19DPJF_GFsu6ndZyu-KCbqYpf46H20AYx3YJYqgrFDw73-qdoace0XrNCtpIOYFT0PL5-zSA-4830GikjR14VSPZZOejf1Zfqyxdr5Fss7dRaaQTJGh_2N",
-		},
-		[]string{
-			"eyJhbGciOiJFUzI1NiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.m1Fa72SNQA7dJl40BSYMikVaTBevV7JAExeqqnoro8IAyLlSjt-B8As2BBrxaFhC5T55E_m9grWE09XkhtenDA",
-			"eyJhbGciOiJFUzM4NCJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.Sub9hfaog8jfnyDspJsEXZHSmvABtyLEwuueXzzB8MIfwMMilY5BPiNaSjI_1hpvZjttcm5PQDjknHX7NI_kaxj0g2BoOIH9cSbGXs3cwUahDjQDZFSzDd7XgKaEjfbT",
-			"eyJhbGciOiJFUzUxMiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.AeYNFC1rwIgQv-5fwd8iRyYzvTaSCYTEICepgu9gRId-IW99kbSVY7yH0MvrQnqI-a0L8zwKWDR35fW5dukPAYRkADp3Y1lzqdShFcEFziUVGo46vqbiSajmKFrjBktJcCsfjKSaLHwxErF-T10YYPCQFHWb2nXJOOI3CZfACYqgO84g",
-		},
+	ecSampleMessages := []string{
+		"eyJhbGciOiJFUzI1NiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.MEWJVlvGRQyzMEGOYm4rwuiwxrX-6LjnlbaRDAuhwmnBm2Gtn7pRpGXRTMFZUXsSGDz2L1p-Hz1qn8j9bFIBtQ",
+		"eyJhbGciOiJFUzM4NCJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.nbdjPnJPYQtVNNdBIx8-KbFKplTxrz-hnW5UNhYUY7SBkwHK4NZnqc2Lv4DXoA0aWHq9eiypgOh1kmyPWGEmqKAHUx0xdIEkBoHk3ZsbmhOQuq2jL_wcMUG6nTWNhLrB",
+		"eyJhbGciOiJFUzUxMiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.AeYNFC1rwIgQv-5fwd8iRyYzvTaSCYTEICepgu9gRId-IW99kbSVY7yH0MvrQnqI-a0L8zwKWDR35fW5dukPAYRkADp3Y1lzqdShFcEFziUVGo46vqbiSajmKFrjBktJcCsfjKSaLHwxErF-T10YYPCQFHWb2nXJOOI3CZfACYqgO84g",
 	}
 
-	for i, msgs := range ecSampleMessages {
-		for _, msg := range msgs {
-			obj, err := ParseSigned(msg)
-			if err != nil {
-				t.Error("unable to parse message", msg, err)
-				continue
-			}
-			payload, err := obj.Verify(ecPublicKeys[i])
-			if err != nil {
-				continue
-				t.Error("unable to verify message", msg, err)
-			}
-			if string(payload) != "Lorem ipsum dolor sit amet" {
-				t.Error("payload is not what we expected for msg", msg)
-			}
+	for i, msg := range ecSampleMessages {
+		obj, err := ParseSigned(msg)
+		if err != nil {
+			t.Error("unable to parse message", msg, err)
+			continue
+		}
+		payload, err := obj.Verify(ecPublicKeys[i])
+		if err != nil {
+			t.Error("unable to verify message", msg, err)
+			continue
+		}
+		if string(payload) != "Lorem ipsum dolor sit amet" {
+			t.Error("payload is not what we expected for msg", msg)
 		}
 	}
 }
@@ -200,8 +186,8 @@ func TestSampleNimbusJWSMessagesHMAC(t *testing.T) {
 		}
 		payload, err := obj.Verify(hmacTestKey)
 		if err != nil {
-			continue
 			t.Error("unable to verify message", msg, err)
+			continue
 		}
 		if string(payload) != "Lorem ipsum dolor sit amet" {
 			t.Error("payload is not what we expected for msg", msg)

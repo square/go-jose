@@ -199,23 +199,17 @@ func TestLoadPrivateKey(t *testing.T) {
 	}
 
 	priv, err = LoadPrivateKey([]byte(pkcs8ECPrivateKey))
-	switch priv.(type) {
-	case *ecdsa.PrivateKey:
-	default:
+	if _, ok := priv.(*ecdsa.PrivateKey); !ok {
 		t.Error("failed to parse EC PKCS8 private key:", err)
 	}
 
 	priv, err = LoadPrivateKey([]byte(ecPrivateKey))
-	switch priv.(type) {
-	case *ecdsa.PrivateKey:
-	default:
+	if _, ok := priv.(*ecdsa.PrivateKey); !ok {
 		t.Error("failed to parse EC private key:", err)
 	}
 
 	priv, err = LoadPrivateKey([]byte(ecPrivateKeyDer))
-	switch priv.(type) {
-	case *ecdsa.PrivateKey:
-	default:
+	if _, ok := priv.(*ecdsa.PrivateKey); !ok {
 		t.Error("failed to parse EC private key:", err)
 	}
 

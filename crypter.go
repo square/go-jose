@@ -75,11 +75,6 @@ type recipientKeyInfo struct {
 	keyEncrypter keyEncrypter
 }
 
-// A generic decrypter based on the given key decrypter.
-type genericDecrypter struct {
-	keyDecrypter keyDecrypter
-}
-
 // SetCompression sets a compression algorithm to be applied before encryption.
 func (ctx *genericEncrypter) SetCompression(compressionAlg CompressionAlgorithm) {
 	ctx.compressionAlg = compressionAlg

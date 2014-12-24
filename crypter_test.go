@@ -195,7 +195,7 @@ func TestMultiRecipientJWE(t *testing.T) {
 
 	err = enc.AddRecipient(RSA_OAEP, &rsaTestKey.PublicKey)
 	if err != nil {
-		t.Error("error when adding RSA recipient: %s", err)
+		t.Error("error when adding RSA recipient", err)
 	}
 
 	sharedKey := []byte{
