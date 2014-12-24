@@ -33,7 +33,7 @@ var ecTestKey256, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 var ecTestKey384, _ = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 var ecTestKey521, _ = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 
-func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption), aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
+func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
 	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
 	if err != nil {
 		return fmt.Errorf("error on new encrypter: %s", err)
@@ -58,7 +58,10 @@ func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg 
 	}
 
 	// (Maybe) mangle object
-	corrupter(parsed)
+	skip := corrupter(parsed)
+	if skip {
+		return fmt.Errorf("corrupter indicated message should be skipped")
+	}
 
 	if bytes.Compare(parsed.GetAuthData(), aad) != 0 {
 		return fmt.Errorf("auth data in parsed object does not match")
@@ -89,7 +92,7 @@ func TestRoundtripsJWE(t *testing.T) {
 		func(obj *JsonWebEncryption) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupter := func(obj *JsonWebEncryption) {}
+	corrupter := func(obj *JsonWebEncryption) bool { return false }
 
 	// Note: can't use AAD with compact serialization
 	aads := [][]byte{
@@ -125,18 +128,34 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 		func(obj *JsonWebEncryption) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupters := []func(*JsonWebEncryption){
-		func(obj *JsonWebEncryption) {
-			// Set invalid AAD
-			obj.aad = []byte("###")
-		},
-		func(obj *JsonWebEncryption) {
+	bitflip := func(slice []byte) bool {
+		if len(slice) > 0 {
+			slice[0] ^= 0xFF
+			return false
+		}
+		return true
+	}
+
+	corrupters := []func(*JsonWebEncryption) bool{
+		func(obj *JsonWebEncryption) bool {
 			// Set invalid ciphertext
-			obj.ciphertext = []byte("###")
+			return bitflip(obj.ciphertext)
 		},
-		func(obj *JsonWebEncryption) {
+		func(obj *JsonWebEncryption) bool {
 			// Set invalid auth tag
-			obj.tag = []byte("###")
+			return bitflip(obj.tag)
+		},
+		func(obj *JsonWebEncryption) bool {
+			// Set invalid AAD
+			return bitflip(obj.aad)
+		},
+		func(obj *JsonWebEncryption) bool {
+			// Mess with encrypted key
+			return bitflip(obj.recipients[0].encryptedKey)
+		},
+		func(obj *JsonWebEncryption) bool {
+			// Mess with GCM-KW auth tag
+			return bitflip(obj.protected.Tag.bytes())
 		},
 	}
 
@@ -330,7 +349,7 @@ func RunRoundtripsJWE(b *testing.B, alg KeyAlgorithm, enc ContentEncryption, zip
 		return obj.CompactSerialize()
 	}
 
-	corrupter := func(obj *JsonWebEncryption) {}
+	corrupter := func(obj *JsonWebEncryption) bool { return false }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
