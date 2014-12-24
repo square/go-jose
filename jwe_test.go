@@ -119,9 +119,10 @@ func TestFullParseJWE(t *testing.T) {
 	}
 }
 
-func TestMissingInvalidheaders(t *testing.T) {
+func TestMissingInvalidHeaders(t *testing.T) {
 	obj := &JsonWebEncryption{
-		protected: &rawHeader{Enc: A128GCM},
+		protected:   &rawHeader{Enc: A128GCM},
+		unprotected: &rawHeader{},
 		recipients: []recipientInfo{
 			recipientInfo{},
 		},
@@ -132,6 +133,14 @@ func TestMissingInvalidheaders(t *testing.T) {
 		t.Error("should detect invalid key")
 	}
 
+	obj.unprotected.Crit = []string{"1", "2"}
+
+	_, err = obj.Decrypt(nil)
+	if err == nil {
+		t.Error("should reject message with crit header")
+	}
+
+	obj.unprotected.Crit = nil
 	obj.protected = &rawHeader{Alg: string(RSA1_5)}
 
 	_, err = obj.Decrypt(rsaTestKey)

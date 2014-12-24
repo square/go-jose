@@ -102,10 +102,7 @@ func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interfa
 		encrypter.keyGenerator = staticKeyGenerator{
 			key: encryptionKey.([]byte),
 		}
-		recipient, err := newSymmetricRecipient(alg, encryptionKey.([]byte))
-		if err != nil {
-			return nil, err
-		}
+		recipient, _ := newSymmetricRecipient(alg, encryptionKey.([]byte))
 		encrypter.recipients = []recipientKeyInfo{recipient}
 		return encrypter, nil
 	case ECDH_ES:
@@ -119,10 +116,7 @@ func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interfa
 			algID:     string(enc),
 			publicKey: encryptionKey.(*ecdsa.PublicKey),
 		}
-		recipient, err := newECDHRecipient(alg, encryptionKey.(*ecdsa.PublicKey))
-		if err != nil {
-			return nil, err
-		}
+		recipient, _ := newECDHRecipient(alg, encryptionKey.(*ecdsa.PublicKey))
 		encrypter.recipients = []recipientKeyInfo{recipient}
 		return encrypter, nil
 	default:
