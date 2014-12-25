@@ -19,6 +19,8 @@ package josecipher
 import (
 	"bytes"
 	"crypto/aes"
+	"crypto/rand"
+	"io"
 	"testing"
 )
 
@@ -238,58 +240,6 @@ func TestAESCBCOverhead(t *testing.T) {
 	}
 }
 
-func BenchmarkAES128_CBCHMAC_4k(b *testing.B) {
-	key := []byte{
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	nonce := []byte{
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	aead, _ := NewCBCHMAC(key, aes.NewCipher)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		aead.Seal(nil, nonce, make([]byte, 4096), nil)
-	}
-}
-
-func BenchmarkAES192_CBCHMAC_4k(b *testing.B) {
-	key := []byte{
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		0, 1, 2, 3, 4, 5, 6, 7,
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		0, 1, 2, 3, 4, 5, 6, 7}
-
-	nonce := []byte{
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	aead, _ := NewCBCHMAC(key, aes.NewCipher)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		aead.Seal(nil, nonce, make([]byte, 4096), nil)
-	}
-}
-
-func BenchmarkAES256_CBCHMAC_4k(b *testing.B) {
-	key := []byte{
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	nonce := []byte{
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	aead, _ := NewCBCHMAC(key, aes.NewCipher)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		aead.Seal(nil, nonce, make([]byte, 4096), nil)
-	}
-}
-
 func TestPadding(t *testing.T) {
 	for i := 0; i < 256; i++ {
 		slice := make([]byte, i)
@@ -330,4 +280,136 @@ func TestInvalidPadding(t *testing.T) {
 			}
 		}
 	}
+}
+
+func benchEncryptCBCHMAC(b *testing.B, keySize, chunkSize int) {
+	key := make([]byte, keySize*2)
+	nonce := make([]byte, 16)
+
+	io.ReadFull(rand.Reader, key)
+	io.ReadFull(rand.Reader, nonce)
+
+	chunk := make([]byte, chunkSize)
+
+	aead, err := NewCBCHMAC(key, aes.NewCipher)
+	if err != nil {
+		panic(err)
+	}
+
+	b.SetBytes(int64(chunkSize))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		aead.Seal(nil, nonce, chunk, nil)
+	}
+}
+
+func benchDecryptCBCHMAC(b *testing.B, keySize, chunkSize int) {
+	key := make([]byte, keySize*2)
+	nonce := make([]byte, 16)
+
+	io.ReadFull(rand.Reader, key)
+	io.ReadFull(rand.Reader, nonce)
+
+	chunk := make([]byte, chunkSize)
+
+	aead, err := NewCBCHMAC(key, aes.NewCipher)
+	if err != nil {
+		panic(err)
+	}
+
+	out := aead.Seal(nil, nonce, chunk, nil)
+
+	b.SetBytes(int64(chunkSize))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		aead.Open(nil, nonce, out, nil)
+	}
+}
+
+func BenchmarkEncryptAES128_CBCHMAC_1k(b *testing.B) {
+	benchEncryptCBCHMAC(b, 16, 1024)
+}
+
+func BenchmarkEncryptAES128_CBCHMAC_64k(b *testing.B) {
+	benchEncryptCBCHMAC(b, 16, 65536)
+}
+
+func BenchmarkEncryptAES128_CBCHMAC_1MB(b *testing.B) {
+	benchEncryptCBCHMAC(b, 16, 1048576)
+}
+
+func BenchmarkEncryptAES128_CBCHMAC_64MB(b *testing.B) {
+	benchEncryptCBCHMAC(b, 16, 67108864)
+}
+
+func BenchmarkDecryptAES128_CBCHMAC_1k(b *testing.B) {
+	benchDecryptCBCHMAC(b, 16, 1024)
+}
+
+func BenchmarkDecryptAES128_CBCHMAC_64k(b *testing.B) {
+	benchDecryptCBCHMAC(b, 16, 65536)
+}
+
+func BenchmarkDecryptAES128_CBCHMAC_1MB(b *testing.B) {
+	benchDecryptCBCHMAC(b, 16, 1048576)
+}
+
+func BenchmarkDecryptAES128_CBCHMAC_64MB(b *testing.B) {
+	benchDecryptCBCHMAC(b, 16, 67108864)
+}
+
+func BenchmarkEncryptAES192_CBCHMAC_64k(b *testing.B) {
+	benchEncryptCBCHMAC(b, 24, 65536)
+}
+
+func BenchmarkEncryptAES192_CBCHMAC_1MB(b *testing.B) {
+	benchEncryptCBCHMAC(b, 24, 1048576)
+}
+
+func BenchmarkEncryptAES192_CBCHMAC_64MB(b *testing.B) {
+	benchEncryptCBCHMAC(b, 24, 67108864)
+}
+
+func BenchmarkDecryptAES192_CBCHMAC_1k(b *testing.B) {
+	benchDecryptCBCHMAC(b, 24, 1024)
+}
+
+func BenchmarkDecryptAES192_CBCHMAC_64k(b *testing.B) {
+	benchDecryptCBCHMAC(b, 24, 65536)
+}
+
+func BenchmarkDecryptAES192_CBCHMAC_1MB(b *testing.B) {
+	benchDecryptCBCHMAC(b, 24, 1048576)
+}
+
+func BenchmarkDecryptAES192_CBCHMAC_64MB(b *testing.B) {
+	benchDecryptCBCHMAC(b, 24, 67108864)
+}
+
+func BenchmarkEncryptAES256_CBCHMAC_64k(b *testing.B) {
+	benchEncryptCBCHMAC(b, 32, 65536)
+}
+
+func BenchmarkEncryptAES256_CBCHMAC_1MB(b *testing.B) {
+	benchEncryptCBCHMAC(b, 32, 1048576)
+}
+
+func BenchmarkEncryptAES256_CBCHMAC_64MB(b *testing.B) {
+	benchEncryptCBCHMAC(b, 32, 67108864)
+}
+
+func BenchmarkDecryptAES256_CBCHMAC_1k(b *testing.B) {
+	benchDecryptCBCHMAC(b, 32, 1032)
+}
+
+func BenchmarkDecryptAES256_CBCHMAC_64k(b *testing.B) {
+	benchDecryptCBCHMAC(b, 32, 65536)
+}
+
+func BenchmarkDecryptAES256_CBCHMAC_1MB(b *testing.B) {
+	benchDecryptCBCHMAC(b, 32, 1048576)
+}
+
+func BenchmarkDecryptAES256_CBCHMAC_64MB(b *testing.B) {
+	benchDecryptCBCHMAC(b, 32, 67108864)
 }
