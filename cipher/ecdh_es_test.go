@@ -67,12 +67,32 @@ func TestVectorECDHES(t *testing.T) {
 	}
 }
 
-func BenchmarkECDHES_16b(b *testing.B) {
+func BenchmarkECDHES_128(b *testing.B) {
 	apuData := []byte("APU")
 	apvData := []byte("APV")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		DeriveECDHES("ID", apuData, apvData, bobKey, &aliceKey.PublicKey, 16)
+	}
+}
+
+func BenchmarkECDHES_192(b *testing.B) {
+	apuData := []byte("APU")
+	apvData := []byte("APV")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		DeriveECDHES("ID", apuData, apvData, bobKey, &aliceKey.PublicKey, 24)
+	}
+}
+
+func BenchmarkECDHES_256(b *testing.B) {
+	apuData := []byte("APU")
+	apvData := []byte("APV")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		DeriveECDHES("ID", apuData, apvData, bobKey, &aliceKey.PublicKey, 32)
 	}
 }
