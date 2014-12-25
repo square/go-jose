@@ -107,7 +107,7 @@ func TestCache(t *testing.T) {
 	}
 }
 
-func benchmarkKDF(b *testing.B, total, chunksize int) {
+func benchmarkKDF(b *testing.B, total int) {
 	z := []byte{
 		158, 86, 217, 29, 129, 113, 53, 211, 114, 131, 66, 131, 191, 132,
 		38, 156, 251, 49, 110, 163, 218, 128, 106, 72, 246, 218, 167, 121,
@@ -125,17 +125,24 @@ func benchmarkKDF(b *testing.B, total, chunksize int) {
 	reader := NewConcatKDF(crypto.SHA256, z, algID, ptyUInfo, ptyVInfo, supPubInfo, supPrivInfo)
 
 	b.ResetTimer()
+	b.SetBytes(int64(total))
 	for i := 0; i < b.N; i++ {
-		for j := 0; j < total/chunksize; j++ {
-			_, _ = reader.Read(out[j*chunksize:])
-		}
+		_, _ = reader.Read(out)
 	}
 }
 
-func BenchmarkConcatKDF_4k_64(b *testing.B) {
-	benchmarkKDF(b, 4096, 64)
+func BenchmarkConcatKDF_1k(b *testing.B) {
+	benchmarkKDF(b, 1024)
 }
 
-func BenchmarkConcatKDF_4k_1024(b *testing.B) {
-	benchmarkKDF(b, 4096, 1024)
+func BenchmarkConcatKDF_64k(b *testing.B) {
+	benchmarkKDF(b, 65536)
+}
+
+func BenchmarkConcatKDF_1MB(b *testing.B) {
+	benchmarkKDF(b, 1048576)
+}
+
+func BenchmarkConcatKDF_64MB(b *testing.B) {
+	benchmarkKDF(b, 67108864)
 }
