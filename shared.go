@@ -41,7 +41,7 @@ var (
 	// ErrUnsupportedAlgorithm indicates that a selected algorithm is not
 	// supported. This occurs when trying to instantiate an encrypter for an
 	// algorithm that is not yet implemented.
-	ErrUnsupportedAlgorithm = errors.New("square/go-jose: algorithm is currently not supported")
+	ErrUnsupportedAlgorithm = errors.New("square/go-jose: unknown/unsupported algorithm")
 
 	// ErrUnsupportedKeyType indicates that the given key type/format is not
 	// supported. This occurs when trying to instantiate an encrypter and passing
