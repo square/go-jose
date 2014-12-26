@@ -73,14 +73,32 @@ func TestAesKeyWrap(t *testing.T) {
 }
 
 func TestAesKeyWrapInvalid(t *testing.T) {
-	// Invalid input
 	kek, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
-	input, _ := hex.DecodeString("1EA68C1A8112B447AEF34BD8FB5A7B828D3E862371D2CFE5")
 
-	_, err := AesKeyUnwrap(kek, input)
+	// Invalid unwrap input (bit flipped)
+	input0, _ := hex.DecodeString("1EA68C1A8112B447AEF34BD8FB5A7B828D3E862371D2CFE5")
+
+	_, err := AesKeyUnwrap(kek, input0)
 	if err == nil {
 		t.Error("key unwrap failed to detect invalid input")
 	}
+
+	// Invalid unwrap input (truncated)
+	input1, _ := hex.DecodeString("1EA68C1A8112B447AEF34BD8FB5A7B828D3E862371D2CF")
+
+	_, err = AesKeyUnwrap(kek, input1)
+	if err == nil {
+		t.Error("key unwrap failed to detect truncated input")
+	}
+
+	// Invalid wrap input (not multiple of 8)
+	input2, _ := hex.DecodeString("0123456789ABCD")
+
+	_, err = AesKeyWrap(kek, input2)
+	if err == nil {
+		t.Error("key wrap accepted invalid input")
+	}
+
 }
 
 func BenchmarkAesKeyWrap(b *testing.B) {

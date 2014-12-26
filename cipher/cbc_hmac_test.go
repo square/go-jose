@@ -279,6 +279,13 @@ func TestInvalidPadding(t *testing.T) {
 				return
 			}
 		}
+
+		// Test truncated padding
+		_, err := unpadBuffer(padded[:len(padded)-1], 16)
+		if err == nil {
+			t.Error("unpad on truncated padding should fail", i)
+			return
+		}
 	}
 }
 
