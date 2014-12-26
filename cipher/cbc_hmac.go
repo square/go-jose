@@ -43,20 +43,30 @@ func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (
 		return nil, err
 	}
 
+	var hash func() hash.Hash
+	switch keySize {
+	case 16:
+		hash = sha256.New
+	case 24:
+		hash = sha512.New384
+	case 32:
+		hash = sha512.New
+	}
+
 	return &cbcAEAD{
-		encryptionKey: encryptionKey,
-		integrityKey:  integrityKey,
-		blockCipher:   blockCipher,
-		authtagBytes:  keySize,
+		hash:         hash,
+		blockCipher:  blockCipher,
+		authtagBytes: keySize,
+		integrityKey: integrityKey,
 	}, nil
 }
 
 // An AEAD based on CBC+HMAC
 type cbcAEAD struct {
-	encryptionKey []byte
-	integrityKey  []byte
-	authtagBytes  int
-	blockCipher   cipher.Block
+	hash         func() hash.Hash
+	authtagBytes int
+	integrityKey []byte
+	blockCipher  cipher.Block
 }
 
 func (ctx *cbcAEAD) NonceSize() int {
@@ -64,7 +74,8 @@ func (ctx *cbcAEAD) NonceSize() int {
 }
 
 func (ctx *cbcAEAD) Overhead() int {
-	// Maximum overhead is block size (for padding) plus auth tag length
+	// Maximum overhead is block size (for padding) plus auth tag length, where
+	// the length of the auth tag is equivalent to the key size.
 	return ctx.blockCipher.BlockSize() + ctx.authtagBytes
 }
 
@@ -118,34 +129,18 @@ func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 
 // Compute an authentication tag
 func (ctx *cbcAEAD) computeAuthTag(aad, nonce, ciphertext []byte) []byte {
-	buffer := []byte(aad)
-	buffer = append(buffer, nonce...)
-	buffer = append(buffer, ciphertext...)
-	buffer = append(buffer, bitLen(aad)...)
-
-	var hash func() hash.Hash
-	switch len(ctx.integrityKey) {
-	case 16:
-		hash = sha256.New
-	case 24:
-		hash = sha512.New384
-	case 32:
-		hash = sha512.New
-	}
-
-	hmac := hmac.New(hash, ctx.integrityKey)
+	buffer := make([]byte, len(aad)+len(nonce)+len(ciphertext)+8)
+	n := 0
+	n += copy(buffer, aad)
+	n += copy(buffer[n:], nonce)
+	n += copy(buffer[n:], ciphertext)
+	binary.BigEndian.PutUint64(buffer[n:], uint64(len(aad)*8))
 
 	// According to documentation, Write() on hash.Hash never fails.
+	hmac := hmac.New(ctx.hash, ctx.integrityKey)
 	_, _ = hmac.Write(buffer)
 
 	return hmac.Sum(nil)[:ctx.authtagBytes]
-}
-
-// Helper function for serializing bit length into array
-func bitLen(input []byte) []byte {
-	encodedLen := make([]byte, 8)
-	binary.BigEndian.PutUint64(encodedLen, uint64(len(input)*8))
-	return encodedLen
 }
 
 // resize ensures the the given slice has a capacity of at least n bytes.

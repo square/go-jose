@@ -26,27 +26,26 @@ import (
 type concatKDF struct {
 	z, info []byte
 	i       uint32
-	size    int
 	cache   []byte
 	hasher  hash.Hash
 }
 
 // NewConcatKDF builds a KDF reader based on the given inputs.
 func NewConcatKDF(hash crypto.Hash, z, algID, ptyUInfo, ptyVInfo, supPubInfo, supPrivInfo []byte) io.Reader {
-	info := []byte{}
-	info = append(info, algID...)
-	info = append(info, ptyUInfo...)
-	info = append(info, ptyVInfo...)
-	info = append(info, supPubInfo...)
-	info = append(info, supPrivInfo...)
+	buffer := make([]byte, len(algID)+len(ptyUInfo)+len(ptyVInfo)+len(supPubInfo)+len(supPrivInfo))
+	n := 0
+	n += copy(buffer, algID)
+	n += copy(buffer[n:], ptyUInfo)
+	n += copy(buffer[n:], ptyVInfo)
+	n += copy(buffer[n:], supPubInfo)
+	copy(buffer[n:], supPrivInfo)
 
-	outSize := len(hash.New().Sum(nil))
+	hasher := hash.New()
 
 	return &concatKDF{
 		z:      z,
-		info:   info,
-		hasher: hash.New(),
-		size:   outSize,
+		info:   buffer,
+		hasher: hasher,
 		cache:  []byte{},
 		i:      1,
 	}
