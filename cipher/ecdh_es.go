@@ -25,18 +25,9 @@ import (
 // DeriveECDHES derives a shared encryption key using ECDH/ConcatKDF as described in JWE/JWA.
 func DeriveECDHES(alg string, apuData, apvData []byte, priv *ecdsa.PrivateKey, pub *ecdsa.PublicKey, size int) []byte {
 	// algId, partyUInfo, partyVInfo inputs must be prefixed with the length
-	algData := []byte(alg)
-	algID := make([]byte, 4)
-	binary.BigEndian.PutUint32(algID, uint32(len(algData)))
-	algID = append(algID, algData...)
-
-	ptyUInfo := make([]byte, 4)
-	binary.BigEndian.PutUint32(ptyUInfo, uint32(len(apuData)))
-	ptyUInfo = append(ptyUInfo, apuData...)
-
-	ptyVInfo := make([]byte, 4)
-	binary.BigEndian.PutUint32(ptyVInfo, uint32(len(apvData)))
-	ptyVInfo = append(ptyVInfo, apvData...)
+	algID := lengthPrefixed([]byte(alg))
+	ptyUInfo := lengthPrefixed(apuData)
+	ptyVInfo := lengthPrefixed(apvData)
 
 	// suppPubInfo is the encoded length of the output size in bits
 	supPubInfo := make([]byte, 4)
@@ -50,4 +41,11 @@ func DeriveECDHES(alg string, apuData, apvData []byte, priv *ecdsa.PrivateKey, p
 	// Read on the KDF will never fail
 	_, _ = reader.Read(key)
 	return key
+}
+
+func lengthPrefixed(data []byte) []byte {
+	out := make([]byte, len(data)+4)
+	binary.BigEndian.PutUint32(out, uint32(len(data)))
+	copy(out[4:], data)
+	return out
 }
