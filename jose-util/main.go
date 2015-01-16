@@ -117,7 +117,7 @@ func main() {
 				exitOnError(err, "unable to parse message")
 
 				plaintext, err := obj.Decrypt(priv)
-				exitOnError(err, "unable to encrypt message")
+				exitOnError(err, "unable to decrypt message")
 
 				writeOutput(c.String("output"), plaintext)
 			},
