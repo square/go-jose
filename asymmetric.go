@@ -18,6 +18,7 @@ package jose
 
 import (
 	"crypto"
+	"crypto/aes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
@@ -312,7 +313,12 @@ func (ctx ecEncrypterVerifier) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 		return recipientInfo{}, err
 	}
 
-	jek, err := josecipher.AesKeyWrap(kek, cek)
+	block, err := aes.NewCipher(kek)
+	if err != nil {
+		return recipientInfo{}, err
+	}
+
+	jek, err := josecipher.KeyWrap(block, cek)
 	if err != nil {
 		return recipientInfo{}, err
 	}
@@ -360,22 +366,33 @@ func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientI
 	apuData := headers.Apu.bytes()
 	apvData := headers.Apv.bytes()
 
-	genKey := func(algID string, size int) []byte {
+	deriveKey := func(algID string, size int) []byte {
 		return josecipher.DeriveECDHES(algID, apuData, apvData, ctx.privateKey, publicKey, size)
 	}
 
+	var keySize int
+
 	switch KeyAlgorithm(headers.Alg) {
 	case ECDH_ES:
-		return genKey(string(headers.Enc), generator.keySize()), nil
+		// ECDH-ES uses direct key agreement, no key unwrapping necessary.
+		return deriveKey(string(headers.Enc), generator.keySize()), nil
 	case ECDH_ES_A128KW:
-		return josecipher.AesKeyUnwrap(genKey(string(headers.Alg), 16), recipient.encryptedKey)
+		keySize = 16
 	case ECDH_ES_A192KW:
-		return josecipher.AesKeyUnwrap(genKey(string(headers.Alg), 24), recipient.encryptedKey)
+		keySize = 24
 	case ECDH_ES_A256KW:
-		return josecipher.AesKeyUnwrap(genKey(string(headers.Alg), 32), recipient.encryptedKey)
+		keySize = 32
+	default:
+		return nil, ErrUnsupportedAlgorithm
 	}
 
-	return nil, ErrUnsupportedAlgorithm
+	key := deriveKey(headers.Alg, keySize)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return josecipher.KeyUnwrap(block, recipient.encryptedKey)
 }
 
 // Sign the given payload

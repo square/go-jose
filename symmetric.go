@@ -236,7 +236,12 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 			encryptedKey: parts.ciphertext,
 		}, nil
 	case A128KW, A192KW, A256KW:
-		jek, err := josecipher.AesKeyWrap(ctx.key, cek)
+		block, err := aes.NewCipher(ctx.key)
+		if err != nil {
+			return recipientInfo{}, err
+		}
+
+		jek, err := josecipher.KeyWrap(block, cek)
 		if err != nil {
 			return recipientInfo{}, err
 		}
@@ -273,7 +278,12 @@ func (ctx *symmetricKeyCipher) decryptKey(headers rawHeader, recipient *recipien
 
 		return cek, nil
 	case A128KW, A192KW, A256KW:
-		cek, err := josecipher.AesKeyUnwrap(ctx.key, recipient.encryptedKey)
+		block, err := aes.NewCipher(ctx.key)
+		if err != nil {
+			return nil, err
+		}
+
+		cek, err := josecipher.KeyUnwrap(block, recipient.encryptedKey)
 		if err != nil {
 			return nil, err
 		}
