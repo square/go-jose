@@ -88,7 +88,7 @@ if err != nil {
 // Serialize the encrypted object using the full serialization format.
 // Alternatively you can also use the compact format here by calling
 // object.CompactSerialize() instead.
-serialized, err := object.FullSerialize()
+serialized := object.FullSerialize()
 
 // Parse the serialized, encrypted JWE object. An error would indicate that
 // the given input did not represent a valid message.
