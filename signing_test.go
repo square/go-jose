@@ -120,6 +120,40 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	}
 }
 
+func TestJWSInvalidKey(t *testing.T) {
+	signingKey0, verificationKey0 := GenerateSigningTestKey(RS256)
+	_, verificationKey1 := GenerateSigningTestKey(ES256)
+
+	signer, err := NewSigner(RS256, signingKey0)
+	if err != nil {
+		panic(err)
+	}
+
+	input := []byte("Lorem ipsum dolor sit amet")
+	obj, err := signer.Sign(input)
+	if err != nil {
+		panic(err)
+	}
+
+	// Must work with correct key
+	_, err = obj.Verify(verificationKey0)
+	if err != nil {
+		t.Error("error on verify", err)
+	}
+
+	// Must not work with incorrect key
+	_, err = obj.Verify(verificationKey1)
+	if err == nil {
+		t.Error("verification should fail with incorrect key")
+	}
+
+	// Must not work with invalid key
+	_, err = obj.Verify("")
+	if err == nil {
+		t.Error("verification should fail with incorrect key")
+	}
+}
+
 func TestMultiRecipientJWS(t *testing.T) {
 	signer := NewMultiSigner()
 
