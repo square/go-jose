@@ -18,6 +18,7 @@ package josecipher
 
 import (
 	"bytes"
+	"crypto/aes"
 	"encoding/hex"
 	"testing"
 )
@@ -39,9 +40,13 @@ func TestAesKeyWrap(t *testing.T) {
 
 	expected2, _ := hex.DecodeString("A8F9BC1612C68B3FF6E6F4FBE30E71E4769C8B80A32CB8958CD5D17D6B254DA1")
 
-	out0, _ := AesKeyWrap(kek0, cek0)
-	out1, _ := AesKeyWrap(kek1, cek1)
-	out2, _ := AesKeyWrap(kek2, cek2)
+	block0, _ := aes.NewCipher(kek0)
+	block1, _ := aes.NewCipher(kek1)
+	block2, _ := aes.NewCipher(kek2)
+
+	out0, _ := KeyWrap(block0, cek0)
+	out1, _ := KeyWrap(block1, cek1)
+	out2, _ := KeyWrap(block2, cek2)
 
 	if bytes.Compare(out0, expected0) != 0 {
 		t.Error("output 0 not as expected, got", out0, "wanted", expected0)
@@ -55,9 +60,9 @@ func TestAesKeyWrap(t *testing.T) {
 		t.Error("output 2 not as expected, got", out2, "wanted", expected2)
 	}
 
-	unwrap0, _ := AesKeyUnwrap(kek0, out0)
-	unwrap1, _ := AesKeyUnwrap(kek1, out1)
-	unwrap2, _ := AesKeyUnwrap(kek2, out2)
+	unwrap0, _ := KeyUnwrap(block0, out0)
+	unwrap1, _ := KeyUnwrap(block1, out1)
+	unwrap2, _ := KeyUnwrap(block2, out2)
 
 	if bytes.Compare(unwrap0, cek0) != 0 {
 		t.Error("key unwrap did not return original input, got", unwrap0, "wanted", cek0)
@@ -78,7 +83,9 @@ func TestAesKeyWrapInvalid(t *testing.T) {
 	// Invalid unwrap input (bit flipped)
 	input0, _ := hex.DecodeString("1EA68C1A8112B447AEF34BD8FB5A7B828D3E862371D2CFE5")
 
-	_, err := AesKeyUnwrap(kek, input0)
+	block, _ := aes.NewCipher(kek)
+
+	_, err := KeyUnwrap(block, input0)
 	if err == nil {
 		t.Error("key unwrap failed to detect invalid input")
 	}
@@ -86,7 +93,7 @@ func TestAesKeyWrapInvalid(t *testing.T) {
 	// Invalid unwrap input (truncated)
 	input1, _ := hex.DecodeString("1EA68C1A8112B447AEF34BD8FB5A7B828D3E862371D2CF")
 
-	_, err = AesKeyUnwrap(kek, input1)
+	_, err = KeyUnwrap(block, input1)
 	if err == nil {
 		t.Error("key unwrap failed to detect truncated input")
 	}
@@ -94,7 +101,7 @@ func TestAesKeyWrapInvalid(t *testing.T) {
 	// Invalid wrap input (not multiple of 8)
 	input2, _ := hex.DecodeString("0123456789ABCD")
 
-	_, err = AesKeyWrap(kek, input2)
+	_, err = KeyWrap(block, input2)
 	if err == nil {
 		t.Error("key wrap accepted invalid input")
 	}
@@ -105,9 +112,11 @@ func BenchmarkAesKeyWrap(b *testing.B) {
 	kek, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
 	key, _ := hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
+	block, _ := aes.NewCipher(kek)
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		AesKeyWrap(kek, key)
+		KeyWrap(block, key)
 	}
 }
 
@@ -115,8 +124,10 @@ func BenchmarkAesKeyUnwrap(b *testing.B) {
 	kek, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
 	input, _ := hex.DecodeString("1FA68B0A8112B447AEF34BD8FB5A7B829D3E862371D2CFE5")
 
+	block, _ := aes.NewCipher(kek)
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		AesKeyUnwrap(kek, input)
+		KeyUnwrap(block, input)
 	}
 }

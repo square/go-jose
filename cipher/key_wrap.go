@@ -17,7 +17,7 @@
 package josecipher
 
 import (
-	"crypto/aes"
+	"crypto/cipher"
 	"crypto/subtle"
 	"encoding/binary"
 	"errors"
@@ -25,15 +25,10 @@ import (
 
 var defaultIV = []byte{0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6}
 
-// AesKeyWrap wraps a content encryption key (cek) with the given key encryption key (kek).
-func AesKeyWrap(kek, cek []byte) ([]byte, error) {
+// KeyWrap implements NIST key wrapping; it wraps a content encryption key (cek) with the given block cipher.
+func KeyWrap(block cipher.Block, cek []byte) ([]byte, error) {
 	if len(cek)%8 != 0 {
 		return nil, errors.New("square/go-jose: key wrap input must be 8 byte blocks")
-	}
-
-	block, err := aes.NewCipher(kek)
-	if err != nil {
-		return nil, err
 	}
 
 	n := len(cek) / 8
@@ -70,15 +65,10 @@ func AesKeyWrap(kek, cek []byte) ([]byte, error) {
 	return out, nil
 }
 
-// AesKeyUnwrap unwraps a wrapped key (ciphertext) with the given key encryption key (kek).
-func AesKeyUnwrap(kek, ciphertext []byte) ([]byte, error) {
+// KeyUnwrap implements NIST key unwrapping; it unwraps a content encryption key (cek) with the given block cipher.
+func KeyUnwrap(block cipher.Block, ciphertext []byte) ([]byte, error) {
 	if len(ciphertext)%8 != 0 {
 		return nil, errors.New("square/go-jose: key wrap input must be 8 byte blocks")
-	}
-
-	block, err := aes.NewCipher(kek)
-	if err != nil {
-		return nil, err
 	}
 
 	n := (len(ciphertext) / 8) - 1
