@@ -17,13 +17,14 @@ US maintained blocked list.
 ## Overview
 
 The implementation follows the
-[JSON Web Encryption](http://www.ietf.org/id/draft-ietf-jose-json-web-encryption-37.txt) and
-[JSON Web Signature](http://www.ietf.org/id/draft-ietf-jose-json-web-signature-37.txt)
-standard drafts as of version 37. Tables of supported algorithms are shown
-below. The library supports both the compact and full serialization formats,
-and has optional support for multiple recipients. It also comes with a small
-command-line utility (`jose-util`) for encrypting/decrypting JWE messages in
-a shell.
+[JSON Web Encryption](http://www.ietf.org/id/draft-ietf-jose-json-web-encryption-40.txt)
+standard (as of version 40) and
+[JSON Web Signature](http://www.ietf.org/id/draft-ietf-jose-json-web-signature-41.txt)
+standard (as of version 41). Tables of supported algorithms are shown below.
+The library supports both the compact and full serialization formats, and has
+optional support for multiple recipients. It also comes with a small
+command-line utility (`jose-util`) for encrypting/decrypting JWE messages in a
+shell.
 
 ### Supported algorithms
 
@@ -65,7 +66,7 @@ Encryption/decryption example using RSA:
 // that can be used to load keys from PEM/DER-encoded data.
 privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Instantiate an encrypter using RSA-OAEP with AES128-GCM. An error would
@@ -73,7 +74,7 @@ if err != nil {
 publicKey := &privateKey.PublicKey
 encrypter, err := NewEncrypter(RSA_OAEP, A128GCM, publicKey)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Encrypt a sample plaintext. Calling the encrypter returns an encrypted
@@ -82,27 +83,27 @@ if err != nil {
 var plaintext = []byte("Lorem ipsum dolor sit amet")
 object, err := encrypter.Encrypt(plaintext)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Serialize the encrypted object using the full serialization format.
 // Alternatively you can also use the compact format here by calling
 // object.CompactSerialize() instead.
-serialized, err := object.FullSerialize()
+serialized := object.FullSerialize()
 
 // Parse the serialized, encrypted JWE object. An error would indicate that
 // the given input did not represent a valid message.
 object, err = ParseEncrypted(serialized)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Now we can decrypt and get back our original plaintext. An error here
 // would indicate the the message failed to decrypt, e.g. because the auth
-// tag was broken and the message was tampered with.
+// tag was broken or the message was tampered with.
 decrypted, err := object.Decrypt(privateKey)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 fmt.Printf(string(decrypted))

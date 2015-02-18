@@ -189,20 +189,20 @@ func ExampleNewMultiEncrypter() {
 }
 
 func ExampleNewMultiSigner() {
-	var publicKey *rsa.PublicKey
+	var privateKey *rsa.PrivateKey
 	var sharedKey []byte
 
 	// Instantiate a signer for multiple recipients.
-	encrypter := NewMultiSigner()
+	signer := NewMultiSigner()
 
 	// Add a recipient using a shared key with HMAC-SHA256
-	err := encrypter.AddRecipient(HS256, sharedKey)
+	err := signer.AddRecipient(HS256, sharedKey)
 	if err != nil {
 		panic(err)
 	}
 
-	// Add a recipient using an RSA public key with RSASSA-PSS with SHA384
-	err = encrypter.AddRecipient(PS384, publicKey)
+	// Add a recipient using an RSA private key with RSASSA-PSS with SHA384
+	err = signer.AddRecipient(PS384, privateKey)
 	if err != nil {
 		panic(err)
 	}
