@@ -2,10 +2,6 @@ language: go
 
 sudo: false
 
-env:
-  global:
-    secure: "DSNkH1T/OYbHTjrEZsVfU2C649ZiYiu/OytnVGlhR4ZFwTQpB5u1YydExqNLwzsmaju3S9dR7Pq1rNvrsMGa+fviXIQkgQb/iB3RO1w9Uz2OAU5d24vtTeBFWdsNCBEKSw1acJtS2YfrmAOR4U5Zdm/DyocZakFxZqJ5pw4J6pw="
-
 matrix:
   fast_finish: true
   allow_failures:
@@ -25,5 +21,7 @@ before_install:
 
 script:
 - go test -v -covermode=count -coverprofile=coverage.out
-- "$HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN || true"
+
+after_success:
+- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci
 
