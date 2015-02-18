@@ -20,8 +20,10 @@ before_install:
 - go get code.google.com/p/go.tools/cmd/cover || true
 
 script:
-- go test -v -covermode=count -coverprofile=coverage.out
+- go test . -v -covermode=count -coverprofile=profile.cov
+- go test ./cipher -v -covermode=count -coverprofile=cipher/profile.cov
 
 after_success:
-- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+- tail -n+2 cipher/profile.cov >> profile.cov
+- $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci
 
