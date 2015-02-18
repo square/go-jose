@@ -66,7 +66,7 @@ Encryption/decryption example using RSA:
 // that can be used to load keys from PEM/DER-encoded data.
 privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Instantiate an encrypter using RSA-OAEP with AES128-GCM. An error would
@@ -74,7 +74,7 @@ if err != nil {
 publicKey := &privateKey.PublicKey
 encrypter, err := NewEncrypter(RSA_OAEP, A128GCM, publicKey)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Encrypt a sample plaintext. Calling the encrypter returns an encrypted
@@ -83,27 +83,27 @@ if err != nil {
 var plaintext = []byte("Lorem ipsum dolor sit amet")
 object, err := encrypter.Encrypt(plaintext)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Serialize the encrypted object using the full serialization format.
 // Alternatively you can also use the compact format here by calling
 // object.CompactSerialize() instead.
-serialized, err := object.FullSerialize()
+serialized := object.FullSerialize()
 
 // Parse the serialized, encrypted JWE object. An error would indicate that
 // the given input did not represent a valid message.
 object, err = ParseEncrypted(serialized)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 // Now we can decrypt and get back our original plaintext. An error here
 // would indicate the the message failed to decrypt, e.g. because the auth
-// tag was broken and the message was tampered with.
+// tag was broken or the message was tampered with.
 decrypted, err := object.Decrypt(privateKey)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 
 fmt.Printf(string(decrypted))
