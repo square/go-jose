@@ -19,6 +19,8 @@ package jose
 import (
 	"bytes"
 	"crypto/cipher"
+	"crypto/rand"
+	"io"
 	"testing"
 )
 
@@ -60,6 +62,24 @@ func TestInvalidKey(t *testing.T) {
 	_, err := gcm.getAead([]byte{})
 	if err == nil {
 		t.Error("should not accept invalid key")
+	}
+}
+
+func TestStaticKeyGen(t *testing.T) {
+	key := make([]byte, 32)
+	io.ReadFull(rand.Reader, key)
+
+	gen := &staticKeyGenerator{key: key}
+	if gen.keySize() != len(key) {
+		t.Error("static key generator reports incorrect size")
+	}
+
+	generated, _, err := gen.genKey()
+	if err != nil {
+		t.Error("static key generator should always succeed", err)
+	}
+	if !bytes.Equal(generated, key) {
+		t.Error("static key generator returns different data")
 	}
 }
 
