@@ -17,13 +17,14 @@ US maintained blocked list.
 ## Overview
 
 The implementation follows the
-[JSON Web Encryption](http://www.ietf.org/id/draft-ietf-jose-json-web-encryption-37.txt) and
-[JSON Web Signature](http://www.ietf.org/id/draft-ietf-jose-json-web-signature-37.txt)
-standard drafts as of version 37. Tables of supported algorithms are shown
-below. The library supports both the compact and full serialization formats,
-and has optional support for multiple recipients. It also comes with a small
-command-line utility (`jose-util`) for encrypting/decrypting JWE messages in
-a shell.
+[JSON Web Encryption](http://www.ietf.org/id/draft-ietf-jose-json-web-encryption-40.txt)
+(as of version 40) and
+[JSON Web Signature](http://www.ietf.org/id/draft-ietf-jose-json-web-signature-41.txt)
+(as of version 41). Tables of supported algorithms are shown below. The
+library supports both the compact and full serialization formats, and has
+optional support for multiple recipients. It also comes with a small
+command-line utility (`jose-util`) for encrypting/decrypting JWE messages in a
+shell.
 
 ### Supported algorithms
 
