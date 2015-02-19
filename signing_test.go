@@ -22,6 +22,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"testing"
 )
 
@@ -115,6 +116,34 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 				if err == nil {
 					t.Error("failed to detect corrupt signature", err, alg, i, j)
 				}
+			}
+		}
+	}
+}
+
+func TestSignerWithBrokenRand(t *testing.T) {
+	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512}
+
+	serializer := func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() }
+	corrupter := func(obj *JsonWebSignature) {}
+
+	// Break rand reader
+	readers := []func() io.Reader{
+		// Totally broken
+		func() io.Reader { return bytes.NewReader([]byte{}) },
+		// Not enough bytes
+		func() io.Reader { return io.LimitReader(rand.Reader, 20) },
+	}
+
+	defer resetRandReader()
+
+	for _, alg := range sigAlgs {
+		signingKey, verificationKey := GenerateSigningTestKey(alg)
+		for i, getReader := range readers {
+			randReader = getReader()
+			err := RoundtripJWS(alg, serializer, corrupter, signingKey, verificationKey)
+			if err == nil {
+				t.Error("signer should fail if rand is broken", alg, i)
 			}
 		}
 	}

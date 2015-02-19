@@ -233,9 +233,9 @@ func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm
 
 	switch alg {
 	case RS256, RS384, RS512:
-		out, err = rsa.SignPKCS1v15(rand.Reader, ctx.privateKey, hash, hashed)
+		out, err = rsa.SignPKCS1v15(randReader, ctx.privateKey, hash, hashed)
 	case PS256, PS384, PS512:
-		out, err = rsa.SignPSS(rand.Reader, ctx.privateKey, hash, hashed, &rsa.PSSOptions{
+		out, err = rsa.SignPSS(randReader, ctx.privateKey, hash, hashed, &rsa.PSSOptions{
 			SaltLength: rsa.PSSSaltLengthAuto,
 		})
 	}
@@ -336,7 +336,7 @@ func (ctx ecKeyGenerator) keySize() int {
 
 // Get a content encryption key for ECDH-ES
 func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
-	priv, err := ecdsa.GenerateKey(ctx.publicKey.Curve, rand.Reader)
+	priv, err := ecdsa.GenerateKey(ctx.publicKey.Curve, randReader)
 	if err != nil {
 		return nil, rawHeader{}, err
 	}
@@ -418,7 +418,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 	_, _ = hasher.Write(payload)
 	hashed := hasher.Sum(nil)
 
-	r, s, err := ecdsa.Sign(rand.Reader, ctx.privateKey, hashed)
+	r, s, err := ecdsa.Sign(randReader, ctx.privateKey, hashed)
 	if err != nil {
 		return signatureInfo{}, err
 	}

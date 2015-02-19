@@ -256,6 +256,42 @@ func TestPadding(t *testing.T) {
 	}
 }
 
+func TestInvalidKey(t *testing.T) {
+	key := make([]byte, 30)
+	_, err := NewCBCHMAC(key, aes.NewCipher)
+	if err == nil {
+		t.Error("should not be able to instantiate CBC-HMAC with invalid key")
+	}
+}
+
+func TestInvalidCiphertext(t *testing.T) {
+	key := make([]byte, 32)
+	nonce := make([]byte, 16)
+	data := make([]byte, 32)
+
+	io.ReadFull(rand.Reader, key)
+	io.ReadFull(rand.Reader, nonce)
+
+	aead, err := NewCBCHMAC(key, aes.NewCipher)
+	if err != nil {
+		panic(err)
+	}
+
+	ctx := aead.(*cbcAEAD)
+	ct := aead.Seal(nil, nonce, data, nil)
+
+	// Mutated ciphertext, but with correct auth tag
+	ct[len(ct)-ctx.authtagBytes-1] ^= 0xFF
+	tag := ctx.computeAuthTag(nil, nonce, ct[:len(ct)-ctx.authtagBytes])
+	copy(ct[len(ct)-ctx.authtagBytes:], tag)
+
+	// Open should fail (b/c of invalid padding, even though tag matches)
+	_, err = aead.Open(nil, nonce, ct, nil)
+	if err == nil {
+		t.Error("open on mutated ciphertext should fail")
+	}
+}
+
 func TestInvalidPadding(t *testing.T) {
 	for i := 0; i < 256; i++ {
 		slice := make([]byte, i)
