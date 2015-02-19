@@ -23,6 +23,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"io"
 	"testing"
 )
 
@@ -177,6 +178,38 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 								t.Error("failed to detect corrupt data", err, alg, enc, zip, i, j)
 							}
 						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestEncrypterWithBrokenRand(t *testing.T) {
+	keyAlgs := []KeyAlgorithm{ECDH_ES_A128KW, A128KW, RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW}
+	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
+
+	serializer := func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() }
+	corrupter := func(obj *JsonWebEncryption) bool { return false }
+
+	// Break rand reader
+	readers := []func() io.Reader{
+		// Totally broken
+		func() io.Reader { return bytes.NewReader([]byte{}) },
+		// Not enough bytes
+		func() io.Reader { return io.LimitReader(rand.Reader, 20) },
+	}
+
+	defer resetRandReader()
+
+	for _, alg := range keyAlgs {
+		for _, enc := range encAlgs {
+			for _, key := range generateTestKeys(alg, enc) {
+				for i, getReader := range readers {
+					randReader = getReader()
+					err := RoundtripJWE(alg, enc, NONE, serializer, corrupter, nil, key.enc, key.dec)
+					if err == nil {
+						t.Error("encrypter should fail if rand is broken", i)
 					}
 				}
 			}
