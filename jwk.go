@@ -19,27 +19,89 @@ package jose
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rsa"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"reflect"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
 type rawJsonWebKey struct {
-	// TODO(cs): Add support for private keys, non-EC keys.
+	// TODO(cs): Add support for private keys.
 	Kty string      `json:"kty,omitempty"`
 	Crv string      `json:"crv,omitempty"`
 	X   *byteBuffer `json:"x,omitempty"`
 	Y   *byteBuffer `json:"y,omitempty"`
+	N   *byteBuffer `json:"n,omitempty"`
+	E   *byteBuffer `json:"e,omitempty"`
 }
 
-func (key *rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
-	if key == nil {
-		return nil, fmt.Errorf("square/go-jose: expecting public key, found nil")
+// JsonWebKey represents a public or private key in JWK format.
+type JsonWebKey struct {
+	key interface{}
+}
+
+func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
+	var raw rawJsonWebKey
+	switch key := k.key.(type) {
+	case *ecdsa.PublicKey:
+		raw.fromEcPublicKey(key)
+	case *rsa.PublicKey:
+		raw.fromRsaPublicKey(key)
+	default:
+		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
 	}
 
-	if key.Kty != "EC" {
-		return nil, fmt.Errorf("square/go-jose: expecting EC key, found '%s' instead", key.Kty)
+	return json.Marshal(raw)
+}
+
+func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
+	var raw rawJsonWebKey
+	err = json.Unmarshal(data, &raw)
+	if err != nil {
+		return err
 	}
 
+	var key interface{} = nil
+	switch raw.Kty {
+	case "EC":
+		key, err = raw.ecPublicKey()
+	case "RSA":
+		key, err = raw.rsaPublicKey()
+	default:
+		err = fmt.Errorf("square/go-jose: unkown json web key type '%s'", raw.Kty)
+	}
+
+	if err == nil {
+		*k = JsonWebKey{key: key}
+	}
+	return
+}
+
+func (key rawJsonWebKey) rsaPublicKey() (*rsa.PublicKey, error) {
+	if key.N == nil || key.E == nil {
+		return nil, fmt.Errorf("square/go-jose: invalid RSA key, missing n/e values")
+	}
+
+	return &rsa.PublicKey{
+		N: key.N.bigInt(),
+		E: key.E.toInt(),
+	}, nil
+}
+
+func (key *rawJsonWebKey) fromRsaPublicKey(pub *rsa.PublicKey) {
+	e := make([]byte, 4)
+	binary.BigEndian.PutUint32(e, uint32(pub.E))
+
+	*key = rawJsonWebKey{
+		Kty: "RSA",
+		N:   newBuffer(pub.N.Bytes()),
+		E:   newBuffer(e),
+	}
+}
+
+func (key rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 	var curve elliptic.Curve
 	switch key.Crv {
 	case "P-256":
@@ -63,7 +125,6 @@ func (key *rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 	}, nil
 }
 
-// serializeECPublicKey loads an elliptic curve public key from a JWK object.
 func (key *rawJsonWebKey) fromEcPublicKey(pub *ecdsa.PublicKey) error {
 	*key = rawJsonWebKey{
 		Kty: "EC",

@@ -34,7 +34,7 @@ type MultiSigner interface {
 }
 
 type payloadSigner interface {
-	signPayload(payload []byte, alg SignatureAlgorithm) (signatureInfo, error)
+	signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error)
 }
 
 type payloadVerifier interface {
@@ -46,8 +46,9 @@ type genericSigner struct {
 }
 
 type recipientSigInfo struct {
-	sigAlg SignatureAlgorithm
-	signer payloadSigner
+	sigAlg    SignatureAlgorithm
+	publicKey *JsonWebKey
+	signer    payloadSigner
 }
 
 // NewSigner creates an appropriate signer based on the key type
@@ -85,6 +86,8 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 		return &symmetricMac{
 			key: verificationKey,
 		}, nil
+	case *JsonWebKey:
+		return newVerifier(verificationKey.key)
 	default:
 		return nil, ErrUnsupportedKeyType
 	}
@@ -101,6 +104,8 @@ func (ctx *genericSigner) AddRecipient(alg SignatureAlgorithm, signingKey interf
 		recipient, err = newECDSASigner(alg, signingKey)
 	case []byte:
 		recipient, err = newSymmetricSigner(alg, signingKey)
+	case *JsonWebKey:
+		return ctx.AddRecipient(alg, signingKey.key)
 	default:
 		return ErrUnsupportedKeyType
 	}
@@ -116,11 +121,15 @@ func (ctx *genericSigner) AddRecipient(alg SignatureAlgorithm, signingKey interf
 func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	obj := &JsonWebSignature{}
 	obj.payload = payload
-	obj.signatures = make([]signatureInfo, len(ctx.recipients))
+	obj.Signatures = make([]Signature, len(ctx.recipients))
 
 	for i, recipient := range ctx.recipients {
 		protected := &rawHeader{
 			Alg: string(recipient.sigAlg),
+		}
+
+		if recipient.publicKey != nil {
+			protected.Jwk = recipient.publicKey
 		}
 
 		serializedProtected := mustSerializeJSON(protected)
@@ -135,7 +144,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 		}
 
 		signatureInfo.protected = protected
-		obj.signatures[i] = signatureInfo
+		obj.Signatures[i] = signatureInfo
 	}
 
 	return obj, nil
@@ -148,7 +157,7 @@ func (obj JsonWebSignature) Verify(verificationKey interface{}) ([]byte, error) 
 		return nil, err
 	}
 
-	for _, signature := range obj.signatures {
+	for _, signature := range obj.Signatures {
 		headers := signature.mergedHeaders()
 		if len(headers.Crit) > 0 {
 			// Unsupported crit header

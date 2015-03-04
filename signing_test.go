@@ -56,6 +56,16 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 		return fmt.Errorf("error on verify: %s", err)
 	}
 
+	// Check that verify works with embedded keys (if present)
+	for i, sig := range obj.Signatures {
+		if sig.Header.JsonWebKey != nil {
+			_, err = obj.Verify(sig.Header.JsonWebKey)
+			if err != nil {
+				return fmt.Errorf("error on verify with embedded key %s: %s", i, err)
+			}
+		}
+	}
+
 	if bytes.Compare(output, input) != 0 {
 		return fmt.Errorf("input/output do not match, got '%s', expected '%s'", output, input)
 	}
@@ -98,11 +108,11 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	corrupters := []func(*JsonWebSignature){
 		func(obj *JsonWebSignature) {
 			// Changes bytes in signature
-			obj.signatures[0].signature[10]++
+			obj.Signatures[0].signature[10]++
 		},
 		func(obj *JsonWebSignature) {
 			// Set totally invalid signature
-			obj.signatures[0].signature = []byte("###")
+			obj.Signatures[0].signature = []byte("###")
 		},
 	}
 
@@ -283,7 +293,7 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
-	obj.signatures[0].header = &rawHeader{
+	obj.Signatures[0].header = &rawHeader{
 		Crit: []string{"TEST"},
 	}
 
@@ -293,8 +303,8 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	// Try without alg header
-	obj.signatures[0].protected = &rawHeader{}
-	obj.signatures[0].header = &rawHeader{}
+	obj.Signatures[0].protected = &rawHeader{}
+	obj.Signatures[0].header = &rawHeader{}
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {

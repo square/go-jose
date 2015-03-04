@@ -156,3 +156,7 @@ func (b *byteBuffer) bytes() []byte {
 func (b byteBuffer) bigInt() *big.Int {
 	return new(big.Int).SetBytes(b.data)
 }
+
+func (b byteBuffer) toInt() int {
+	return int(b.bigInt().Int64())
+}
