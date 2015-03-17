@@ -28,6 +28,13 @@ shell.
 
 ### Supported algorithms
 
+See below for a table of supported algorithms. Algorithm identifiers match
+the names in the
+[JSON Web Algorithms](http://www.ietf.org/id/draft-ietf-jose-json-web-algorithms-40.txt)
+standard where possible. The
+[Godoc reference](https://godoc.org/github.com/square/go-jose#pkg-constants)
+has a list of constants.
+
  Key encryption             | Algorithm identifier(s)
  :------------------------- | :------------------------------
  RSA-PKCS#1v1.5             | RSA1_5
@@ -55,6 +62,18 @@ shell.
  Compression                | Algorithm identifiers(s)
  :------------------------- | -------------------------------
  DEFLATE (RFC 1951)         | DEF
+
+### Supported key types
+
+See below for a table of supported key types. These are understood by the
+library, and can be passed to corresponding functions such as `NewEncrypter` or
+`NewSigner`.
+
+ Algorithm(s)               | Corresponding types
+ :------------------------- | -------------------------------
+ RSA                        | *[rsa.PublicKey](http://golang.org/pkg/crypto/rsa/#PublicKey), *[rsa.PrivateKey](http://golang.org/pkg/crypto/rsa/#PrivateKey)
+ ECDH, ECDSA                | *[ecdsa.PublicKey](http://golang.org/pkg/crypto/ecdsa/#PublicKey), *[ecdsa.PrivateKey](http://golang.org/pkg/crypto/ecdsa/#PrivateKey)
+ AES, HMAC                  | []byte
 
 ## Examples
 
