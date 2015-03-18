@@ -94,28 +94,33 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 }
 
 func (ctx *genericSigner) AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error {
-	var err error
-	var recipient recipientSigInfo
-
-	switch signingKey := signingKey.(type) {
-	case *rsa.PrivateKey:
-		recipient, err = newRSASigner(alg, signingKey)
-	case *ecdsa.PrivateKey:
-		recipient, err = newECDSASigner(alg, signingKey)
-	case []byte:
-		recipient, err = newSymmetricSigner(alg, signingKey)
-	case *JsonWebKey:
-		return ctx.AddRecipient(alg, signingKey.key)
-	default:
-		return ErrUnsupportedKeyType
-	}
-
+	recipient, err := makeRecipient(alg, signingKey)
 	if err != nil {
 		return err
 	}
 
 	ctx.recipients = append(ctx.recipients, recipient)
 	return nil
+}
+
+func makeRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSigInfo, error) {
+	switch signingKey := signingKey.(type) {
+	case *rsa.PrivateKey:
+		return newRSASigner(alg, signingKey)
+	case *ecdsa.PrivateKey:
+		return newECDSASigner(alg, signingKey)
+	case []byte:
+		return newSymmetricSigner(alg, signingKey)
+	case *JsonWebKey:
+		recipient, err := makeRecipient(alg, signingKey.key)
+		if err != nil {
+			return recipientSigInfo{}, err
+		}
+		recipient.publicKey.kid = signingKey.kid
+		return recipient, nil
+	default:
+		return recipientSigInfo{}, ErrUnsupportedKeyType
+	}
 }
 
 func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
@@ -130,6 +135,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 
 		if recipient.publicKey != nil {
 			protected.Jwk = recipient.publicKey
+			protected.Kid = recipient.publicKey.kid
 		}
 
 		serializedProtected := mustSerializeJSON(protected)

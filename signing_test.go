@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"io"
 	"testing"
@@ -309,5 +310,55 @@ func TestInvalidJWS(t *testing.T) {
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
 		t.Error("should not verify message with missing headers")
+	}
+}
+
+func TestSignerKid(t *testing.T) {
+	kid := "DEADBEEF"
+	payload := []byte("Lorem ipsum dolor sit amet")
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Error("problem generating test signing key", err)
+	}
+
+	basejwk := JsonWebKey{key: key}
+	jsonbar, err := basejwk.MarshalJSON()
+	if err != nil {
+		t.Error("problem marshalling base JWK", err)
+	}
+
+	var jsonmsi map[string]interface{}
+	err = json.Unmarshal(jsonbar, &jsonmsi)
+	if err != nil {
+		t.Error("problem unmarshalling base JWK", err)
+	}
+	jsonmsi["kid"] = kid
+	jsonbar2, err := json.Marshal(jsonmsi)
+	if err != nil {
+		t.Error("problem marshalling kided JWK", err)
+	}
+
+	var jwk JsonWebKey
+	err = jwk.UnmarshalJSON(jsonbar2)
+	if err != nil {
+		t.Error("problem unmarshalling kided JWK", err)
+	}
+
+	signer, err := NewSigner(ES256, &jwk)
+	if err != nil {
+		t.Error("problem creating signer", err)
+	}
+	signed, err := signer.Sign(payload)
+
+	serialized := signed.FullSerialize()
+
+	parsed, err := ParseSigned(serialized)
+	if err != nil {
+		t.Error("problem parsing signed object", err)
+	}
+
+	if parsed.Signatures[0].Header.KeyId != kid {
+		t.Error("KeyId did not survive trip")
 	}
 }

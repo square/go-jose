@@ -23,23 +23,30 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"reflect"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
 type rawJsonWebKey struct {
-	// TODO(cs): Add support for private keys.
 	Kty string      `json:"kty,omitempty"`
+	Kid string      `json:"kid,omitempty"`
 	Crv string      `json:"crv,omitempty"`
 	X   *byteBuffer `json:"x,omitempty"`
 	Y   *byteBuffer `json:"y,omitempty"`
 	N   *byteBuffer `json:"n,omitempty"`
 	E   *byteBuffer `json:"e,omitempty"`
+	// private key fields, EC uses D only
+	// if D is nil, key is public only
+	D *byteBuffer `json:"d,omitempty"`
+	P *byteBuffer `json:"p,omitempty"`
+	Q *byteBuffer `json:"q.omitempty"`
 }
 
 // JsonWebKey represents a public or private key in JWK format.
 type JsonWebKey struct {
 	key interface{}
+	kid string
 }
 
 func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
@@ -49,9 +56,15 @@ func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
 		raw.fromEcPublicKey(key)
 	case *rsa.PublicKey:
 		raw.fromRsaPublicKey(key)
+	case *ecdsa.PrivateKey:
+		raw.fromEcPrivateKey(key)
+	case *rsa.PrivateKey:
+		raw.fromRsaPrivateKey(key)
 	default:
 		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
 	}
+
+	raw.Kid = k.kid
 
 	return json.Marshal(raw)
 }
@@ -66,15 +79,23 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	var key interface{} = nil
 	switch raw.Kty {
 	case "EC":
-		key, err = raw.ecPublicKey()
+		if raw.D != nil {
+			key, err = raw.ecPrivateKey()
+		} else {
+			key, err = raw.ecPublicKey()
+		}
 	case "RSA":
-		key, err = raw.rsaPublicKey()
+		if raw.D != nil {
+			key, err = raw.rsaPrivateKey()
+		} else {
+			key, err = raw.rsaPublicKey()
+		}
 	default:
 		err = fmt.Errorf("square/go-jose: unkown json web key type '%s'", raw.Kty)
 	}
 
 	if err == nil {
-		*k = JsonWebKey{key: key}
+		*k = JsonWebKey{key: key, kid: raw.Kid}
 	}
 	return
 }
@@ -144,4 +165,57 @@ func (key *rawJsonWebKey) fromEcPublicKey(pub *ecdsa.PublicKey) error {
 	}
 
 	return nil
+}
+
+func (jwk rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
+	if jwk.D == nil || jwk.P == nil || jwk.Q == nil {
+		return nil, fmt.Errorf("square/go-jose: invalid RSA private key, missing values")
+	}
+
+	rv := new(rsa.PrivateKey)
+	pubkey, err := jwk.rsaPublicKey()
+	if err != nil {
+		return nil, err
+	}
+	rv.PublicKey = *pubkey
+	rv.D = jwk.D.bigInt()
+	rv.Primes = make([]*big.Int, 2)
+	rv.Primes[0] = jwk.P.bigInt()
+	rv.Primes[1] = jwk.Q.bigInt()
+
+	err = rv.Validate()
+	return rv, err
+}
+
+func (jwkp *rawJsonWebKey) fromRsaPrivateKey(rsa *rsa.PrivateKey) {
+	var jwk rawJsonWebKey
+	jwk.fromRsaPublicKey(&rsa.PublicKey)
+
+	jwk.D = newBuffer(rsa.D.Bytes())
+	// TODO: do we need to ensure len(Primes) >= 2 and/or deal with more than 2?
+	jwk.P = newBuffer(rsa.Primes[0].Bytes())
+	jwk.Q = newBuffer(rsa.Primes[1].Bytes())
+	*jwkp = jwk
+}
+
+func (jwk rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
+	if jwk.D == nil {
+		return nil, fmt.Errorf("square/go-jose: invalid ECDSA private key, missing D")
+	}
+
+	rv := new(ecdsa.PrivateKey)
+	pubkey, err := jwk.ecPublicKey()
+	if err != nil {
+		return nil, err
+	}
+	rv.PublicKey = *pubkey
+	rv.D = jwk.D.bigInt()
+	return rv, err
+}
+
+func (jwkp *rawJsonWebKey) fromEcPrivateKey(ec *ecdsa.PrivateKey) {
+	var jwk rawJsonWebKey
+	jwk.fromEcPublicKey(&ec.PublicKey)
+	jwk.D = newBuffer(ec.D.Bytes())
+	*jwkp = jwk
 }
