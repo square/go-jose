@@ -17,11 +17,9 @@
 package jose
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"math/big"
 	"reflect"
 	"testing"
 )
@@ -61,63 +59,89 @@ func TestParseInvalidECKeys(t *testing.T) {
 }
 
 func TestRoundtripRsaPrivate(t *testing.T) {
-	rsa, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Error("problem generating test RSA key", err)
-	}
-
 	var jwk rawJsonWebKey
-	jwk.fromRsaPrivateKey(rsa)
+	jwk.fromRsaPrivateKey(rsaTestKey)
 
 	rsa2, err := jwk.rsaPrivateKey()
 	if err != nil {
 		t.Error("problem converting RSA private -> JWK", err)
 	}
 
-	if rsa2.N.Cmp(rsa.N) != 0 {
+	if rsa2.N.Cmp(rsaTestKey.N) != 0 {
 		t.Error("RSA private N mismatch")
 	}
-	if rsa2.E != rsa.E {
+	if rsa2.E != rsaTestKey.E {
 		t.Error("RSA private E mismatch")
 	}
-	if rsa2.D.Cmp(rsa.D) != 0 {
+	if rsa2.D.Cmp(rsaTestKey.D) != 0 {
 		t.Error("RSA private D mismatch")
 	}
 	if len(rsa2.Primes) != 2 {
 		t.Error("RSA private roundtrip expected two primes")
 	}
-	if rsa2.Primes[0].Cmp(rsa.Primes[0]) != 0 {
+	if rsa2.Primes[0].Cmp(rsaTestKey.Primes[0]) != 0 {
 		t.Error("RSA private P mismatch")
 	}
-	if rsa2.Primes[1].Cmp(rsa.Primes[1]) != 0 {
+	if rsa2.Primes[1].Cmp(rsaTestKey.Primes[1]) != 0 {
 		t.Error("RSA private Q mismatch")
 	}
 }
 
-func TestRoundtripEcPrivate(t *testing.T) {
-	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Error("problem generating test ECDSA key", err)
+func TestRsaPrivateInsufficientPrimes(t *testing.T) {
+	brokenRsaPrivateKey := rsa.PrivateKey{
+		PublicKey: rsa.PublicKey{
+			N: rsaTestKey.N,
+			E: rsaTestKey.E,
+		},
+		D:      rsaTestKey.D,
+		Primes: []*big.Int{rsaTestKey.Primes[0]},
 	}
-
 	var jwk rawJsonWebKey
-	jwk.fromEcPrivateKey(ec)
+	err := jwk.fromRsaPrivateKey(&brokenRsaPrivateKey)
+	if err != ErrUnsupportedKeyType {
+		t.Error("expected unsupported key type error, got", err)
+	}
+}
+
+func TestRsaPrivateExcessPrimes(t *testing.T) {
+	brokenRsaPrivateKey := rsa.PrivateKey{
+		PublicKey: rsa.PublicKey{
+			N: rsaTestKey.N,
+			E: rsaTestKey.E,
+		},
+		D: rsaTestKey.D,
+		Primes: []*big.Int{
+			rsaTestKey.Primes[0],
+			rsaTestKey.Primes[1],
+			big.NewInt(3),
+		},
+	}
+	var jwk rawJsonWebKey
+	err := jwk.fromRsaPrivateKey(&brokenRsaPrivateKey)
+	if err != ErrUnsupportedKeyType {
+		t.Error("expected unsupported key type error, got", err)
+	}
+}
+
+func TestRoundtripEcPrivate(t *testing.T) {
+	var jwk rawJsonWebKey
+	jwk.fromEcPrivateKey(ecTestKey256)
 
 	ec2, err := jwk.ecPrivateKey()
 	if err != nil {
 		t.Error("problem converting ECDSA private -> JWK", err)
 	}
 
-	if !reflect.DeepEqual(ec2.Curve, ec.Curve) {
+	if !reflect.DeepEqual(ec2.Curve, ecTestKey256.Curve) {
 		t.Error("ECDSA private curve mismatch")
 	}
-	if ec2.X.Cmp(ec.X) != 0 {
+	if ec2.X.Cmp(ecTestKey256.X) != 0 {
 		t.Error("ECDSA X mismatch")
 	}
-	if ec2.Y.Cmp(ec.Y) != 0 {
+	if ec2.Y.Cmp(ecTestKey256.Y) != 0 {
 		t.Error("ECDSA Y mismatch")
 	}
-	if ec2.D.Cmp(ec.D) != 0 {
+	if ec2.D.Cmp(ecTestKey256.D) != 0 {
 		t.Error("ECDSA D mismatch")
 	}
 }
@@ -125,12 +149,7 @@ func TestRoundtripEcPrivate(t *testing.T) {
 func TestKidMarshaling(t *testing.T) {
 	kid := "DEADBEEF"
 
-	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Error("problem generating test ECDSA key", err)
-	}
-
-	jwk := JsonWebKey{key: ec, kid: kid}
+	jwk := JsonWebKey{key: ecTestKey256, kid: kid}
 	jsonbar, err := jwk.MarshalJSON()
 	if err != nil {
 		t.Error("problem marshaling", err)
