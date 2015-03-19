@@ -116,7 +116,7 @@ func makeRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSig
 		if err != nil {
 			return recipientSigInfo{}, err
 		}
-		recipient.publicKey.KeyId = signingKey.KeyId
+		recipient.publicKey.KeyID = signingKey.KeyID
 		return recipient, nil
 	default:
 		return recipientSigInfo{}, ErrUnsupportedKeyType
@@ -135,7 +135,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 
 		if recipient.publicKey != nil {
 			protected.Jwk = recipient.publicKey
-			protected.Kid = recipient.publicKey.KeyId
+			protected.Kid = recipient.publicKey.KeyID
 		}
 
 		serializedProtected := mustSerializeJSON(protected)

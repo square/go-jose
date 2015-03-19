@@ -358,7 +358,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem parsing signed object", err)
 	}
 
-	if parsed.Signatures[0].Header.KeyId != kid {
-		t.Error("KeyId did not survive trip")
+	if parsed.Signatures[0].Header.KeyID != kid {
+		t.Error("KeyID did not survive trip")
 	}
 }

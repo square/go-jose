@@ -125,13 +125,13 @@ type rawHeader struct {
 
 // JoseHeader represents the read-only JOSE header for JWE/JWS objects.
 type JoseHeader struct {
-	KeyId      string
+	KeyID      string
 	JsonWebKey *JsonWebKey
 }
 
 func (parsed rawHeader) sanitized() JoseHeader {
 	return JoseHeader{
-		KeyId:      parsed.Kid,
+		KeyID:      parsed.Kid,
 		JsonWebKey: parsed.Jwk,
 	}
 }
