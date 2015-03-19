@@ -45,7 +45,8 @@ var (
 
 	// ErrUnsupportedKeyType indicates that the given key type/format is not
 	// supported. This occurs when trying to instantiate an encrypter and passing
-	// it a key of an unrecognized type.
+	// it a key of an unrecognized type or with unsupported parameters, such as
+	// an RSA private key with more than two primes.
 	ErrUnsupportedKeyType = errors.New("square/go-jose: unsupported key type/format")
 
 	// ErrNotSupported serialization of object is not supported. This occurs when
