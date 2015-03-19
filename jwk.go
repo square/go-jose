@@ -50,13 +50,13 @@ type rawJsonWebKey struct {
 
 // JsonWebKey represents a public or private key in JWK format.
 type JsonWebKey struct {
-	key interface{}
-	kid string
+	Key   interface{}
+	KeyId string
 }
 
 func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
 	var raw rawJsonWebKey
-	switch key := k.key.(type) {
+	switch key := k.Key.(type) {
 	case *ecdsa.PublicKey:
 		raw.fromEcPublicKey(key)
 	case *rsa.PublicKey:
@@ -75,7 +75,7 @@ func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
 		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
 	}
 
-	raw.Kid = k.kid
+	raw.Kid = k.KeyId
 
 	return json.Marshal(raw)
 }
@@ -106,7 +106,7 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if err == nil {
-		*k = JsonWebKey{key: key, kid: raw.Kid}
+		*k = JsonWebKey{Key: key, KeyId: raw.Kid}
 	}
 	return
 }

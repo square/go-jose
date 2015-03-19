@@ -26,8 +26,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/square/go-jose/cipher"
 	"math/big"
+
+	"github.com/square/go-jose/cipher"
 )
 
 // A generic RSA-based encrypter/verifier
@@ -86,7 +87,7 @@ func newRSASigner(sigAlg SignatureAlgorithm, privateKey *rsa.PrivateKey) (recipi
 	return recipientSigInfo{
 		sigAlg: sigAlg,
 		publicKey: &JsonWebKey{
-			key: &privateKey.PublicKey,
+			Key: &privateKey.PublicKey,
 		},
 		signer: &rsaDecrypterSigner{
 			privateKey: privateKey,
@@ -123,7 +124,7 @@ func newECDSASigner(sigAlg SignatureAlgorithm, privateKey *ecdsa.PrivateKey) (re
 	return recipientSigInfo{
 		sigAlg: sigAlg,
 		publicKey: &JsonWebKey{
-			key: &privateKey.PublicKey,
+			Key: &privateKey.PublicKey,
 		},
 		signer: &ecDecrypterSigner{
 			privateKey: privateKey,
@@ -351,7 +352,7 @@ func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
 
 	headers := rawHeader{
 		Epk: &JsonWebKey{
-			key: &priv.PublicKey,
+			Key: &priv.PublicKey,
 		},
 	}
 
@@ -364,7 +365,7 @@ func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientI
 		return nil, errors.New("square/go-jose: missing epk header")
 	}
 
-	publicKey, ok := headers.Epk.key.(*ecdsa.PublicKey)
+	publicKey, ok := headers.Epk.Key.(*ecdsa.PublicKey)
 	if publicKey == nil || !ok {
 		return nil, errors.New("square/go-jose: invalid epk header")
 	}

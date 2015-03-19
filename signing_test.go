@@ -322,7 +322,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem generating test signing key", err)
 	}
 
-	basejwk := JsonWebKey{key: key}
+	basejwk := JsonWebKey{Key: key}
 	jsonbar, err := basejwk.MarshalJSON()
 	if err != nil {
 		t.Error("problem marshalling base JWK", err)

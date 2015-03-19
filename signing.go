@@ -87,7 +87,7 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 			key: verificationKey,
 		}, nil
 	case *JsonWebKey:
-		return newVerifier(verificationKey.key)
+		return newVerifier(verificationKey.Key)
 	default:
 		return nil, ErrUnsupportedKeyType
 	}
@@ -112,11 +112,11 @@ func makeRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSig
 	case []byte:
 		return newSymmetricSigner(alg, signingKey)
 	case *JsonWebKey:
-		recipient, err := makeRecipient(alg, signingKey.key)
+		recipient, err := makeRecipient(alg, signingKey.Key)
 		if err != nil {
 			return recipientSigInfo{}, err
 		}
-		recipient.publicKey.kid = signingKey.kid
+		recipient.publicKey.KeyId = signingKey.KeyId
 		return recipient, nil
 	default:
 		return recipientSigInfo{}, ErrUnsupportedKeyType
@@ -135,7 +135,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 
 		if recipient.publicKey != nil {
 			protected.Jwk = recipient.publicKey
-			protected.Kid = recipient.publicKey.kid
+			protected.Kid = recipient.publicKey.KeyId
 		}
 
 		serializedProtected := mustSerializeJSON(protected)

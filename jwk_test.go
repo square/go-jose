@@ -120,7 +120,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
 	for _, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
-		jwk := JsonWebKey{key: key, kid: kid}
+		jwk := JsonWebKey{Key: key, KeyId: kid}
 		jsonbar, err := jwk.MarshalJSON()
 		if err != nil {
 			t.Error("problem marshaling", err)
@@ -141,7 +141,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 			t.Error("roundtrip should not lose information")
 		}
 
-		if jwk2.kid != kid {
+		if jwk2.KeyId != kid {
 			t.Error("kid did not roundtrip JSON marshalling")
 		}
 	}
@@ -175,7 +175,7 @@ func TestMarshalUnmarshalInvalid(t *testing.T) {
 	}
 
 	for _, key := range keys {
-		jwk := JsonWebKey{key: key}
+		jwk := JsonWebKey{Key: key}
 		_, err := jwk.MarshalJSON()
 		if err == nil {
 			t.Error("managed to serialize invalid key")
