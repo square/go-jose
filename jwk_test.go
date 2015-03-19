@@ -17,46 +17,14 @@
 package jose
 
 import (
+	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
-	"encoding/json"
 	"math/big"
 	"reflect"
 	"testing"
 )
-
-func TestParseInvalidKeys(t *testing.T) {
-	invalids := []string{
-		`{XXX`,
-		`{"kty":[]}`,
-		`{"kty":"EC","crv":"P-256","x":"###","y":""}`,
-		`{"kty":"EC","crv":"P-256","x":"","y":"###"}`,
-	}
-
-	for _, invalid := range invalids {
-		var jwk rawJsonWebKey
-		err := json.Unmarshal([]byte(invalid), &jwk)
-		if err == nil {
-			t.Error("parser incorrectly parsed invalid key", jwk)
-		}
-	}
-}
-
-func TestParseInvalidECKeys(t *testing.T) {
-	invalids := []string{
-		`{"kty":"RSA"}`,
-		`{"kty":"EC","crv":"XXX"}`,
-		`{"kty":"EC","crv":"P-256","x":""}`,
-	}
-
-	for _, invalid := range invalids {
-		var jwk rawJsonWebKey
-		json.Unmarshal([]byte(invalid), &jwk)
-		_, err := jwk.ecPublicKey()
-		if err == nil {
-			t.Error("ec parser incorrectly parsed invalid key", jwk)
-		}
-	}
-}
 
 func TestRoundtripRsaPrivate(t *testing.T) {
 	var jwk rawJsonWebKey
@@ -124,43 +92,165 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 }
 
 func TestRoundtripEcPrivate(t *testing.T) {
-	var jwk rawJsonWebKey
-	jwk.fromEcPrivateKey(ecTestKey256)
+	for _, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
+		var jwk rawJsonWebKey
+		jwk.fromEcPrivateKey(ecTestKey)
 
-	ec2, err := jwk.ecPrivateKey()
-	if err != nil {
-		t.Error("problem converting ECDSA private -> JWK", err)
-	}
+		ec2, err := jwk.ecPrivateKey()
+		if err != nil {
+			t.Error("problem converting ECDSA private -> JWK", err)
+		}
 
-	if !reflect.DeepEqual(ec2.Curve, ecTestKey256.Curve) {
-		t.Error("ECDSA private curve mismatch")
-	}
-	if ec2.X.Cmp(ecTestKey256.X) != 0 {
-		t.Error("ECDSA X mismatch")
-	}
-	if ec2.Y.Cmp(ecTestKey256.Y) != 0 {
-		t.Error("ECDSA Y mismatch")
-	}
-	if ec2.D.Cmp(ecTestKey256.D) != 0 {
-		t.Error("ECDSA D mismatch")
+		if !reflect.DeepEqual(ec2.Curve, ecTestKey.Curve) {
+			t.Error("ECDSA private curve mismatch")
+		}
+		if ec2.X.Cmp(ecTestKey.X) != 0 {
+			t.Error("ECDSA X mismatch")
+		}
+		if ec2.Y.Cmp(ecTestKey.Y) != 0 {
+			t.Error("ECDSA Y mismatch")
+		}
+		if ec2.D.Cmp(ecTestKey.D) != 0 {
+			t.Error("ECDSA D mismatch")
+		}
 	}
 }
 
-func TestKidMarshaling(t *testing.T) {
+func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
-	jwk := JsonWebKey{key: ecTestKey256, kid: kid}
-	jsonbar, err := jwk.MarshalJSON()
-	if err != nil {
-		t.Error("problem marshaling", err)
+	for _, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
+		jwk := JsonWebKey{key: key, kid: kid}
+		jsonbar, err := jwk.MarshalJSON()
+		if err != nil {
+			t.Error("problem marshaling", err)
+		}
+
+		var jwk2 JsonWebKey
+		err = jwk2.UnmarshalJSON(jsonbar)
+		if err != nil {
+			t.Error("problem unmarshalling", err)
+		}
+
+		jsonbar2, err := jwk2.MarshalJSON()
+		if err != nil {
+			t.Error("problem marshaling", err)
+		}
+
+		if !bytes.Equal(jsonbar, jsonbar2) {
+			t.Error("roundtrip should not lose information")
+		}
+
+		if jwk2.kid != kid {
+			t.Error("kid did not roundtrip JSON marshalling")
+		}
 	}
-	var jwk2 JsonWebKey
-	err = jwk2.UnmarshalJSON(jsonbar)
-	if err != nil {
-		t.Error("problem unmarshalling", err)
+}
+
+func TestMarshalUnmarshalInvalid(t *testing.T) {
+	keys := []interface{}{
+		// Empty keys
+		&rsa.PrivateKey{},
+		&ecdsa.PrivateKey{},
+		// Invalid keys
+		&ecdsa.PrivateKey{
+			PublicKey: ecdsa.PublicKey{
+				// Missing values in pub key
+				Curve: elliptic.P256(),
+			},
+		},
+		&ecdsa.PrivateKey{
+			PublicKey: ecdsa.PublicKey{
+				// Invalid curve
+				Curve: nil,
+				X:     ecTestKey256.X,
+				Y:     ecTestKey256.Y,
+			},
+		},
+		&ecdsa.PrivateKey{
+			// Valid pub key, but missing priv key values
+			PublicKey: ecTestKey256.PublicKey,
+		},
+		nil,
 	}
 
-	if jwk2.kid != kid {
-		t.Error("kid did not roundtrip JSON marshalling")
+	for _, key := range keys {
+		jwk := JsonWebKey{key: key}
+		_, err := jwk.MarshalJSON()
+		if err == nil {
+			t.Error("managed to serialize invalid key")
+		}
+	}
+}
+
+func TestWebKeyVectorsInvalid(t *testing.T) {
+	keys := []string{
+		// Invalid JSON
+		"{X",
+		// Empty key
+		"{}",
+		// Invalid RSA keys
+		`{"kty":"RSA"}`,
+		`{"kty":"RSA","e":""}`,
+		`{"kty":"RSA","e":"XXXX"}`,
+		`{"kty":"RSA","d":"XXXX"}`,
+		// Invalid EC keys
+		`{"kty":"EC","crv":"ABC"}`,
+		`{"kty":"EC","crv":"P-256"}`,
+		`{"kty":"EC","crv":"P-256","d":"XXX"}`,
+		`{"kty":"EC","crv":"ABC","d":"dGVzdA","x":"dGVzdA"}`,
+		`{"kty":"EC","crv":"P-256","d":"dGVzdA","x":"dGVzdA"}`,
+	}
+
+	for _, key := range keys {
+		var jwk2 JsonWebKey
+		err := jwk2.UnmarshalJSON([]byte(key))
+		if err == nil {
+			t.Error("managed to parse invalid key:", key)
+		}
+	}
+}
+
+func TestWebKeyVectorsValid(t *testing.T) {
+	keys := []string{
+		stripWhitespace(`{"kty":"RSA",
+      "kid":"juliet@capulet.lit",
+      "use":"enc",
+      "n":"t6Q8PWSi1dkJj9hTP8hNYFlvadM7DflW9mWepOJhJ66w7nyoK1gPNqFMSQRy
+           O125Gp-TEkodhWr0iujjHVx7BcV0llS4w5ACGgPrcAd6ZcSR0-Iqom-QFcNP
+           8Sjg086MwoqQU_LYywlAGZ21WSdS_PERyGFiNnj3QQlO8Yns5jCtLCRwLHL0
+           Pb1fEv45AuRIuUfVcPySBWYnDyGxvjYGDSM-AqWS9zIQ2ZilgT-GqUmipg0X
+           OC0Cc20rgLe2ymLHjpHciCKVAbY5-L32-lSeZO-Os6U15_aXrk9Gw8cPUaX1
+           _I8sLGuSiVdt3C_Fn2PZ3Z8i744FPFGGcG1qs2Wz-Q",
+      "e":"AQAB",
+      "d":"GRtbIQmhOZtyszfgKdg4u_N-R_mZGU_9k7JQ_jn1DnfTuMdSNprTeaSTyWfS
+           NkuaAwnOEbIQVy1IQbWVV25NY3ybc_IhUJtfri7bAXYEReWaCl3hdlPKXy9U
+           vqPYGR0kIXTQRqns-dVJ7jahlI7LyckrpTmrM8dWBo4_PMaenNnPiQgO0xnu
+           ToxutRZJfJvG4Ox4ka3GORQd9CsCZ2vsUDmsXOfUENOyMqADC6p1M3h33tsu
+           rY15k9qMSpG9OX_IJAXmxzAh_tWiZOwk2K4yxH9tS3Lq1yX8C1EWmeRDkK2a
+           hecG85-oLKQt5VEpWHKmjOi_gJSdSgqcN96X52esAQ",
+      "p":"2rnSOV4hKSN8sS4CgcQHFbs08XboFDqKum3sc4h3GRxrTmQdl1ZK9uw-PIHf
+           QP0FkxXVrx-WE-ZEbrqivH_2iCLUS7wAl6XvARt1KkIaUxPPSYB9yk31s0Q8
+           UK96E3_OrADAYtAJs-M3JxCLfNgqh56HDnETTQhH3rCT5T3yJws",
+      "q":"1u_RiFDP7LBYh3N4GXLT9OpSKYP0uQZyiaZwBtOCBNJgQxaj10RWjsZu0c6I
+           edis4S7B_coSKB0Kj9PaPaBzg-IySRvvcQuPamQu66riMhjVtG6TlV8CLCYK
+           rYl52ziqK0E_ym2QnkwsUX7eYTB7LbAHRK9GqocDE5B0f808I4s",
+      "dp":"KkMTWqBUefVwZ2_Dbj1pPQqyHSHjj90L5x_MOzqYAJMcLMZtbUtwKqvVDq3
+           tbEo3ZIcohbDtt6SbfmWzggabpQxNxuBpoOOf_a_HgMXK_lhqigI4y_kqS1w
+           Y52IwjUn5rgRrJ-yYo1h41KR-vz2pYhEAeYrhttWtxVqLCRViD6c",
+      "dq":"AvfS0-gRxvn0bwJoMSnFxYcK1WnuEjQFluMGfwGitQBWtfZ1Er7t1xDkbN9
+           GQTB9yqpDoYaN06H7CFtrkxhJIBQaj6nkF5KKS3TQtQ5qCzkOkmxIe3KRbBy
+           mXxkb5qwUpX5ELD5xFc6FeiafWYY63TmmEAu_lRFCOJ3xDea-ots",
+      "qi":"lSQi-w9CpyUReMErP1RsBLk7wNtOvs5EQpPqmuMvqW57NBUczScEoPwmUqq
+           abu9V0-Py4dQ57_bapoKRu1R90bvuFnU63SHWEFglZQvJDMeAvmj4sm-Fp0o
+           Yu_neotgQ0hzbI5gry7ajdYy9-2lNx_76aBZoOUu9HCJ-UsfSOI8"}`),
+	}
+
+	for _, key := range keys {
+		var jwk2 JsonWebKey
+		err := jwk2.UnmarshalJSON([]byte(key))
+		if err != nil {
+			t.Error("unable to parse valid key:", key, err)
+		}
 	}
 }

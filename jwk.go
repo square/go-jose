@@ -36,21 +36,13 @@ type rawJsonWebKey struct {
 	Y   *byteBuffer `json:"y,omitempty"`
 	N   *byteBuffer `json:"n,omitempty"`
 	E   *byteBuffer `json:"e,omitempty"`
-	// following fields are only used for private keys
-	// RSA uses D, P and Q, while ECDSA uses only D
-	// Dp, Dq, and Qi are completely optional. the x509 pkcs1 parsing code
-	// that this is based off of do not use them at all, preferring instead
-	// to let the rsa package handle their computation. i am not sure if
-	// there are potential problems if they are provided and somehow
-	// inaccurate/malicious. it should be safe to remove them if desired.
-	// therefore for RSA/ECDSA, D != nil is a contract that we have a private key
-	// whereas D == nil means we have only a public key
-	// implementors of additional algorithms must have some similar
-	// means of discerning public/private using only the data in this structure
-	// or else UnmarshalJSON will not be able to deserialize the proper key type
+	// -- Following fields are only used for private keys --
+	// RSA uses D, P and Q, while ECDSA uses only D. Fields Dp, Dq, and Qi are
+	// completely optional. Therefore for RSA/ECDSA, D != nil is a contract that
+	// we have a private key whereas D == nil means we have only a public key.
 	D  *byteBuffer `json:"d,omitempty"`
 	P  *byteBuffer `json:"p,omitempty"`
-	Q  *byteBuffer `json:"q.omitempty"`
+	Q  *byteBuffer `json:"q,omitempty"`
 	Dp *byteBuffer `json:"dp,omitempty"`
 	Dq *byteBuffer `json:"dq,omitempty"`
 	Qi *byteBuffer `json:"qi,omitempty"`
@@ -70,7 +62,10 @@ func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
 	case *rsa.PublicKey:
 		raw.fromRsaPublicKey(key)
 	case *ecdsa.PrivateKey:
-		raw.fromEcPrivateKey(key)
+		err := raw.fromEcPrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
 	case *rsa.PrivateKey:
 		err := raw.fromRsaPrivateKey(key)
 		if err != nil {
@@ -163,6 +158,10 @@ func (key rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 }
 
 func (key *rawJsonWebKey) fromEcPublicKey(pub *ecdsa.PublicKey) error {
+	if pub == nil || pub.X == nil || pub.Y == nil {
+		return fmt.Errorf("square/go-jose: invalid EC key")
+	}
+
 	*key = rawJsonWebKey{
 		Kty: "EC",
 		X:   newBuffer(pub.X.Bytes()),
@@ -242,12 +241,8 @@ func (jwk rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 		return nil, fmt.Errorf("square/go-jose: unsupported elliptic curve '%s'", jwk.Crv)
 	}
 
-	if jwk.X == nil || jwk.Y == nil {
-		return nil, fmt.Errorf("square/go-jose: invalid EC key, missing x/y values")
-	}
-
-	if jwk.D == nil {
-		return nil, fmt.Errorf("square/go-jose: invalid ECDSA private key, missing D")
+	if jwk.X == nil || jwk.Y == nil || jwk.D == nil {
+		return nil, fmt.Errorf("square/go-jose: invalid EC private key, missing x/y/d values")
 	}
 
 	return &ecdsa.PrivateKey{
@@ -260,9 +255,20 @@ func (jwk rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 	}, nil
 }
 
-func (jwkp *rawJsonWebKey) fromEcPrivateKey(ec *ecdsa.PrivateKey) {
+func (jwkp *rawJsonWebKey) fromEcPrivateKey(ec *ecdsa.PrivateKey) error {
 	var jwk rawJsonWebKey
-	jwk.fromEcPublicKey(&ec.PublicKey)
+
+	err := jwk.fromEcPublicKey(&ec.PublicKey)
+	if err != nil {
+		return err
+	}
+
+	if ec.D == nil {
+		return fmt.Errorf("square/go-jose: invalid EC private key")
+	}
+
 	jwk.D = newBuffer(ec.D.Bytes())
 	*jwkp = jwk
+
+	return nil
 }
