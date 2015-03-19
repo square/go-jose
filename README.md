@@ -156,18 +156,6 @@ if err != nil {
 	panic(err)
 }
 
-// Headers for each signature attached to the object can be accessed.
-// In this case, only a single signature is attached to the object.
-header := object.Signatures[0].Header
-
-// JsonWebSignatures can also be verified using the JsonWebKey embedded in
-// the header (if present). Take care to ensure the key is actually trusted
-// when using this method.
-output, err = object.Verify(header.JsonWebKey)
-if err != nil {
-	panic(err)
-}
-
 fmt.Printf(string(output))
 // output: Lorem ipsum dolor sit amet
 ```
