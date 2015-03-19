@@ -62,7 +62,7 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 		if sig.Header.JsonWebKey != nil {
 			_, err = obj.Verify(sig.Header.JsonWebKey)
 			if err != nil {
-				return fmt.Errorf("error on verify with embedded key %s: %s", i, err)
+				return fmt.Errorf("error on verify with embedded key %d: %s", i, err)
 			}
 		}
 	}

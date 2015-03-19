@@ -54,6 +54,7 @@ type JsonWebKey struct {
 	KeyID string
 }
 
+// MarshalJSON serializes the given key to its JSON representation.
 func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
 	var raw rawJsonWebKey
 	switch key := k.Key.(type) {
@@ -80,6 +81,7 @@ func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(raw)
 }
 
+// UnmarshalJSON reads a key from its JSON representation.
 func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	var raw rawJsonWebKey
 	err = json.Unmarshal(data, &raw)
@@ -87,7 +89,7 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 		return err
 	}
 
-	var key interface{} = nil
+	var key interface{}
 	switch raw.Kty {
 	case "EC":
 		if raw.D != nil {
@@ -182,55 +184,55 @@ func (key *rawJsonWebKey) fromEcPublicKey(pub *ecdsa.PublicKey) error {
 	return nil
 }
 
-func (jwk rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
-	if jwk.N == nil || jwk.E == nil || jwk.D == nil || jwk.P == nil || jwk.Q == nil {
+func (key rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
+	if key.N == nil || key.E == nil || key.D == nil || key.P == nil || key.Q == nil {
 		return nil, fmt.Errorf("square/go-jose: invalid RSA private key, missing values")
 	}
 
 	rv := &rsa.PrivateKey{
 		PublicKey: rsa.PublicKey{
-			N: jwk.N.bigInt(),
-			E: jwk.E.toInt(),
+			N: key.N.bigInt(),
+			E: key.E.toInt(),
 		},
-		D: jwk.D.bigInt(),
+		D: key.D.bigInt(),
 		Primes: []*big.Int{
-			jwk.P.bigInt(),
-			jwk.Q.bigInt(),
+			key.P.bigInt(),
+			key.Q.bigInt(),
 		},
 	}
 
-	if jwk.Dp != nil {
-		rv.Precomputed.Dp = jwk.Dp.bigInt()
+	if key.Dp != nil {
+		rv.Precomputed.Dp = key.Dp.bigInt()
 	}
-	if jwk.Dq != nil {
-		rv.Precomputed.Dq = jwk.Dq.bigInt()
+	if key.Dq != nil {
+		rv.Precomputed.Dq = key.Dq.bigInt()
 	}
-	if jwk.Qi != nil {
-		rv.Precomputed.Qinv = jwk.Qi.bigInt()
+	if key.Qi != nil {
+		rv.Precomputed.Qinv = key.Qi.bigInt()
 	}
 
 	err := rv.Validate()
 	return rv, err
 }
 
-func (jwkp *rawJsonWebKey) fromRsaPrivateKey(rsa *rsa.PrivateKey) error {
+func (key *rawJsonWebKey) fromRsaPrivateKey(rsa *rsa.PrivateKey) error {
 	if len(rsa.Primes) != 2 {
 		return ErrUnsupportedKeyType
 	}
 
-	var jwk rawJsonWebKey
-	jwk.fromRsaPublicKey(&rsa.PublicKey)
+	var raw rawJsonWebKey
+	raw.fromRsaPublicKey(&rsa.PublicKey)
 
-	jwk.D = newBuffer(rsa.D.Bytes())
-	jwk.P = newBuffer(rsa.Primes[0].Bytes())
-	jwk.Q = newBuffer(rsa.Primes[1].Bytes())
-	*jwkp = jwk
+	raw.D = newBuffer(rsa.D.Bytes())
+	raw.P = newBuffer(rsa.Primes[0].Bytes())
+	raw.Q = newBuffer(rsa.Primes[1].Bytes())
+	*key = raw
 	return nil
 }
 
-func (jwk rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
+func (key rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 	var curve elliptic.Curve
-	switch jwk.Crv {
+	switch key.Crv {
 	case "P-256":
 		curve = elliptic.P256()
 	case "P-384":
@@ -238,27 +240,27 @@ func (jwk rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 	case "P-521":
 		curve = elliptic.P521()
 	default:
-		return nil, fmt.Errorf("square/go-jose: unsupported elliptic curve '%s'", jwk.Crv)
+		return nil, fmt.Errorf("square/go-jose: unsupported elliptic curve '%s'", key.Crv)
 	}
 
-	if jwk.X == nil || jwk.Y == nil || jwk.D == nil {
+	if key.X == nil || key.Y == nil || key.D == nil {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key, missing x/y/d values")
 	}
 
 	return &ecdsa.PrivateKey{
 		PublicKey: ecdsa.PublicKey{
 			Curve: curve,
-			X:     jwk.X.bigInt(),
-			Y:     jwk.Y.bigInt(),
+			X:     key.X.bigInt(),
+			Y:     key.Y.bigInt(),
 		},
-		D: jwk.D.bigInt(),
+		D: key.D.bigInt(),
 	}, nil
 }
 
-func (jwkp *rawJsonWebKey) fromEcPrivateKey(ec *ecdsa.PrivateKey) error {
-	var jwk rawJsonWebKey
+func (key *rawJsonWebKey) fromEcPrivateKey(ec *ecdsa.PrivateKey) error {
+	var raw rawJsonWebKey
 
-	err := jwk.fromEcPublicKey(&ec.PublicKey)
+	err := raw.fromEcPublicKey(&ec.PublicKey)
 	if err != nil {
 		return err
 	}
@@ -267,8 +269,8 @@ func (jwkp *rawJsonWebKey) fromEcPrivateKey(ec *ecdsa.PrivateKey) error {
 		return fmt.Errorf("square/go-jose: invalid EC private key")
 	}
 
-	jwk.D = newBuffer(ec.D.Bytes())
-	*jwkp = jwk
+	raw.D = newBuffer(ec.D.Bytes())
+	*key = raw
 
 	return nil
 }
