@@ -129,6 +129,7 @@ type JoseHeader struct {
 	JsonWebKey *JsonWebKey
 }
 
+// sanitized produces a cleaned-up header object from the raw JSON.
 func (parsed rawHeader) sanitized() JoseHeader {
 	return JoseHeader{
 		KeyID:      parsed.Kid,

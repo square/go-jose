@@ -92,26 +92,26 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 }
 
 func TestRoundtripEcPrivate(t *testing.T) {
-	for _, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
+	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
 		var jwk rawJsonWebKey
 		jwk.fromEcPrivateKey(ecTestKey)
 
 		ec2, err := jwk.ecPrivateKey()
 		if err != nil {
-			t.Error("problem converting ECDSA private -> JWK", err)
+			t.Error("problem converting ECDSA private -> JWK", i, err)
 		}
 
 		if !reflect.DeepEqual(ec2.Curve, ecTestKey.Curve) {
-			t.Error("ECDSA private curve mismatch")
+			t.Error("ECDSA private curve mismatch", i)
 		}
 		if ec2.X.Cmp(ecTestKey.X) != 0 {
-			t.Error("ECDSA X mismatch")
+			t.Error("ECDSA X mismatch", i)
 		}
 		if ec2.Y.Cmp(ecTestKey.Y) != 0 {
-			t.Error("ECDSA Y mismatch")
+			t.Error("ECDSA Y mismatch", i)
 		}
 		if ec2.D.Cmp(ecTestKey.D) != 0 {
-			t.Error("ECDSA D mismatch")
+			t.Error("ECDSA D mismatch", i)
 		}
 	}
 }
@@ -119,30 +119,30 @@ func TestRoundtripEcPrivate(t *testing.T) {
 func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
-	for _, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
+	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
 		jwk := JsonWebKey{Key: key, KeyID: kid}
 		jsonbar, err := jwk.MarshalJSON()
 		if err != nil {
-			t.Error("problem marshaling", err)
+			t.Error("problem marshaling", i, err)
 		}
 
 		var jwk2 JsonWebKey
 		err = jwk2.UnmarshalJSON(jsonbar)
 		if err != nil {
-			t.Error("problem unmarshalling", err)
+			t.Error("problem unmarshalling", i, err)
 		}
 
 		jsonbar2, err := jwk2.MarshalJSON()
 		if err != nil {
-			t.Error("problem marshaling", err)
+			t.Error("problem marshaling", i, err)
 		}
 
 		if !bytes.Equal(jsonbar, jsonbar2) {
-			t.Error("roundtrip should not lose information")
+			t.Error("roundtrip should not lose information", i)
 		}
 
 		if jwk2.KeyID != kid {
-			t.Error("kid did not roundtrip JSON marshalling")
+			t.Error("kid did not roundtrip JSON marshalling", i)
 		}
 	}
 }
@@ -174,11 +174,11 @@ func TestMarshalUnmarshalInvalid(t *testing.T) {
 		nil,
 	}
 
-	for _, key := range keys {
+	for i, key := range keys {
 		jwk := JsonWebKey{Key: key}
 		_, err := jwk.MarshalJSON()
 		if err == nil {
-			t.Error("managed to serialize invalid key")
+			t.Error("managed to serialize invalid key", i)
 		}
 	}
 }

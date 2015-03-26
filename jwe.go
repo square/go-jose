@@ -120,6 +120,7 @@ func parseEncryptedFull(input string) (*JsonWebEncryption, error) {
 	return parsed.sanitized()
 }
 
+// sanitized produces a cleaned-up JWE object from the raw JSON.
 func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 	obj := &JsonWebEncryption{
 		original:    parsed,
