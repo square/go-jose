@@ -56,24 +56,24 @@ type JsonWebKey struct {
 
 // MarshalJSON serializes the given key to its JSON representation.
 func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
-	var raw rawJsonWebKey
+	var raw *rawJsonWebKey
+	var err error
+
 	switch key := k.Key.(type) {
 	case *ecdsa.PublicKey:
-		raw.fromEcPublicKey(key)
+		raw, err = fromEcPublicKey(key)
 	case *rsa.PublicKey:
-		raw.fromRsaPublicKey(key)
+		raw = fromRsaPublicKey(key)
 	case *ecdsa.PrivateKey:
-		err := raw.fromEcPrivateKey(key)
-		if err != nil {
-			return nil, err
-		}
+		raw, err = fromEcPrivateKey(key)
 	case *rsa.PrivateKey:
-		err := raw.fromRsaPrivateKey(key)
-		if err != nil {
-			return nil, err
-		}
+		raw, err = fromRsaPrivateKey(key)
 	default:
 		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	raw.Kid = k.KeyID
@@ -124,11 +124,11 @@ func (key rawJsonWebKey) rsaPublicKey() (*rsa.PublicKey, error) {
 	}, nil
 }
 
-func (key *rawJsonWebKey) fromRsaPublicKey(pub *rsa.PublicKey) {
+func fromRsaPublicKey(pub *rsa.PublicKey) *rawJsonWebKey {
 	e := make([]byte, 4)
 	binary.BigEndian.PutUint32(e, uint32(pub.E))
 
-	*key = rawJsonWebKey{
+	return &rawJsonWebKey{
 		Kty: "RSA",
 		N:   newBuffer(pub.N.Bytes()),
 		E:   newBuffer(e),
@@ -159,12 +159,12 @@ func (key rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 	}, nil
 }
 
-func (key *rawJsonWebKey) fromEcPublicKey(pub *ecdsa.PublicKey) error {
+func fromEcPublicKey(pub *ecdsa.PublicKey) (*rawJsonWebKey, error) {
 	if pub == nil || pub.X == nil || pub.Y == nil {
-		return fmt.Errorf("square/go-jose: invalid EC key")
+		return nil, fmt.Errorf("square/go-jose: invalid EC key")
 	}
 
-	*key = rawJsonWebKey{
+	key := &rawJsonWebKey{
 		Kty: "EC",
 		X:   newBuffer(pub.X.Bytes()),
 		Y:   newBuffer(pub.Y.Bytes()),
@@ -178,10 +178,10 @@ func (key *rawJsonWebKey) fromEcPublicKey(pub *ecdsa.PublicKey) error {
 	case elliptic.P521():
 		key.Crv = "P-521"
 	default:
-		return fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
+		return nil, fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
 	}
 
-	return nil
+	return key, nil
 }
 
 func (key rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
@@ -215,19 +215,18 @@ func (key rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
 	return rv, err
 }
 
-func (key *rawJsonWebKey) fromRsaPrivateKey(rsa *rsa.PrivateKey) error {
+func fromRsaPrivateKey(rsa *rsa.PrivateKey) (*rawJsonWebKey, error) {
 	if len(rsa.Primes) != 2 {
-		return ErrUnsupportedKeyType
+		return nil, ErrUnsupportedKeyType
 	}
 
-	var raw rawJsonWebKey
-	raw.fromRsaPublicKey(&rsa.PublicKey)
+	raw := fromRsaPublicKey(&rsa.PublicKey)
 
 	raw.D = newBuffer(rsa.D.Bytes())
 	raw.P = newBuffer(rsa.Primes[0].Bytes())
 	raw.Q = newBuffer(rsa.Primes[1].Bytes())
-	*key = raw
-	return nil
+
+	return raw, nil
 }
 
 func (key rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
@@ -257,20 +256,17 @@ func (key rawJsonWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 	}, nil
 }
 
-func (key *rawJsonWebKey) fromEcPrivateKey(ec *ecdsa.PrivateKey) error {
-	var raw rawJsonWebKey
-
-	err := raw.fromEcPublicKey(&ec.PublicKey)
+func fromEcPrivateKey(ec *ecdsa.PrivateKey) (*rawJsonWebKey, error) {
+	raw, err := fromEcPublicKey(&ec.PublicKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if ec.D == nil {
-		return fmt.Errorf("square/go-jose: invalid EC private key")
+		return nil, fmt.Errorf("square/go-jose: invalid EC private key")
 	}
 
 	raw.D = newBuffer(ec.D.Bytes())
-	*key = raw
 
-	return nil
+	return raw, nil
 }

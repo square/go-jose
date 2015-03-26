@@ -27,8 +27,10 @@ import (
 )
 
 func TestRoundtripRsaPrivate(t *testing.T) {
-	var jwk rawJsonWebKey
-	jwk.fromRsaPrivateKey(rsaTestKey)
+	jwk, err := fromRsaPrivateKey(rsaTestKey)
+	if err != nil {
+		t.Error("problem constructing JWK from rsa key", err)
+	}
 
 	rsa2, err := jwk.rsaPrivateKey()
 	if err != nil {
@@ -64,8 +66,8 @@ func TestRsaPrivateInsufficientPrimes(t *testing.T) {
 		D:      rsaTestKey.D,
 		Primes: []*big.Int{rsaTestKey.Primes[0]},
 	}
-	var jwk rawJsonWebKey
-	err := jwk.fromRsaPrivateKey(&brokenRsaPrivateKey)
+
+	_, err := fromRsaPrivateKey(&brokenRsaPrivateKey)
 	if err != ErrUnsupportedKeyType {
 		t.Error("expected unsupported key type error, got", err)
 	}
@@ -84,8 +86,8 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 			big.NewInt(3),
 		},
 	}
-	var jwk rawJsonWebKey
-	err := jwk.fromRsaPrivateKey(&brokenRsaPrivateKey)
+
+	_, err := fromRsaPrivateKey(&brokenRsaPrivateKey)
 	if err != ErrUnsupportedKeyType {
 		t.Error("expected unsupported key type error, got", err)
 	}
@@ -93,8 +95,7 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 
 func TestRoundtripEcPrivate(t *testing.T) {
 	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
-		var jwk rawJsonWebKey
-		jwk.fromEcPrivateKey(ecTestKey)
+		jwk, err := fromEcPrivateKey(ecTestKey)
 
 		ec2, err := jwk.ecPrivateKey()
 		if err != nil {
