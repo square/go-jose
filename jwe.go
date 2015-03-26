@@ -43,6 +43,7 @@ type rawRecipientInfo struct {
 
 // JsonWebEncryption represents an encrypted JWE object after parsing.
 type JsonWebEncryption struct {
+	Header                   JoseHeader
 	protected, unprotected   *rawHeader
 	recipients               []recipientInfo
 	aad, iv, ciphertext, tag []byte
@@ -116,12 +117,20 @@ func parseEncryptedFull(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	obj := &JsonWebEncryption{}
-	obj.original = &parsed
-	obj.unprotected = parsed.Unprotected
+	return parsed.sanitized()
+}
+
+// sanitized produces a cleaned-up JWE object from the raw JSON.
+func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
+	obj := &JsonWebEncryption{
+		original:    parsed,
+		unprotected: parsed.Unprotected,
+	}
+
+	obj.Header = obj.mergedHeaders(nil).sanitized()
 
 	if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
-		err = json.Unmarshal(parsed.Protected.bytes(), &obj.protected)
+		err := json.Unmarshal(parsed.Protected.bytes(), &obj.protected)
 		if err != nil {
 			return nil, fmt.Errorf("square/go-jose: invalid protected header: %s, %s", err, parsed.Protected.base64())
 		}
@@ -174,16 +183,6 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	var protected rawHeader
-	err = json.Unmarshal(rawProtected, &protected)
-	if err != nil {
-		return nil, err
-	}
-
-	if protected.Alg == "" || protected.Enc == "" {
-		return nil, fmt.Errorf("square/go-jose: message is missing alg/enc headers")
-	}
-
 	encryptedKey, err := base64URLDecode(parts[1])
 	if err != nil {
 		return nil, err
@@ -204,24 +203,15 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	return &JsonWebEncryption{
-		protected: &protected,
-		recipients: []recipientInfo{
-			recipientInfo{
-				encryptedKey: encryptedKey,
-			},
-		},
-		iv:         iv,
-		ciphertext: ciphertext,
-		tag:        tag,
-		original: &rawJsonWebEncryption{
-			Protected:    newBuffer(rawProtected),
-			EncryptedKey: newBuffer(encryptedKey),
-			Iv:           newBuffer(iv),
-			Ciphertext:   newBuffer(ciphertext),
-			Tag:          newBuffer(tag),
-		},
-	}, nil
+	raw := &rawJsonWebEncryption{
+		Protected:    newBuffer(rawProtected),
+		EncryptedKey: newBuffer(encryptedKey),
+		Iv:           newBuffer(iv),
+		Ciphertext:   newBuffer(ciphertext),
+		Tag:          newBuffer(tag),
+	}
+
+	return raw.sanitized()
 }
 
 // CompactSerialize serializes an object using the compact serialization format.

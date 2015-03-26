@@ -294,13 +294,13 @@ func (ctx *symmetricKeyCipher) decryptKey(headers rawHeader, recipient *recipien
 }
 
 // Sign the given payload
-func (ctx symmetricMac) signPayload(payload []byte, alg SignatureAlgorithm) (signatureInfo, error) {
+func (ctx symmetricMac) signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error) {
 	mac, err := ctx.hmac(payload, alg)
 	if err != nil {
-		return signatureInfo{}, errors.New("square/go-jose: failed to compute hmac")
+		return Signature{}, errors.New("square/go-jose: failed to compute hmac")
 	}
 
-	return signatureInfo{
+	return Signature{
 		signature: mac,
 		protected: &rawHeader{},
 	}, nil

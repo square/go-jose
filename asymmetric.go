@@ -26,8 +26,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/square/go-jose/cipher"
 	"math/big"
+
+	"github.com/square/go-jose/cipher"
 )
 
 // A generic RSA-based encrypter/verifier
@@ -85,6 +86,9 @@ func newRSASigner(sigAlg SignatureAlgorithm, privateKey *rsa.PrivateKey) (recipi
 
 	return recipientSigInfo{
 		sigAlg: sigAlg,
+		publicKey: &JsonWebKey{
+			Key: &privateKey.PublicKey,
+		},
 		signer: &rsaDecrypterSigner{
 			privateKey: privateKey,
 		},
@@ -119,6 +123,9 @@ func newECDSASigner(sigAlg SignatureAlgorithm, privateKey *ecdsa.PrivateKey) (re
 
 	return recipientSigInfo{
 		sigAlg: sigAlg,
+		publicKey: &JsonWebKey{
+			Key: &privateKey.PublicKey,
+		},
 		signer: &ecDecrypterSigner{
 			privateKey: privateKey,
 		},
@@ -208,7 +215,7 @@ func (ctx rsaDecrypterSigner) decrypt(jek []byte, alg KeyAlgorithm, generator ke
 }
 
 // Sign the given payload
-func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm) (signatureInfo, error) {
+func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error) {
 	var hash crypto.Hash
 
 	switch alg {
@@ -219,7 +226,7 @@ func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm
 	case RS512, PS512:
 		hash = crypto.SHA512
 	default:
-		return signatureInfo{}, ErrUnsupportedAlgorithm
+		return Signature{}, ErrUnsupportedAlgorithm
 	}
 
 	hasher := hash.New()
@@ -241,10 +248,10 @@ func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm
 	}
 
 	if err != nil {
-		return signatureInfo{}, err
+		return Signature{}, err
 	}
 
-	return signatureInfo{
+	return Signature{
 		signature: out,
 		protected: &rawHeader{},
 	}, nil
@@ -343,14 +350,10 @@ func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
 
 	out := josecipher.DeriveECDHES(ctx.algID, []byte{}, []byte{}, priv, ctx.publicKey, ctx.size)
 
-	var epk rawJsonWebKey
-	err = epk.fromEcPublicKey(&priv.PublicKey)
-	if err != nil {
-		return nil, rawHeader{}, err
-	}
-
 	headers := rawHeader{
-		Epk: &epk,
+		Epk: &JsonWebKey{
+			Key: &priv.PublicKey,
+		},
 	}
 
 	return out, headers, nil
@@ -358,9 +361,13 @@ func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
 
 // Decrypt the given payload and return the content encryption key.
 func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	publicKey, err := headers.Epk.ecPublicKey()
-	if err != nil {
-		return nil, err
+	if headers.Epk == nil {
+		return nil, errors.New("square/go-jose: missing epk header")
+	}
+
+	publicKey, ok := headers.Epk.Key.(*ecdsa.PublicKey)
+	if publicKey == nil || !ok {
+		return nil, errors.New("square/go-jose: invalid epk header")
 	}
 
 	apuData := headers.Apu.bytes()
@@ -396,7 +403,7 @@ func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientI
 }
 
 // Sign the given payload
-func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm) (signatureInfo, error) {
+func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error) {
 	var keySize int
 	var hash crypto.Hash
 
@@ -420,7 +427,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 
 	r, s, err := ecdsa.Sign(randReader, ctx.privateKey, hashed)
 	if err != nil {
-		return signatureInfo{}, err
+		return Signature{}, err
 	}
 
 	rBytes := r.Bytes()
@@ -433,7 +440,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 
 	out := append(rBytesPadded, sBytesPadded...)
 
-	return signatureInfo{
+	return Signature{
 		signature: out,
 		protected: &rawHeader{},
 	}, nil

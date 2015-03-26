@@ -18,8 +18,6 @@ package jose
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
@@ -234,21 +232,6 @@ func TestInvalidECKeyGen(t *testing.T) {
 	}
 }
 
-func TestInvalidECCurve(t *testing.T) {
-	ecTestKey224, _ := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
-
-	gen := ecKeyGenerator{
-		size:      16,
-		algID:     "A128GCM",
-		publicKey: &ecTestKey224.PublicKey,
-	}
-
-	_, _, err := gen.genKey()
-	if err == nil {
-		t.Error("ec key generator accepted invalid/unsupported curve")
-	}
-}
-
 func TestInvalidECDecrypt(t *testing.T) {
 	dec := ecDecrypterSigner{
 		privateKey: ecTestKey256,
@@ -267,9 +250,7 @@ func TestInvalidECDecrypt(t *testing.T) {
 	}
 
 	// Invalid epk header
-	headers.Epk = &rawJsonWebKey{
-		Kty: "XYZ",
-	}
+	headers.Epk = &JsonWebKey{}
 
 	_, err = dec.decryptKey(headers, nil, generator)
 	if err == nil {

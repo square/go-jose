@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"io"
 	"testing"
@@ -54,6 +55,16 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 	output, err := obj.Verify(verificationKey)
 	if err != nil {
 		return fmt.Errorf("error on verify: %s", err)
+	}
+
+	// Check that verify works with embedded keys (if present)
+	for i, sig := range obj.Signatures {
+		if sig.Header.JsonWebKey != nil {
+			_, err = obj.Verify(sig.Header.JsonWebKey)
+			if err != nil {
+				return fmt.Errorf("error on verify with embedded key %d: %s", i, err)
+			}
+		}
 	}
 
 	if bytes.Compare(output, input) != 0 {
@@ -98,11 +109,11 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	corrupters := []func(*JsonWebSignature){
 		func(obj *JsonWebSignature) {
 			// Changes bytes in signature
-			obj.signatures[0].signature[10]++
+			obj.Signatures[0].signature[10]++
 		},
 		func(obj *JsonWebSignature) {
 			// Set totally invalid signature
-			obj.signatures[0].signature = []byte("###")
+			obj.Signatures[0].signature = []byte("###")
 		},
 	}
 
@@ -283,7 +294,7 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
-	obj.signatures[0].header = &rawHeader{
+	obj.Signatures[0].header = &rawHeader{
 		Crit: []string{"TEST"},
 	}
 
@@ -293,11 +304,61 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	// Try without alg header
-	obj.signatures[0].protected = &rawHeader{}
-	obj.signatures[0].header = &rawHeader{}
+	obj.Signatures[0].protected = &rawHeader{}
+	obj.Signatures[0].header = &rawHeader{}
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
 		t.Error("should not verify message with missing headers")
+	}
+}
+
+func TestSignerKid(t *testing.T) {
+	kid := "DEADBEEF"
+	payload := []byte("Lorem ipsum dolor sit amet")
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Error("problem generating test signing key", err)
+	}
+
+	basejwk := JsonWebKey{Key: key}
+	jsonbar, err := basejwk.MarshalJSON()
+	if err != nil {
+		t.Error("problem marshalling base JWK", err)
+	}
+
+	var jsonmsi map[string]interface{}
+	err = json.Unmarshal(jsonbar, &jsonmsi)
+	if err != nil {
+		t.Error("problem unmarshalling base JWK", err)
+	}
+	jsonmsi["kid"] = kid
+	jsonbar2, err := json.Marshal(jsonmsi)
+	if err != nil {
+		t.Error("problem marshalling kided JWK", err)
+	}
+
+	var jwk JsonWebKey
+	err = jwk.UnmarshalJSON(jsonbar2)
+	if err != nil {
+		t.Error("problem unmarshalling kided JWK", err)
+	}
+
+	signer, err := NewSigner(ES256, &jwk)
+	if err != nil {
+		t.Error("problem creating signer", err)
+	}
+	signed, err := signer.Sign(payload)
+
+	serialized := signed.FullSerialize()
+
+	parsed, err := ParseSigned(serialized)
+	if err != nil {
+		t.Error("problem parsing signed object", err)
+	}
+
+	if parsed.Signatures[0].Header.KeyID != kid {
+		t.Error("KeyID did not survive trip")
 	}
 }
