@@ -32,6 +32,7 @@ type rawJsonWebKey struct {
 	Kty string      `json:"kty,omitempty"`
 	Kid string      `json:"kid,omitempty"`
 	Crv string      `json:"crv,omitempty"`
+	Alg string      `json:"alg,omitempty"`
 	X   *byteBuffer `json:"x,omitempty"`
 	Y   *byteBuffer `json:"y,omitempty"`
 	N   *byteBuffer `json:"n,omitempty"`
@@ -50,8 +51,9 @@ type rawJsonWebKey struct {
 
 // JsonWebKey represents a public or private key in JWK format.
 type JsonWebKey struct {
-	Key   interface{}
-	KeyID string
+	Key       interface{}
+	KeyID     string
+	Algorithm string
 }
 
 // MarshalJSON serializes the given key to its JSON representation.
@@ -77,6 +79,7 @@ func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
 	}
 
 	raw.Kid = k.KeyID
+	raw.Alg = k.Algorithm
 
 	return json.Marshal(raw)
 }
@@ -108,7 +111,7 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if err == nil {
-		*k = JsonWebKey{Key: key, KeyID: raw.Kid}
+		*k = JsonWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg}
 	}
 	return
 }
