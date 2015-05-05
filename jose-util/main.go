@@ -17,18 +17,20 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/codegangsta/cli"
-	"github.com/square/go-jose"
 	"io/ioutil"
 	"os"
+
+	"github.com/codegangsta/cli"
+	"github.com/square/go-jose"
 )
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "jose-util"
 	app.Usage = "command-line utility to deal with JOSE objects"
-	app.Version = "0.0.1"
+	app.Version = "0.0.2"
 	app.Author = ""
 	app.Email = ""
 
@@ -120,6 +122,55 @@ func main() {
 				exitOnError(err, "unable to decrypt message")
 
 				writeOutput(c.String("output"), plaintext)
+			},
+		},
+		{
+			Name:  "dump",
+			Usage: "parse & dump message in full serialization format",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "input, in",
+					Usage: "Path to input file (stdin if missing)",
+				},
+				cli.StringFlag{
+					Name:  "output, out",
+					Usage: "Path to output file (stdout if missing)",
+				},
+				cli.StringFlag{
+					Name:  "format, f",
+					Usage: "Message format (JWE/JWS, defaults to JWE)",
+				},
+			},
+			Action: func(c *cli.Context) {
+				input := string(readInput(c.String("input")))
+
+				var serialized string
+				var err error
+				switch c.String("format") {
+				case "", "JWE":
+					var jwe *jose.JsonWebEncryption
+					jwe, err = jose.ParseEncrypted(input)
+					if err == nil {
+						serialized = jwe.FullSerialize()
+					}
+				case "JWS":
+					var jws *jose.JsonWebSignature
+					jws, err = jose.ParseSigned(input)
+					if err == nil {
+						serialized = jws.FullSerialize()
+					}
+				}
+
+				exitOnError(err, "unable to parse message")
+
+				var raw map[string]interface{}
+				err = json.Unmarshal([]byte(serialized), &raw)
+				exitOnError(err, "unable to parse message")
+
+				output, err := json.MarshalIndent(&raw, "", "\t")
+				exitOnError(err, "unable to serialize message")
+
+				writeOutput(c.String("output"), output)
 			},
 		},
 	}
