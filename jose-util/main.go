@@ -175,11 +175,11 @@ func main() {
 		},
 		{
 			Name:  "sign",
-			Usage: "sign a text",
+			Usage: "sign a plaintext",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "algorithm, alg",
-					Usage: "Key management algorithm (e.g. RSA-OAEP)",
+					Usage: "Signing algorithm (e.g. PS256)",
 				},
 				cli.StringFlag{
 					Name:  "key, k",
@@ -208,6 +208,7 @@ func main() {
 				alg := jose.SignatureAlgorithm(requiredFlag(c, "algorithm"))
 				signer, err := jose.NewSigner(alg, signingKey)
 				exitOnError(err, "unable to make signer")
+
 				obj, err := signer.Sign(readInput(c.String("input")))
 				exitOnError(err, "unable to sign")
 
