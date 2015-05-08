@@ -178,6 +178,10 @@ func main() {
 			Usage: "sign a text",
 			Flags: []cli.Flag{
 				cli.StringFlag{
+					Name:  "algorithm, alg",
+					Usage: "Key management algorithm (e.g. RSA-OAEP)",
+				},
+				cli.StringFlag{
 					Name:  "key, k",
 					Usage: "Path to key file (PEM/DER)",
 				},
@@ -201,7 +205,8 @@ func main() {
 				signingKey, err := jose.LoadPrivateKey(keyBytes)
 				exitOnError(err, "unable to read private key")
 
-				signer, err := jose.NewSigner(jose.SignatureAlgorithm("RS256"), signingKey)
+				alg := jose.SignatureAlgorithm(requiredFlag(c, "algorithm"))
+				signer, err := jose.NewSigner(alg, signingKey)
 				exitOnError(err, "unable to make signer")
 				obj, err := signer.Sign(readInput(c.String("input")))
 				exitOnError(err, "unable to sign")
