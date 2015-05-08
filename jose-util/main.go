@@ -17,7 +17,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -125,55 +124,6 @@ func main() {
 			},
 		},
 		{
-			Name:  "dump",
-			Usage: "parse & dump message in full serialization format",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "input, in",
-					Usage: "Path to input file (stdin if missing)",
-				},
-				cli.StringFlag{
-					Name:  "output, out",
-					Usage: "Path to output file (stdout if missing)",
-				},
-				cli.StringFlag{
-					Name:  "format, f",
-					Usage: "Message format (JWE/JWS, defaults to JWE)",
-				},
-			},
-			Action: func(c *cli.Context) {
-				input := string(readInput(c.String("input")))
-
-				var serialized string
-				var err error
-				switch c.String("format") {
-				case "", "JWE":
-					var jwe *jose.JsonWebEncryption
-					jwe, err = jose.ParseEncrypted(input)
-					if err == nil {
-						serialized = jwe.FullSerialize()
-					}
-				case "JWS":
-					var jws *jose.JsonWebSignature
-					jws, err = jose.ParseSigned(input)
-					if err == nil {
-						serialized = jws.FullSerialize()
-					}
-				}
-
-				exitOnError(err, "unable to parse message")
-
-				var raw map[string]interface{}
-				err = json.Unmarshal([]byte(serialized), &raw)
-				exitOnError(err, "unable to parse message")
-
-				output, err := json.MarshalIndent(&raw, "", "\t")
-				exitOnError(err, "unable to serialize message")
-
-				writeOutput(c.String("output"), output)
-			},
-		},
-		{
 			Name:  "sign",
 			Usage: "sign a plaintext",
 			Flags: []cli.Flag{
@@ -221,6 +171,47 @@ func main() {
 				}
 
 				writeOutput(c.String("output"), []byte(msg))
+			},
+		},
+		{
+			Name:  "expand",
+			Usage: "expand compact message to full format",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "input, in",
+					Usage: "Path to input file (stdin if missing)",
+				},
+				cli.StringFlag{
+					Name:  "output, out",
+					Usage: "Path to output file (stdout if missing)",
+				},
+				cli.StringFlag{
+					Name:  "format, f",
+					Usage: "Message format (JWE/JWS, defaults to JWE)",
+				},
+			},
+			Action: func(c *cli.Context) {
+				input := string(readInput(c.String("input")))
+
+				var serialized string
+				var err error
+				switch c.String("format") {
+				case "", "JWE":
+					var jwe *jose.JsonWebEncryption
+					jwe, err = jose.ParseEncrypted(input)
+					if err == nil {
+						serialized = jwe.FullSerialize()
+					}
+				case "JWS":
+					var jws *jose.JsonWebSignature
+					jws, err = jose.ParseSigned(input)
+					if err == nil {
+						serialized = jws.FullSerialize()
+					}
+				}
+
+				exitOnError(err, "unable to expand message")
+				writeOutput(c.String("output"), []byte(serialized))
 			},
 		},
 	}
