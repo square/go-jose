@@ -42,11 +42,26 @@ func base64URLDecode(data string) ([]byte, error) {
 	return base64.URLEncoding.DecodeString(data)
 }
 
-// Helper function to serialize known-good objects
+// Helper function to serialize known-good objects.
+// Precondition: value is not a nil pointer.
 func mustSerializeJSON(value interface{}) []byte {
 	out, err := json.Marshal(value)
 	if err != nil {
 		panic(err)
+	}
+	// We never want to serialize the top-level value "null," since it's not a
+	// valid JOSE message. But if a caller passes in a nil pointer to this method,
+	// json.Marshal will happily serialize it as the top-level value "null". If
+	// that value is then embedded in another operation, for instance by being
+	// base64-encoded and fed as input to a signing algorithm
+	// (https://github.com/square/go-jose/issues/22), the result will be
+	// incorrect. Because this method is intended for known-good objects, and a nil
+	// pointer is not a known-good object, we are free to panic in this case.
+	// Note: It's not possible to directly check whether the data pointed at by an
+	// interface is a nil pointer, so we do this hacky workaround.
+	// https://groups.google.com/forum/#!topic/golang-nuts/wnH302gBa4I
+	if string(out) == "null" {
+		panic("Tried to serialize a nil pointer.")
 	}
 	return out
 }

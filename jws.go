@@ -75,10 +75,12 @@ func (sig Signature) mergedHeaders() rawHeader {
 func (obj JsonWebSignature) computeAuthData(signature *Signature) []byte {
 	var serializedProtected string
 
-	if signature.original == nil {
+	if signature.original != nil && signature.original.Protected != nil {
+		serializedProtected = signature.original.Protected.base64()
+	} else if signature.protected != nil {
 		serializedProtected = base64URLEncode(mustSerializeJSON(signature.protected))
 	} else {
-		serializedProtected = signature.original.Protected.base64()
+		serializedProtected = ""
 	}
 
 	return []byte(fmt.Sprintf("%s.%s",
