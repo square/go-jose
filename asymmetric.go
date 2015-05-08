@@ -440,6 +440,9 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 		keyBytes += 1
 	}
 
+	// We serialize the outpus (r and s) into big-endian byte arrays and pad
+	// them with zeros on the left to make sure the sizes work out. Both arrays
+	// must be keyBytes long, and the output must be 2*keyBytes long.
 	rBytes := r.Bytes()
 	rBytesPadded := make([]byte, keyBytes)
 	copy(rBytesPadded[keyBytes-len(rBytes):], rBytes)
