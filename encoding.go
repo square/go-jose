@@ -48,6 +48,12 @@ func mustSerializeJSON(value interface{}) []byte {
 	if err != nil {
 		panic(err)
 	}
+	// Note: It's not possible to directly check whether the data pointed at by an
+	// interface is a nil pointer, so we do this hacky workaround.
+	// https://groups.google.com/forum/#!topic/golang-nuts/wnH302gBa4I
+	if string(out) == "null" {
+		panic("Tried to serialize a nil pointer.")
+	}
 	return out
 }
 
