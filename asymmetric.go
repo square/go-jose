@@ -404,19 +404,24 @@ func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientI
 
 // Sign the given payload
 func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error) {
-	var keySize int
+	var expectedBitSize int
 	var hash crypto.Hash
 
 	switch alg {
 	case ES256:
-		keySize = 32
+		expectedBitSize = 256
 		hash = crypto.SHA256
 	case ES384:
-		keySize = 48
+		expectedBitSize = 384
 		hash = crypto.SHA384
 	case ES512:
-		keySize = 66
+		expectedBitSize = 521
 		hash = crypto.SHA512
+	}
+
+	curveBits := ctx.privateKey.Curve.Params().BitSize
+	if expectedBitSize != curveBits {
+		return Signature{}, fmt.Errorf("square/go-jose: expected %d bit key, got %d bits instead", expectedBitSize, curveBits)
 	}
 
 	hasher := hash.New()
@@ -430,13 +435,18 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 		return Signature{}, err
 	}
 
+	keyBytes := curveBits / 8
+	if curveBits%8 > 0 {
+		keyBytes += 1
+	}
+
 	rBytes := r.Bytes()
-	rBytesPadded := make([]byte, keySize)
-	copy(rBytesPadded[keySize-len(rBytes):], rBytes)
+	rBytesPadded := make([]byte, keyBytes)
+	copy(rBytesPadded[keyBytes-len(rBytes):], rBytes)
 
 	sBytes := s.Bytes()
-	sBytesPadded := make([]byte, keySize)
-	copy(sBytesPadded[keySize-len(sBytes):], sBytes)
+	sBytesPadded := make([]byte, keyBytes)
+	copy(sBytesPadded[keyBytes-len(sBytes):], sBytes)
 
 	out := append(rBytesPadded, sBytesPadded...)
 
