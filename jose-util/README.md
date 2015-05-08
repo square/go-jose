@@ -9,6 +9,12 @@ with JWE/JWS messages when testing or debugging.
 The utility includes the subcommands `encrypt`, `decrypt`, `sign`, `verify` and
 `expand`. Examples for each command can be found below.
 
+Algorithms are selected via the `--alg` and `--enc` flags, which influence the
+`alg` and `enc` headers in JWE/JWS messages respectively. For JWE, `--alg`
+specified the key managment algorithm (e.g. RSA-OAEP) and `--enc` specifies the
+content encryption (e.g. A128GCM). For JWS, `--alg` specified the signature
+algorithm (e.g. `PS256`).
+
 Input and output files can be specified via the `--in` and `--out` flags.
 Either flag can be omitted, in which case `jose-util` uses stdin/stdout for
 input/output respectively. By default each command will output a compact
