@@ -92,7 +92,7 @@ func main() {
 		},
 		{
 			Name:  "decrypt",
-			Usage: "decrypt a plaintext",
+			Usage: "decrypt a ciphertext",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "key, k",
@@ -171,6 +171,39 @@ func main() {
 				}
 
 				writeOutput(c.String("output"), []byte(msg))
+			},
+		},
+		{
+			Name:  "verify",
+			Usage: "verify a signature",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "key, k",
+					Usage: "Path to key file (PEM/DER)",
+				},
+				cli.StringFlag{
+					Name:  "input, in",
+					Usage: "Path to input file (stdin if missing)",
+				},
+				cli.StringFlag{
+					Name:  "output, out",
+					Usage: "Path to output file (stdout if missing)",
+				},
+			},
+			Action: func(c *cli.Context) {
+				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
+				exitOnError(err, "unable to read key file")
+
+				verificationKey, err := jose.LoadPublicKey(keyBytes)
+				exitOnError(err, "unable to read private key")
+
+				obj, err := jose.ParseSigned(string(readInput(c.String("input"))))
+				exitOnError(err, "unable to parse message")
+
+				plaintext, err := obj.Verify(verificationKey)
+				exitOnError(err, "invalid signature")
+
+				writeOutput(c.String("output"), plaintext)
 			},
 		},
 		{
