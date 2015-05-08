@@ -1,14 +1,13 @@
 # JOSE CLI
 
-The `jose-util` command line utility allows for encryption, decryption, 
-signing and verification of JWE/JWS message on the command line. It's main
-purpose is to facilitate dealing with JWE/JWS messages when testing or
-debugging.
+The `jose-util` command line utility allows for encryption, decryption, signing
+and verification of JWE/JWS messages. Its main purpose is to facilitate dealing
+with JWE/JWS messages when testing or debugging.
 
 ## Usage
 
-The utility has various subdommands. Valid commands are `encrypt`, `decrypt`,
-`sign`, `verify` and `expand`. Examples for each command can be found below.
+The utility includes the subcommands `encrypt`, `decrypt`, `sign`, `verify` and
+`expand`. Examples for each command can be found below.
 
 Input and output files can be specified via the `--in` and `--out` flags.
 Either flag can be omitted, in which case `jose-util` uses stdin/stdout for
