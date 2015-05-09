@@ -123,6 +123,21 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 
 		signature.header = parsed.Header
 		signature.signature = parsed.Signature.bytes()
+		// Make a fake "original" rawSignatureInfo to store the unprocessed
+		// Protected header. This is necessary because the Protected header can
+		// contain arbitrary fields not registered as part of the spec. See
+		// https://tools.ietf.org/html/draft-ietf-jose-json-web-signature-41#section-4
+		// If we unmarshal Protected into a rawHeader with its explicit list of fields,
+		// we cannot marshal losslessly. So we have to keep around the original bytes.
+		// This is used in computeAuthData, which will first attempt to use
+		// the original bytes of a protected header, and fall back on marshaling the
+		// header struct only if those bytes are not available.
+		signature.original = &rawSignatureInfo{
+			Protected: parsed.Protected,
+			Header: parsed.Header,
+			Signature: parsed.Signature,
+		}
+
 		signature.Header = signature.mergedHeaders().sanitized()
 		obj.Signatures = append(obj.Signatures, signature)
 	}
