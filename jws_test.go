@@ -120,7 +120,34 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
 	}
 	if string(payload) != "foo\n" {
-		t.Error("Payload was incorrect: '%v' should have been 'foo\\n'", payload)
+		t.Error(fmt.Sprintf("Payload was incorrect: '%s' should have been 'foo\\n'", string(payload)))
+	}
+}
+
+func TestVerifyFlattenedWithPrivateProtected(t *testing.T) {
+	// The protected field contains a Private Header Parameter name, per
+	// https://tools.ietf.org/html/draft-ietf-jose-json-web-signature-41#section-4
+	// Base64-decoded, it's '{"nonce":"8HIepUNFZUa-exKTrXVf4g"}'
+	input := `{"header":{"alg":"RS256","jwk":{"kty":"RSA","n":"7ixeydcbxxppzxrBphrW1atUiEZqTpiHDpI-79olav5XxAgWolHmVsJyxzoZXRxmtED8PF9-EICZWBGdSAL9ZTD0hLUCIsPcpdgT_LqNW3Sh2b2caPL2hbMF7vsXvnCGg9varpnHWuYTyRrCLUF9vM7ES-V3VCYTa7LcCSRm56Gg9r19qar43Z9kIKBBxpgt723v2cC4bmLmoAX2s217ou3uCpCXGLOeV_BesG4--Nl3pso1VhCfO85wEWjmW6lbv7Kg4d7Jdkv5DjDZfJ086fkEAYZVYGRpIgAvJBH3d3yKDCrSByUEud1bWuFjQBmMaeYOrVDXO_mbYg5PwUDMhw","e":"AQAB"}},"protected":"eyJub25jZSI6IjhISWVwVU5GWlVhLWV4S1RyWFZmNGcifQ","payload":"eyJjb250YWN0IjpbIm1haWx0bzpmb29AYmFyLmNvbSJdfQ","signature":"AyvVGMgXsQ1zTdXrZxE_gyO63pQgotL1KbI7gv6Wi8I7NRy0iAOkDAkWcTQT9pcCYApJ04lXfEDZfP5i0XgcFUm_6spxi5mFBZU-NemKcvK9dUiAbXvb4hB3GnaZtZiuVnMQUb_ku4DOaFFKbteA6gOYCnED_x7v0kAPHIYrQnvIa-KZ6pTajbV9348zgh9TL7NgGIIsTcMHd-Jatr4z1LQ0ubGa8tS300hoDhVzfoDQaEetYjCo1drR1RmdEN1SIzXdHOHfubjA3ZZRbrF_AJnNKpRRoIwzu1VayOhRmdy1qVSQZq_tENF4VrQFycEL7DhG7JLoXC4T2p1urwMlsw"}`
+
+	jws, err := ParseSigned(input)
+	if err != nil {
+		t.Error("Unable to parse valid message.")
+	}
+	if len(jws.Signatures) != 1 {
+		t.Error("Too many or too few signatures.")
+	}
+	sig := jws.Signatures[0]
+	if sig.Header.JsonWebKey == nil {
+		t.Error("No JWK in signature header.")
+	}
+	payload, err := jws.Verify(sig.Header.JsonWebKey)
+	if err != nil {
+		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
+	}
+	expected := "{\"contact\":[\"mailto:foo@bar.com\"]}"
+	if string(payload) != expected {
+		t.Error(fmt.Sprintf("Payload was incorrect: '%s' should have been '%s'", string(payload), expected))
 	}
 }
 
