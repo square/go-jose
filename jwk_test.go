@@ -18,6 +18,8 @@ package jose
 
 import (
 	"bytes"
+	"fmt"
+	"encoding/json"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -149,6 +151,36 @@ func TestMarshalUnmarshal(t *testing.T) {
 		if jwk2.Algorithm != "foo" {
 			t.Error("alg did not roundtrip JSON marshalling", i)
 		}
+	}
+}
+
+func TestMarshalNonPointer(t *testing.T) {
+	type EmbedsKey struct {
+		Key JsonWebKey
+	}
+
+	keyJson := []byte(`{
+		"e": "AQAB",
+		"kty": "RSA",
+		"n": "vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw"
+	}`)
+	var parsedKey JsonWebKey
+	err := json.Unmarshal(keyJson, &parsedKey)
+	if err != nil {
+		t.Error(fmt.Sprintf("Error unmarshalling key: %v", err))
+		return
+	}
+	ek := EmbedsKey{
+		Key: parsedKey,
+	}
+	out, err := json.Marshal(ek)
+	if err != nil {
+		t.Error(fmt.Sprintf("Error marshalling JSON: %v", err))
+		return
+	}
+	expected := "{\"Key\":{\"kty\":\"RSA\",\"n\":\"vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw\",\"e\":\"AAEAAQ\"}}"
+	if string(out) != expected {
+		t.Error("Failed to marshal embedded non-pointer JWK properly:", string(out))
 	}
 }
 
