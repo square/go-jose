@@ -57,7 +57,7 @@ type JsonWebKey struct {
 }
 
 // MarshalJSON serializes the given key to its JSON representation.
-func (k *JsonWebKey) MarshalJSON() ([]byte, error) {
+func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 	var raw *rawJsonWebKey
 	var err error
 
