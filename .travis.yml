@@ -1,5 +1,7 @@
 language: go
 
+sudo: false
+
 matrix:
   fast_finish: true
   allow_failures:
@@ -25,6 +27,7 @@ script:
 - go test . -v -covermode=count -coverprofile=profile.cov
 - go test ./cipher -v -covermode=count -coverprofile=cipher/profile.cov
 - cd jose-util && go build && PATH=$PWD:$PATH cram -v jose-util.t
+- cd ..
 
 after_success:
 - tail -n+2 cipher/profile.cov >> profile.cov
