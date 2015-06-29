@@ -226,21 +226,27 @@ func fromEcPublicKey(pub *ecdsa.PublicKey) (*rawJsonWebKey, error) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC key")
 	}
 
-	key := &rawJsonWebKey{
-		Kty: "EC",
-		X:   newBuffer(pub.X.Bytes()),
-		Y:   newBuffer(pub.Y.Bytes()),
-	}
-
+	crv := ""
+	coordLength := 0
 	switch pub.Curve {
 	case elliptic.P256():
-		key.Crv = "P-256"
+		crv = "P-256"
+		coordLength = 32
 	case elliptic.P384():
-		key.Crv = "P-384"
+		crv = "P-384"
+		coordLength = 48
 	case elliptic.P521():
-		key.Crv = "P-521"
+		crv = "P-521"
+		coordLength = 66
 	default:
 		return nil, fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
+	}
+
+	key := &rawJsonWebKey{
+		Kty: "EC",
+		Crv: crv,
+		X:   newZeroPaddedBuffer(pub.X.Bytes(), coordLength),
+		Y:   newZeroPaddedBuffer(pub.Y.Bytes(), coordLength),
 	}
 
 	return key, nil
