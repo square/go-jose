@@ -18,11 +18,13 @@ package jose
 
 import (
 	"bytes"
-	"fmt"
-	"encoding/json"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
@@ -248,9 +250,51 @@ func TestWebKeyVectorsInvalid(t *testing.T) {
 	}
 }
 
-func TestWebKeyVectorsValid(t *testing.T) {
-	keys := []string{
-		stripWhitespace(`{"kty":"RSA",
+// Test vectors from RFC 7520
+var cookbookJWKs = []string{
+	// EC Public
+	stripWhitespace(`{
+     "kty": "EC",
+     "kid": "bilbo.baggins@hobbiton.example",
+     "use": "sig",
+     "crv": "P-521",
+     "x": "AHKZLLOsCOzz5cY97ewNUajB957y-C-U88c3v13nmGZx6sYl_oJXu9
+         A5RkTKqjqvjyekWF-7ytDyRXYgCF5cj0Kt",
+     "y": "AdymlHvOiLxXkEhayXQnNCvDX4h9htZaCJN34kfmC6pV5OhQHiraVy
+         SsUdaQkAgDPrwQrJmbnX9cwlGfP-HqHZR1"
+   }`),
+
+	// EC Private
+	stripWhitespace(`{
+     "kty": "EC",
+     "kid": "bilbo.baggins@hobbiton.example",
+     "use": "sig",
+     "crv": "P-521",
+     "x": "AHKZLLOsCOzz5cY97ewNUajB957y-C-U88c3v13nmGZx6sYl_oJXu9
+           A5RkTKqjqvjyekWF-7ytDyRXYgCF5cj0Kt",
+     "y": "AdymlHvOiLxXkEhayXQnNCvDX4h9htZaCJN34kfmC6pV5OhQHiraVy
+           SsUdaQkAgDPrwQrJmbnX9cwlGfP-HqHZR1",
+     "d": "AAhRON2r9cqXX1hg-RoI6R1tX5p2rUAYdmpHZoC1XNM56KtscrX6zb
+           KipQrCW9CGZH3T4ubpnoTKLDYJ_fF3_rJt"
+   }`),
+
+	// RSA Public
+	stripWhitespace(`{
+     "kty": "RSA",
+     "kid": "bilbo.baggins@hobbiton.example",
+     "use": "sig",
+     "n": "n4EPtAOCc9AlkeQHPzHStgAbgs7bTZLwUBZdR8_KuKPEHLd4rHVTeT
+         -O-XV2jRojdNhxJWTDvNd7nqQ0VEiZQHz_AJmSCpMaJMRBSFKrKb2wqV
+         wGU_NsYOYL-QtiWN2lbzcEe6XC0dApr5ydQLrHqkHHig3RBordaZ6Aj-
+         oBHqFEHYpPe7Tpe-OfVfHd1E6cS6M1FZcD1NNLYD5lFHpPI9bTwJlsde
+         3uhGqC0ZCuEHg8lhzwOHrtIQbS0FVbb9k3-tVTU4fg_3L_vniUFAKwuC
+         LqKnS2BYwdq_mzSnbLY7h_qixoR7jig3__kRhuaxwUkRz5iaiQkqgc5g
+         HdrNP5zw",
+     "e": "AQAB"
+   }`),
+
+	// RSA Private
+	stripWhitespace(`{"kty":"RSA",
       "kid":"juliet@capulet.lit",
       "use":"enc",
       "n":"t6Q8PWSi1dkJj9hTP8hNYFlvadM7DflW9mWepOJhJ66w7nyoK1gPNqFMSQRy
@@ -281,13 +325,42 @@ func TestWebKeyVectorsValid(t *testing.T) {
       "qi":"lSQi-w9CpyUReMErP1RsBLk7wNtOvs5EQpPqmuMvqW57NBUczScEoPwmUqq
            abu9V0-Py4dQ57_bapoKRu1R90bvuFnU63SHWEFglZQvJDMeAvmj4sm-Fp0o
            Yu_neotgQ0hzbI5gry7ajdYy9-2lNx_76aBZoOUu9HCJ-UsfSOI8"}`),
-	}
+}
 
-	for _, key := range keys {
+// SHA-256 thumbprints of the above keys, hex-encoded
+var cookbookJWKThumbprints = []string{
+	"747ae2dd2003664aeeb21e4753fe7402846170a16bc8df8f23a8cf06d3cbe793",
+	"747ae2dd2003664aeeb21e4753fe7402846170a16bc8df8f23a8cf06d3cbe793",
+	"f63838e96077ad1fc01c3f8405774dedc0641f558ebb4b40dccf5f9b6d66a932",
+	"0fc478f8579325fcee0d4cbc6d9d1ce21730a6e97e435d6008fb379b0ebe47d4",
+}
+
+func TestWebKeyVectorsValid(t *testing.T) {
+	for _, key := range cookbookJWKs {
 		var jwk2 JsonWebKey
 		err := jwk2.UnmarshalJSON([]byte(key))
 		if err != nil {
 			t.Error("unable to parse valid key:", key, err)
+		}
+	}
+}
+
+func TestThumbprint(t *testing.T) {
+	for i, key := range cookbookJWKs {
+		var jwk2 JsonWebKey
+		err := jwk2.UnmarshalJSON([]byte(key))
+		if err != nil {
+			t.Error("unable to parse valid key:", key, err)
+		}
+
+		tp, err := jwk2.Thumbprint(crypto.SHA256)
+		if err != nil {
+			t.Error("unable to compute thumbprint:", key, err)
+		}
+
+		tpHex := hex.EncodeToString(tp)
+		if cookbookJWKThumbprints[i] != tpHex {
+			t.Error("incorrect thumbprint:", i, cookbookJWKThumbprints[i], tpHex)
 		}
 	}
 }
