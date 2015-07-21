@@ -17,6 +17,7 @@
 package jose
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -116,6 +117,64 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	return
 }
 
+const rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`
+const ecThumbprintTemplate = `{"crv":"%s","kty":"EC","x":"%s","y":"%s"}`
+
+func ecThumbprintInput(key *ecdsa.PublicKey) (string, error) {
+	crv := ""
+	coordLength := 0
+	switch key.Curve {
+	case elliptic.P256():
+		crv = "P-256"
+		coordLength = 32
+	case elliptic.P384():
+		crv = "P-384"
+		coordLength = 48
+	case elliptic.P521():
+		crv = "P-521"
+		coordLength = 66
+	default:
+		return "", fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
+	}
+
+	return fmt.Sprintf(ecThumbprintTemplate, crv,
+		newZeroPaddedBuffer(key.X.Bytes(), coordLength).base64(),
+		newZeroPaddedBuffer(key.Y.Bytes(), coordLength).base64()), nil
+}
+
+func rsaThumbprintInput(key *rsa.PublicKey) (string, error) {
+	return fmt.Sprintf(rsaThumbprintTemplate,
+		newBuffer(big.NewInt(int64(key.E)).Bytes()).base64(),
+		newBuffer(key.N.Bytes()).base64()), nil
+}
+
+// Thumbprint computes the JWK Thumbprint of a key using the
+// indicated hash algorithm.
+func (k *JsonWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
+	var input string
+	var err error
+	switch key := k.Key.(type) {
+	case *ecdsa.PublicKey:
+		input, err = ecThumbprintInput(key)
+	case *rsa.PublicKey:
+		input, err = rsaThumbprintInput(key)
+	case *ecdsa.PrivateKey:
+		input, err = ecThumbprintInput(key.Public().(*ecdsa.PublicKey))
+	case *rsa.PrivateKey:
+		input, err = rsaThumbprintInput(key.Public().(*rsa.PublicKey))
+	default:
+		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	h := hash.New()
+	h.Write([]byte(input))
+	return h.Sum(nil), nil
+}
+
 func (key rawJsonWebKey) rsaPublicKey() (*rsa.PublicKey, error) {
 	if key.N == nil || key.E == nil {
 		return nil, fmt.Errorf("square/go-jose: invalid RSA key, missing n/e values")
@@ -167,21 +226,27 @@ func fromEcPublicKey(pub *ecdsa.PublicKey) (*rawJsonWebKey, error) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC key")
 	}
 
-	key := &rawJsonWebKey{
-		Kty: "EC",
-		X:   newBuffer(pub.X.Bytes()),
-		Y:   newBuffer(pub.Y.Bytes()),
-	}
-
+	crv := ""
+	coordLength := 0
 	switch pub.Curve {
 	case elliptic.P256():
-		key.Crv = "P-256"
+		crv = "P-256"
+		coordLength = 32
 	case elliptic.P384():
-		key.Crv = "P-384"
+		crv = "P-384"
+		coordLength = 48
 	case elliptic.P521():
-		key.Crv = "P-521"
+		crv = "P-521"
+		coordLength = 66
 	default:
 		return nil, fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
+	}
+
+	key := &rawJsonWebKey{
+		Kty: "EC",
+		Crv: crv,
+		X:   newZeroPaddedBuffer(pub.X.Bytes(), coordLength),
+		Y:   newZeroPaddedBuffer(pub.Y.Bytes(), coordLength),
 	}
 
 	return key, nil

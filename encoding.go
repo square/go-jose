@@ -131,6 +131,22 @@ func newBuffer(data []byte) *byteBuffer {
 	}
 }
 
+func newZeroPaddedBuffer(data []byte, length int) *byteBuffer {
+	if len(data) >= length {
+		return newBuffer(data)
+	}
+
+	padLength := length - len(data)
+	paddedData := make([]byte, length)
+	for i := range paddedData {
+		paddedData[i] = 0
+		if i >= padLength {
+			paddedData[i] = data[i-padLength]
+		}
+	}
+	return newBuffer(paddedData)
+}
+
 func (b *byteBuffer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(b.base64())
 }
