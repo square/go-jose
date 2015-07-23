@@ -135,9 +135,7 @@ func newBuffer(data []byte) *byteBuffer {
 func newBufferFromInt(num uint64) *byteBuffer {
 	data := make([]byte, 8)
 	binary.BigEndian.PutUint64(data, num)
-	return &byteBuffer{
-		data: bytes.TrimLeft(data, "\x00"),
-	}
+	return newBuffer(bytes.TrimLeft(data, "\x00"))
 }
 
 func (b *byteBuffer) MarshalJSON() ([]byte, error) {
