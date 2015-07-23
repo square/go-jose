@@ -136,7 +136,7 @@ func newBufferFromInt(num uint64) *byteBuffer {
 	data := make([]byte, 8)
 	binary.BigEndian.PutUint64(data, num)
 	return &byteBuffer{
-		data: trimZeros(data),
+		data: bytes.TrimLeft(data, "\x00"),
 	}
 }
 
@@ -183,16 +183,4 @@ func (b byteBuffer) bigInt() *big.Int {
 
 func (b byteBuffer) toInt() int {
 	return int(b.bigInt().Int64())
-}
-
-func trimZeros(data []byte) []byte {
-	i := 0
-	for _, b := range data {
-		if b == 0 {
-			i++
-		} else {
-			break
-		}
-	}
-	return data[i:]
 }
