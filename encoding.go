@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"math/big"
@@ -131,6 +132,14 @@ func newBuffer(data []byte) *byteBuffer {
 	}
 }
 
+func newBufferFromInt(num uint64) *byteBuffer {
+	data := make([]byte, 8)
+	binary.BigEndian.PutUint64(data, num)
+	return &byteBuffer{
+		data: trimZeros(data),
+	}
+}
+
 func (b *byteBuffer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(b.base64())
 }
@@ -174,4 +183,16 @@ func (b byteBuffer) bigInt() *big.Int {
 
 func (b byteBuffer) toInt() int {
 	return int(b.bigInt().Int64())
+}
+
+func trimZeros(data []byte) []byte {
+	i := 0
+	for _, b := range data {
+		if b == 0 {
+			i++
+		} else {
+			break
+		}
+	}
+	return data[i:]
 }
