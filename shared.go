@@ -127,6 +127,7 @@ type rawHeader struct {
 type JoseHeader struct {
 	KeyID      string
 	JsonWebKey *JsonWebKey
+	Algorithm  string
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
@@ -134,6 +135,7 @@ func (parsed rawHeader) sanitized() JoseHeader {
 	return JoseHeader{
 		KeyID:      parsed.Kid,
 		JsonWebKey: parsed.Jwk,
+		Algorithm:  parsed.Alg,
 	}
 }
 
