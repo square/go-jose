@@ -270,6 +270,10 @@ func TestMarshalUnmarshalJWS(t *testing.T) {
 		t.Error("unable to unmarshal JSON JWS")
 	}
 
+	if parsed.JWS == nil {
+		t.Error("JWS did not correctly unmarshal")
+	}
+
 	serialized, err := json.Marshal(parsed)
 	if err != nil {
 		t.Error("unable to marshal JSON JWS")
@@ -278,5 +282,9 @@ func TestMarshalUnmarshalJWS(t *testing.T) {
 	err = json.Unmarshal(serialized, &parsed)
 	if err != nil {
 		t.Error("unable to unmarshal marshaled JSON JWS")
+	}
+
+	if parsed.JWS == nil {
+		t.Error("JWS did not correctly unmarshal from marshaled JSON JWS")
 	}
 }
