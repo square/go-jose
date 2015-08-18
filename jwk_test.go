@@ -28,6 +28,21 @@ import (
 	"testing"
 )
 
+func TestCurveSize(t *testing.T) {
+	size256 := curveSize(elliptic.P256())
+	size384 := curveSize(elliptic.P384())
+	size521 := curveSize(elliptic.P521())
+	if size256 != 32 {
+		t.Error("P-256 have 32 bytes")
+	}
+	if size384 != 48 {
+		t.Error("P-384 have 48 bytes")
+	}
+	if size521 != 66 {
+		t.Error("P-521 have 66 bytes")
+	}
+}
+
 func TestRoundtripRsaPrivate(t *testing.T) {
 	jwk, err := fromRsaPrivateKey(rsaTestKey)
 	if err != nil {
@@ -92,6 +107,27 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 	_, err := fromRsaPrivateKey(&brokenRsaPrivateKey)
 	if err != ErrUnsupportedKeyType {
 		t.Error("expected unsupported key type error, got", err)
+	}
+}
+
+func TestRoundtripEcPublic(t *testing.T) {
+	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
+		jwk, err := fromEcPublicKey(&ecTestKey.PublicKey)
+
+		ec2, err := jwk.ecPublicKey()
+		if err != nil {
+			t.Error("problem converting ECDSA private -> JWK", i, err)
+		}
+
+		if !reflect.DeepEqual(ec2.Curve, ecTestKey.Curve) {
+			t.Error("ECDSA private curve mismatch", i)
+		}
+		if ec2.X.Cmp(ecTestKey.X) != 0 {
+			t.Error("ECDSA X mismatch", i)
+		}
+		if ec2.Y.Cmp(ecTestKey.Y) != 0 {
+			t.Error("ECDSA Y mismatch", i)
+		}
 	}
 }
 
