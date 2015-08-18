@@ -110,6 +110,27 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 	}
 }
 
+func TestRoundtripEcPublic(t *testing.T) {
+	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
+		jwk, err := fromEcPublicKey(&ecTestKey.PublicKey)
+
+		ec2, err := jwk.ecPublicKey()
+		if err != nil {
+			t.Error("problem converting ECDSA private -> JWK", i, err)
+		}
+
+		if !reflect.DeepEqual(ec2.Curve, ecTestKey.Curve) {
+			t.Error("ECDSA private curve mismatch", i)
+		}
+		if ec2.X.Cmp(ecTestKey.X) != 0 {
+			t.Error("ECDSA X mismatch", i)
+		}
+		if ec2.Y.Cmp(ecTestKey.Y) != 0 {
+			t.Error("ECDSA Y mismatch", i)
+		}
+	}
+}
+
 func TestRoundtripEcPrivate(t *testing.T) {
 	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
 		jwk, err := fromEcPrivateKey(ecTestKey)
