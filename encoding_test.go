@@ -160,3 +160,14 @@ func TestSerializeJSONRejectsNil(t *testing.T) {
 
 	mustSerializeJSON(nil)
 }
+
+func TestFixedSizeBufferTooLarge(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Error("should not be able to create fixed size buffer with oversized data")
+		}
+	}()
+
+	newFixedSizeBuffer(make([]byte, 2), 1)
+}
