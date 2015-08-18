@@ -199,7 +199,7 @@ func curveName(crv elliptic.Curve) (string, error) {
 	}
 }
 
-// Get size of curve
+// Get size of curve in bytes
 func curveSize(crv elliptic.Curve) int {
 	bits := crv.Params().BitSize
 
