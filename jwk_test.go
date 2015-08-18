@@ -28,6 +28,21 @@ import (
 	"testing"
 )
 
+func TestCurveSize(t *testing.T) {
+	size256 := curveSize(elliptic.P256())
+	size384 := curveSize(elliptic.P384())
+	size521 := curveSize(elliptic.P521())
+	if size256 != 32 {
+		t.Error("P-256 have 32 bytes")
+	}
+	if size384 != 48 {
+		t.Error("P-384 have 48 bytes")
+	}
+	if size521 != 66 {
+		t.Error("P-521 have 66 bytes")
+	}
+}
+
 func TestRoundtripRsaPrivate(t *testing.T) {
 	jwk, err := fromRsaPrivateKey(rsaTestKey)
 	if err != nil {

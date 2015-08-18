@@ -17,7 +17,9 @@
 package jose
 
 import (
+	"crypto/elliptic"
 	"errors"
+	"fmt"
 )
 
 // KeyAlgorithm represents a key management algorithm.
@@ -181,4 +183,32 @@ func (dst *rawHeader) merge(src *rawHeader) {
 	if dst.Jwk == nil {
 		dst.Jwk = src.Jwk
 	}
+}
+
+// Get JOSE name of curve
+func curveName(crv elliptic.Curve) (string, error) {
+	switch crv {
+	case elliptic.P256():
+		return "P-256", nil
+	case elliptic.P384():
+		return "P-384", nil
+	case elliptic.P521():
+		return "P-521", nil
+	default:
+		return "", fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
+	}
+}
+
+// Get size of curve
+func curveSize(crv elliptic.Curve) int {
+	bits := crv.Params().BitSize
+
+	div := bits / 8
+	mod := bits % 8
+
+	if mod == 0 {
+		return div
+	}
+
+	return div + 1
 }
