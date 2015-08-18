@@ -357,6 +357,14 @@ func TestInvalidPadding(t *testing.T) {
 	}
 }
 
+func TestZeroLengthPadding(t *testing.T) {
+	data := make([]byte, 16)
+	data, err := unpadBuffer(data, 16)
+	if err == nil {
+		t.Error("padding with 0x00 should never be valid")
+	}
+}
+
 func benchEncryptCBCHMAC(b *testing.B, keySize, chunkSize int) {
 	key := make([]byte, keySize*2)
 	nonce := make([]byte, 16)

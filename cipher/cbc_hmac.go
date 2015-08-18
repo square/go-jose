@@ -183,7 +183,7 @@ func unpadBuffer(buffer []byte, blockSize int) ([]byte, error) {
 	last := buffer[len(buffer)-1]
 	count := int(last)
 
-	if count > blockSize || count > len(buffer) {
+	if count == 0 || count > blockSize || count > len(buffer) {
 		return nil, errors.New("square/go-jose: invalid padding")
 	}
 
