@@ -221,6 +221,8 @@ func TestMarshalNonPointer(t *testing.T) {
 }
 
 func TestMarshalUnmarshalInvalid(t *testing.T) {
+	// Make an invalid curve coordinate by creating a byte array that is one
+	// byte too large, and setting the first byte to 1 (otherwise it's just zero).
 	invalidCoord := make([]byte, curveSize(ecTestKey256.Curve)+1)
 	invalidCoord[0] = 1
 
