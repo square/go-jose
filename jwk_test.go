@@ -221,6 +221,11 @@ func TestMarshalNonPointer(t *testing.T) {
 }
 
 func TestMarshalUnmarshalInvalid(t *testing.T) {
+	// Make an invalid curve coordinate by creating a byte array that is one
+	// byte too large, and setting the first byte to 1 (otherwise it's just zero).
+	invalidCoord := make([]byte, curveSize(ecTestKey256.Curve)+1)
+	invalidCoord[0] = 1
+
 	keys := []interface{}{
 		// Empty keys
 		&rsa.PrivateKey{},
@@ -243,6 +248,15 @@ func TestMarshalUnmarshalInvalid(t *testing.T) {
 		&ecdsa.PrivateKey{
 			// Valid pub key, but missing priv key values
 			PublicKey: ecTestKey256.PublicKey,
+		},
+		&ecdsa.PrivateKey{
+			// Invalid pub key, values too large
+			PublicKey: ecdsa.PublicKey{
+				Curve: ecTestKey256.Curve,
+				X:     big.NewInt(0).SetBytes(invalidCoord),
+				Y:     big.NewInt(0).SetBytes(invalidCoord),
+			},
+			D: ecTestKey256.D,
 		},
 		nil,
 	}

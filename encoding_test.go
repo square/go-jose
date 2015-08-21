@@ -18,6 +18,7 @@ package jose
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -147,4 +148,26 @@ func TestFixedSizeBuffer(t *testing.T) {
 	if !bytes.Equal(buf4.data, []byte{1, 2, 3, 4}) {
 		t.Error("Invalid padded buffer for buf4")
 	}
+}
+
+func TestSerializeJSONRejectsNil(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil || !strings.Contains(r.(string), "nil pointer") {
+			t.Error("serialize function should not accept nil pointer")
+		}
+	}()
+
+	mustSerializeJSON(nil)
+}
+
+func TestFixedSizeBufferTooLarge(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Error("should not be able to create fixed size buffer with oversized data")
+		}
+	}()
+
+	newFixedSizeBuffer(make([]byte, 2), 1)
 }
