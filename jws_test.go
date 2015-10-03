@@ -17,8 +17,8 @@
 package jose
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestCompactParseJWS(t *testing.T) {

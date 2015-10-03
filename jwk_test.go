@@ -22,13 +22,27 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
 )
+
+func TestCurveSize(t *testing.T) {
+	size256 := curveSize(elliptic.P256())
+	size384 := curveSize(elliptic.P384())
+	size521 := curveSize(elliptic.P521())
+	if size256 != 32 {
+		t.Error("P-256 have 32 bytes")
+	}
+	if size384 != 48 {
+		t.Error("P-384 have 48 bytes")
+	}
+	if size521 != 66 {
+		t.Error("P-521 have 66 bytes")
+	}
+}
 
 func TestRoundtripRsaPrivate(t *testing.T) {
 	jwk, err := fromRsaPrivateKey(rsaTestKey)
@@ -94,6 +108,27 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 	_, err := fromRsaPrivateKey(&brokenRsaPrivateKey)
 	if err != ErrUnsupportedKeyType {
 		t.Error("expected unsupported key type error, got", err)
+	}
+}
+
+func TestRoundtripEcPublic(t *testing.T) {
+	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
+		jwk, err := fromEcPublicKey(&ecTestKey.PublicKey)
+
+		ec2, err := jwk.ecPublicKey()
+		if err != nil {
+			t.Error("problem converting ECDSA private -> JWK", i, err)
+		}
+
+		if !reflect.DeepEqual(ec2.Curve, ecTestKey.Curve) {
+			t.Error("ECDSA private curve mismatch", i)
+		}
+		if ec2.X.Cmp(ecTestKey.X) != 0 {
+			t.Error("ECDSA X mismatch", i)
+		}
+		if ec2.Y.Cmp(ecTestKey.Y) != 0 {
+			t.Error("ECDSA Y mismatch", i)
+		}
 	}
 }
 
@@ -180,13 +215,18 @@ func TestMarshalNonPointer(t *testing.T) {
 		t.Error(fmt.Sprintf("Error marshalling JSON: %v", err))
 		return
 	}
-	expected := "{\"Key\":{\"kty\":\"RSA\",\"n\":\"vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw\",\"e\":\"AAEAAQ\"}}"
+	expected := "{\"Key\":{\"kty\":\"RSA\",\"n\":\"vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw\",\"e\":\"AQAB\"}}"
 	if string(out) != expected {
 		t.Error("Failed to marshal embedded non-pointer JWK properly:", string(out))
 	}
 }
 
 func TestMarshalUnmarshalInvalid(t *testing.T) {
+	// Make an invalid curve coordinate by creating a byte array that is one
+	// byte too large, and setting the first byte to 1 (otherwise it's just zero).
+	invalidCoord := make([]byte, curveSize(ecTestKey256.Curve)+1)
+	invalidCoord[0] = 1
+
 	keys := []interface{}{
 		// Empty keys
 		&rsa.PrivateKey{},
@@ -209,6 +249,15 @@ func TestMarshalUnmarshalInvalid(t *testing.T) {
 		&ecdsa.PrivateKey{
 			// Valid pub key, but missing priv key values
 			PublicKey: ecTestKey256.PublicKey,
+		},
+		&ecdsa.PrivateKey{
+			// Invalid pub key, values too large
+			PublicKey: ecdsa.PublicKey{
+				Curve: ecTestKey256.Curve,
+				X:     big.NewInt(0).SetBytes(invalidCoord),
+				Y:     big.NewInt(0).SetBytes(invalidCoord),
+			},
+			D: ecTestKey256.D,
 		},
 		nil,
 	}

@@ -21,7 +21,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -187,13 +186,10 @@ func (key rawJsonWebKey) rsaPublicKey() (*rsa.PublicKey, error) {
 }
 
 func fromRsaPublicKey(pub *rsa.PublicKey) *rawJsonWebKey {
-	e := make([]byte, 4)
-	binary.BigEndian.PutUint32(e, uint32(pub.E))
-
 	return &rawJsonWebKey{
 		Kty: "RSA",
 		N:   newBuffer(pub.N.Bytes()),
-		E:   newBuffer(e),
+		E:   newBufferFromInt(uint64(pub.E)),
 	}
 }
 
@@ -223,24 +219,28 @@ func (key rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 
 func fromEcPublicKey(pub *ecdsa.PublicKey) (*rawJsonWebKey, error) {
 	if pub == nil || pub.X == nil || pub.Y == nil {
-		return nil, fmt.Errorf("square/go-jose: invalid EC key")
+		return nil, fmt.Errorf("square/go-jose: invalid EC key (nil, or X/Y missing)")
+	}
+
+	name, err := curveName(pub.Curve)
+	if err != nil {
+		return nil, err
+	}
+
+	size := curveSize(pub.Curve)
+
+	xBytes := pub.X.Bytes()
+	yBytes := pub.Y.Bytes()
+
+	if len(xBytes) > size || len(yBytes) > size {
+		return nil, fmt.Errorf("square/go-jose: invalid EC key (X/Y too large)")
 	}
 
 	key := &rawJsonWebKey{
 		Kty: "EC",
-		X:   newBuffer(pub.X.Bytes()),
-		Y:   newBuffer(pub.Y.Bytes()),
-	}
-
-	switch pub.Curve {
-	case elliptic.P256():
-		key.Crv = "P-256"
-	case elliptic.P384():
-		key.Crv = "P-384"
-	case elliptic.P521():
-		key.Crv = "P-521"
-	default:
-		return nil, fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
+		Crv: name,
+		X:   newFixedSizeBuffer(xBytes, size),
+		Y:   newFixedSizeBuffer(yBytes, size),
 	}
 
 	return key, nil
