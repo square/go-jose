@@ -119,32 +119,22 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 const rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`
 const ecThumbprintTemplate = `{"crv":"%s","kty":"EC","x":"%s","y":"%s"}`
 
-func ecThumbprintInput(key *ecdsa.PublicKey) (string, error) {
-	crv := ""
-	coordLength := 0
-	switch key.Curve {
-	case elliptic.P256():
-		crv = "P-256"
-		coordLength = 32
-	case elliptic.P384():
-		crv = "P-384"
-		coordLength = 48
-	case elliptic.P521():
-		crv = "P-521"
-		coordLength = 66
-	default:
-		return "", fmt.Errorf("square/go-jose: unsupported/unknown elliptic curve")
+func ecThumbprintInput(curve elliptic.Curve, x, y *big.Int) (string, error) {
+	coordLength := curveSize(curve)
+	crv, err := curveName(curve)
+	if err != nil {
+		return "", err
 	}
 
 	return fmt.Sprintf(ecThumbprintTemplate, crv,
-		newZeroPaddedBuffer(key.X.Bytes(), coordLength).base64(),
-		newZeroPaddedBuffer(key.Y.Bytes(), coordLength).base64()), nil
+		newFixedSizeBuffer(x.Bytes(), coordLength).base64(),
+		newFixedSizeBuffer(y.Bytes(), coordLength).base64()), nil
 }
 
-func rsaThumbprintInput(key *rsa.PublicKey) (string, error) {
+func rsaThumbprintInput(n *big.Int, e int) (string, error) {
 	return fmt.Sprintf(rsaThumbprintTemplate,
-		newBuffer(big.NewInt(int64(key.E)).Bytes()).base64(),
-		newBuffer(key.N.Bytes()).base64()), nil
+		newBufferFromInt(uint64(e)).base64(),
+		newBuffer(n.Bytes()).base64()), nil
 }
 
 // Thumbprint computes the JWK Thumbprint of a key using the
@@ -154,13 +144,13 @@ func (k *JsonWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
 	var err error
 	switch key := k.Key.(type) {
 	case *ecdsa.PublicKey:
-		input, err = ecThumbprintInput(key)
-	case *rsa.PublicKey:
-		input, err = rsaThumbprintInput(key)
+		input, err = ecThumbprintInput(key.Curve, key.X, key.Y)
 	case *ecdsa.PrivateKey:
-		input, err = ecThumbprintInput(key.Public().(*ecdsa.PublicKey))
+		input, err = ecThumbprintInput(key.Curve, key.X, key.Y)
+	case *rsa.PublicKey:
+		input, err = rsaThumbprintInput(key.N, key.E)
 	case *rsa.PrivateKey:
-		input, err = rsaThumbprintInput(key.Public().(*rsa.PublicKey))
+		input, err = rsaThumbprintInput(key.N, key.E)
 	default:
 		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
 	}
