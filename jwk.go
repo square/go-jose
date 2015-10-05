@@ -17,6 +17,7 @@
 package jose
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -113,6 +114,54 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 		*k = JsonWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg}
 	}
 	return
+}
+
+const rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`
+const ecThumbprintTemplate = `{"crv":"%s","kty":"EC","x":"%s","y":"%s"}`
+
+func ecThumbprintInput(curve elliptic.Curve, x, y *big.Int) (string, error) {
+	coordLength := curveSize(curve)
+	crv, err := curveName(curve)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(ecThumbprintTemplate, crv,
+		newFixedSizeBuffer(x.Bytes(), coordLength).base64(),
+		newFixedSizeBuffer(y.Bytes(), coordLength).base64()), nil
+}
+
+func rsaThumbprintInput(n *big.Int, e int) (string, error) {
+	return fmt.Sprintf(rsaThumbprintTemplate,
+		newBufferFromInt(uint64(e)).base64(),
+		newBuffer(n.Bytes()).base64()), nil
+}
+
+// Thumbprint computes the JWK Thumbprint of a key using the
+// indicated hash algorithm.
+func (k *JsonWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
+	var input string
+	var err error
+	switch key := k.Key.(type) {
+	case *ecdsa.PublicKey:
+		input, err = ecThumbprintInput(key.Curve, key.X, key.Y)
+	case *ecdsa.PrivateKey:
+		input, err = ecThumbprintInput(key.Curve, key.X, key.Y)
+	case *rsa.PublicKey:
+		input, err = rsaThumbprintInput(key.N, key.E)
+	case *rsa.PrivateKey:
+		input, err = rsaThumbprintInput(key.N, key.E)
+	default:
+		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	h := hash.New()
+	h.Write([]byte(input))
+	return h.Sum(nil), nil
 }
 
 func (key rawJsonWebKey) rsaPublicKey() (*rsa.PublicKey, error) {
