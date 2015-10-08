@@ -70,8 +70,8 @@ func ParseSigned(input string) (*JsonWebSignature, error) {
 // Get a header value
 func (sig Signature) mergedHeaders() rawHeader {
 	out := rawHeader{}
-	out.merge(sig.protected)
-	out.merge(sig.header)
+	out.merge(sig.protected, true)
+	out.merge(sig.header, false)
 	return out
 }
 

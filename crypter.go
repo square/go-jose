@@ -219,7 +219,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 		return nil, err
 	}
 
-	obj.protected.merge(&headers)
+	obj.protected.merge(&headers, true)
 
 	for i, info := range ctx.recipients {
 		recipient, err := info.keyEncrypter.encryptKey(cek, info.keyAlg)
@@ -234,7 +234,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 	if len(ctx.recipients) == 1 {
 		// Move per-recipient headers into main protected header if there's
 		// only a single recipient.
-		obj.protected.merge(obj.recipients[0].header)
+		obj.protected.merge(obj.recipients[0].header, true)
 		obj.recipients[0].header = nil
 	}
 

@@ -98,7 +98,8 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 							"e": "AQAB",
 							"kty": "RSA",
 							"n": "tSwgy3ORGvc7YJI9B2qqkelZRUC6F1S5NwXFvM4w5-M0TsxbFsH5UH6adigV0jzsDJ5imAechcSoOhAh9POceCbPN1sTNwLpNbOLiQQ7RD5mY_pSUHWXNmS9R4NZ3t2fQAzPeW7jOfF0LKuJRGkekx6tXP1uSnNibgpJULNc4208dgBaCHo3mvaE2HV2GmVl1yxwWX5QZZkGQGjNDZYnjFfa2DKVvFs0QbAk21ROm594kAxlRlMMrvqlf24Eq4ERO0ptzpZgm_3j_e4hGRD39gJS7kAzK-j2cacFQ5Qi2Y6wZI2p-FCq_wiYsfEAIkATPBiLKl_6d_Jfcvs_impcXQ"
-					}
+					},
+          "nonce": "should_not_be_reflected"
 			},
 			"payload": "Zm9vCg",
 			"signature": "hRt2eYqBd_MyMRNIh8PEIACoFtmBi7BHTLBaAhpSU6zyDAFdEBaX7us4VB9Vo1afOL03Q8iuoRA0AT4akdV_mQTAQ_jhTcVOAeXPr0tB8b8Q11UPQ0tXJYmU4spAW2SapJIvO50ntUaqU05kZd0qw8-noH1Lja-aNnU-tQII4iYVvlTiRJ5g8_CADsvJqOk6FcHuo2mG643TRnhkAxUtazvHyIHeXMxydMMSrpwUwzMtln4ZJYBNx4QGEq6OhpAD_VSp-w8Lq5HOwGQoNs0bPxH1SGrArt67LFQBfjlVr94E1sn26p4vigXm83nJdNhWAMHHE9iV67xN-r29LT-FjA"
@@ -121,6 +122,11 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 	}
 	if string(payload) != "foo\n" {
 		t.Error(fmt.Sprintf("Payload was incorrect: '%s' should have been 'foo\\n'", string(payload)))
+	}
+
+	// Verify that the nonce included in the unprotected header was not reflected in the parsed object
+	if sig.Header.Nonce != "" {
+		t.Error(fmt.Sprintf("JWS allowed unprotected nonce: [%s]", sig.Header.Nonce))
 	}
 }
 

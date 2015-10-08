@@ -70,11 +70,11 @@ func (obj JsonWebEncryption) GetAuthData() []byte {
 // Get the merged header values
 func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) rawHeader {
 	out := rawHeader{}
-	out.merge(obj.protected)
-	out.merge(obj.unprotected)
+	out.merge(obj.protected, true)
+	out.merge(obj.unprotected, false)
 
 	if recipient != nil {
-		out.merge(recipient.header)
+		out.merge(recipient.header, false)
 	}
 
 	return out

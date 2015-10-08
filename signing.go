@@ -25,11 +25,13 @@ import (
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
+	AddNonces(nonces []string)
 }
 
 // MultiSigner represents a signer which supports multiple recipients.
 type MultiSigner interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
+	AddNonces(nonces []string)
 	AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error
 }
 
@@ -43,6 +45,7 @@ type payloadVerifier interface {
 
 type genericSigner struct {
 	recipients []recipientSigInfo
+	nonces     []string
 }
 
 type recipientSigInfo struct {
@@ -138,6 +141,15 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 			protected.Kid = recipient.publicKey.KeyID
 		}
 
+		if ctx.nonces != nil {
+			if len(ctx.nonces) == 0 {
+				return nil, fmt.Errorf("square/go-jose: Nonce required but no nonces available")
+			}
+
+			protected.Nonce = ctx.nonces[0]
+			ctx.nonces = ctx.nonces[1:]
+		}
+
 		serializedProtected := mustSerializeJSON(protected)
 
 		input := []byte(fmt.Sprintf("%s.%s",
@@ -154,6 +166,13 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	}
 
 	return obj, nil
+}
+
+// AddNonces provides or updates a nonce pool to the first recipients.
+// After this method is called, the signer will consume one nonce per
+// signature, returning an error if there are no nonces left in the pool.
+func (ctx *genericSigner) AddNonces(nonces []string) {
+	ctx.nonces = append(ctx.nonces, nonces...)
 }
 
 // Verify validates the signature on the object and returns the payload.
