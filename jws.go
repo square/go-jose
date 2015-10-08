@@ -46,8 +46,12 @@ type JsonWebSignature struct {
 
 // Signature represents a single signature over the JWS payload and protected header.
 type Signature struct {
-	Header    JoseHeader
+	// Header fields, such as the signature algorithm
+	Header JoseHeader
+
+	// The actual signature value
 	Signature []byte
+
 	protected *rawHeader
 	header    *rawHeader
 	original  *rawSignatureInfo
