@@ -172,7 +172,7 @@ func (obj JsonWebSignature) Verify(verificationKey interface{}) ([]byte, error) 
 
 		input := obj.computeAuthData(&signature)
 		alg := SignatureAlgorithm(headers.Alg)
-		err := verifier.verifyPayload(input, signature.signature, alg)
+		err := verifier.verifyPayload(input, signature.Signature, alg)
 		if err == nil {
 			return obj.payload, nil
 		}
