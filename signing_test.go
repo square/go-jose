@@ -27,10 +27,20 @@ import (
 	"testing"
 )
 
-func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) (string, error), corrupter func(*JsonWebSignature), signingKey interface{}, verificationKey interface{}) error {
+type staticNonceSource string
+
+func (sns staticNonceSource) Nonce() (string, error) {
+	return string(sns), nil
+}
+
+func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) (string, error), corrupter func(*JsonWebSignature), signingKey interface{}, verificationKey interface{}, nonce string) error {
 	signer, err := NewSigner(sigAlg, signingKey)
 	if err != nil {
 		return fmt.Errorf("error on new signer: %s", err)
+	}
+
+	if nonce != "" {
+		signer.SetNonceSource(staticNonceSource(nonce))
 	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
@@ -65,6 +75,11 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 				return fmt.Errorf("error on verify with embedded key %d: %s", i, err)
 			}
 		}
+
+		// Check that the nonce correctly round-tripped (if present)
+		if sig.Header.Nonce != nonce {
+			return fmt.Errorf("Incorrect nonce returned: [%s]", sig.Header.Nonce)
+		}
 	}
 
 	if bytes.Compare(output, input) != 0 {
@@ -89,7 +104,7 @@ func TestRoundtripsJWS(t *testing.T) {
 		signingKey, verificationKey := GenerateSigningTestKey(alg)
 
 		for i, serializer := range serializers {
-			err := RoundtripJWS(alg, serializer, corrupter, signingKey, verificationKey)
+			err := RoundtripJWS(alg, serializer, corrupter, signingKey, verificationKey, "test_nonce")
 			if err != nil {
 				t.Error(err, alg, i)
 			}
@@ -123,7 +138,7 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 
 		for i, serializer := range serializers {
 			for j, corrupter := range corrupters {
-				err := RoundtripJWS(alg, serializer, corrupter, signingKey, verificationKey)
+				err := RoundtripJWS(alg, serializer, corrupter, signingKey, verificationKey, "test_nonce")
 				if err == nil {
 					t.Error("failed to detect corrupt signature", err, alg, i, j)
 				}
@@ -152,7 +167,7 @@ func TestSignerWithBrokenRand(t *testing.T) {
 		signingKey, verificationKey := GenerateSigningTestKey(alg)
 		for i, getReader := range readers {
 			randReader = getReader()
-			err := RoundtripJWS(alg, serializer, corrupter, signingKey, verificationKey)
+			err := RoundtripJWS(alg, serializer, corrupter, signingKey, verificationKey, "test_nonce")
 			if err == nil {
 				t.Error("signer should fail if rand is broken", alg, i)
 			}

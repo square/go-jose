@@ -22,14 +22,21 @@ import (
 	"fmt"
 )
 
+// NonceSource represents a source of random nonces to go into JWS objects
+type NonceSource interface {
+	Nonce() (string, error)
+}
+
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
+	SetNonceSource(source NonceSource)
 }
 
 // MultiSigner represents a signer which supports multiple recipients.
 type MultiSigner interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
+	SetNonceSource(source NonceSource)
 	AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error
 }
 
@@ -42,7 +49,8 @@ type payloadVerifier interface {
 }
 
 type genericSigner struct {
-	recipients []recipientSigInfo
+	recipients  []recipientSigInfo
+	nonceSource NonceSource
 }
 
 type recipientSigInfo struct {
@@ -138,6 +146,14 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 			protected.Kid = recipient.publicKey.KeyID
 		}
 
+		if ctx.nonceSource != nil {
+			nonce, err := ctx.nonceSource.Nonce()
+			if err != nil {
+				return nil, fmt.Errorf("square/go-jose: Error generating nonce: %v", err)
+			}
+			protected.Nonce = nonce
+		}
+
 		serializedProtected := mustSerializeJSON(protected)
 
 		input := []byte(fmt.Sprintf("%s.%s",
@@ -154,6 +170,13 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	}
 
 	return obj, nil
+}
+
+// SetNonceSource provides or updates a nonce pool to the first recipients.
+// After this method is called, the signer will consume one nonce per
+// signature, returning an error it is unable to get a nonce.
+func (ctx *genericSigner) SetNonceSource(source NonceSource) {
+	ctx.nonceSource = source
 }
 
 // Verify validates the signature on the object and returns the payload.

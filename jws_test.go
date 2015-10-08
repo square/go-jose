@@ -90,6 +90,38 @@ func TestFullParseJWS(t *testing.T) {
 	}
 }
 
+func TestRejectUnprotectedJWSNonce(t *testing.T) {
+	// No need to test compact, since that's always protected
+
+	// Flattened JSON
+	input := `{
+		"header": { "nonce": "should-cause-an-error" },
+		"payload": "does-not-matter",
+		"signature": "does-not-matter"
+	}`
+	_, err := ParseSigned(input)
+	if err == nil {
+		t.Error("JWS with an unprotected nonce parsed as valid.")
+	} else if err != ErrUnprotectedNonce {
+		t.Errorf("Improper error for unprotected nonce: %v", err)
+	}
+
+	// Full JSON
+	input = `{
+		"payload": "does-not-matter",
+ 		"signatures": [{
+ 			"header": { "nonce": "should-cause-an-error" },
+			"signature": "does-not-matter"
+		}]
+	}`
+	_, err = ParseSigned(input)
+	if err == nil {
+		t.Error("JWS with an unprotected nonce parsed as valid.")
+	} else if err != ErrUnprotectedNonce {
+		t.Errorf("Improper error for unprotected nonce: %v", err)
+	}
+}
+
 func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 	input := `{
 			"header": {
