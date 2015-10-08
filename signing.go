@@ -30,13 +30,13 @@ type NonceSource interface {
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
-	AddNonceSource(source NonceSource)
+	SetNonceSource(source NonceSource)
 }
 
 // MultiSigner represents a signer which supports multiple recipients.
 type MultiSigner interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
-	AddNonceSource(source NonceSource)
+	SetNonceSource(source NonceSource)
 	AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error
 }
 
@@ -172,10 +172,10 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	return obj, nil
 }
 
-// AddNonceSource provides or updates a nonce pool to the first recipients.
+// SetNonceSource provides or updates a nonce pool to the first recipients.
 // After this method is called, the signer will consume one nonce per
 // signature, returning an error it is unable to get a nonce.
-func (ctx *genericSigner) AddNonceSource(source NonceSource) {
+func (ctx *genericSigner) SetNonceSource(source NonceSource) {
 	ctx.nonceSource = source
 }
 

@@ -40,7 +40,7 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 	}
 
 	if nonce != "" {
-		signer.AddNonceSource(staticNonceSource(nonce))
+		signer.SetNonceSource(staticNonceSource(nonce))
 	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
