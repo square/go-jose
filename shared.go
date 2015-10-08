@@ -145,7 +145,7 @@ func (parsed rawHeader) sanitized() JoseHeader {
 }
 
 // Merge headers from src into dst, giving precedence to headers from l.
-func (dst *rawHeader) merge(src *rawHeader, protected bool) {
+func (dst *rawHeader) merge(src *rawHeader) {
 	if src == nil {
 		return
 	}
@@ -186,12 +186,8 @@ func (dst *rawHeader) merge(src *rawHeader, protected bool) {
 	if dst.Jwk == nil {
 		dst.Jwk = src.Jwk
 	}
-
-	// Fields handled within this block are ignored in unprotected headers
-	if protected {
-		if dst.Nonce == "" {
-			dst.Nonce = src.Nonce
-		}
+	if dst.Nonce == "" {
+		dst.Nonce = src.Nonce
 	}
 }
 

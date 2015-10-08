@@ -70,8 +70,8 @@ func ParseSigned(input string) (*JsonWebSignature, error) {
 // Get a header value
 func (sig Signature) mergedHeaders() rawHeader {
 	out := rawHeader{}
-	out.merge(sig.protected, true)
-	out.merge(sig.header, false)
+	out.merge(sig.protected)
+	out.merge(sig.header)
 	return out
 }
 
@@ -125,6 +125,10 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 			}
 		}
 
+		if parsed.Header != nil && parsed.Header.Nonce != "" {
+			return nil, fmt.Errorf("square/go-jose: Nonce parameter included in unprotected header")
+		}
+
 		signature.header = parsed.Header
 		signature.Signature = parsed.Signature.bytes()
 		// Make a fake "original" rawSignatureInfo to store the unprocessed
@@ -153,6 +157,11 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 			if err != nil {
 				return nil, err
 			}
+		}
+
+		// Check that there is not a nonce in the unprotected header
+		if sig.Header != nil && sig.Header.Nonce != "" {
+			return nil, fmt.Errorf("square/go-jose: Nonce parameter included in unprotected header")
 		}
 
 		obj.Signatures[i].Signature = sig.Signature.bytes()

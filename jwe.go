@@ -70,11 +70,11 @@ func (obj JsonWebEncryption) GetAuthData() []byte {
 // Get the merged header values
 func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) rawHeader {
 	out := rawHeader{}
-	out.merge(obj.protected, true)
-	out.merge(obj.unprotected, false)
+	out.merge(obj.protected)
+	out.merge(obj.unprotected)
 
 	if recipient != nil {
-		out.merge(recipient.header, false)
+		out.merge(recipient.header)
 	}
 
 	return out
@@ -129,6 +129,12 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 
 	obj.Header = obj.mergedHeaders(nil).sanitized()
 
+	// Check that there is not a nonce in the unprotected headers
+	if (parsed.Unprotected != nil && parsed.Unprotected.Nonce != "") ||
+		(parsed.Header != nil && parsed.Header.Nonce != "") {
+		return nil, fmt.Errorf("square/go-jose: Nonce parameter included in unprotected header")
+	}
+
 	if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
 		err := json.Unmarshal(parsed.Protected.bytes(), &obj.protected)
 		if err != nil {
@@ -149,6 +155,11 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 			encryptedKey, err := base64URLDecode(parsed.Recipients[r].EncryptedKey)
 			if err != nil {
 				return nil, err
+			}
+
+			// Check that there is not a nonce in the unprotected header
+			if parsed.Recipients[r].Header != nil && parsed.Recipients[r].Header.Nonce != "" {
+				return nil, fmt.Errorf("square/go-jose: Nonce parameter included in unprotected header")
 			}
 
 			obj.recipients[r].header = parsed.Recipients[r].Header
