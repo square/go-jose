@@ -237,8 +237,21 @@ func fromEcPublicKey(pub *ecdsa.PublicKey) (*rawJsonWebKey, error) {
 }
 
 func (key rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
-	if key.N == nil || key.E == nil || key.D == nil || key.P == nil || key.Q == nil {
-		return nil, fmt.Errorf("square/go-jose: invalid RSA private key, missing values")
+	var missing byte
+	switch {
+	case key.N == nil:
+		missing = 'N'
+	case key.E == nil:
+		missing = 'E'
+	case key.D == nil:
+		missing = 'D'
+	case key.P == nil:
+		missing = 'P'
+	case key.Q == nil:
+		missing = 'Q'
+	}
+	if missing != 0 {
+		return nil, fmt.Errorf("square/go-jose: invalid RSA private key, missing %c value", missing)
 	}
 
 	rv := &rsa.PrivateKey{
