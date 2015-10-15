@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
@@ -237,21 +238,22 @@ func fromEcPublicKey(pub *ecdsa.PublicKey) (*rawJsonWebKey, error) {
 }
 
 func (key rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
-	var missing byte
+	var missing []string
 	switch {
 	case key.N == nil:
-		missing = 'N'
+		missing = append(missing, "N")
 	case key.E == nil:
-		missing = 'E'
+		missing = append(missing, "E")
 	case key.D == nil:
-		missing = 'D'
+		missing = append(missing, "D")
 	case key.P == nil:
-		missing = 'P'
+		missing = append(missing, "P")
 	case key.Q == nil:
-		missing = 'Q'
+		missing = append(missing, "Q")
 	}
-	if missing != 0 {
-		return nil, fmt.Errorf("square/go-jose: invalid RSA private key, missing %c value", missing)
+
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("square/go-jose: invalid RSA private key, missing %s value(s)", strings.Join(missing, ", "))
 	}
 
 	rv := &rsa.PrivateKey{
