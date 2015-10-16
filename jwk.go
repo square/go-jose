@@ -71,7 +71,7 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 	case *rsa.PrivateKey:
 		raw, err = fromRsaPrivateKey(key)
 	default:
-		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
+		return nil, fmt.Errorf("square/go-jose: unknown key type '%s'", reflect.TypeOf(key))
 	}
 
 	if err != nil {
