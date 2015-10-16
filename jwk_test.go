@@ -414,3 +414,45 @@ func TestThumbprint(t *testing.T) {
 		}
 	}
 }
+
+func TestMarshalUnmarshalJWKSet(t *testing.T) {
+	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JsonWebKeySet
+	set.Keys = append(set.Keys, jwk1)
+	set.Keys = append(set.Keys, jwk2)
+	jsonbar, err := set.MarshalJSON()
+	if err != nil {
+		t.Errorf("problem marshalling set", err)
+	}
+	var set2 JsonWebKeySet
+	err = set2.UnmarshalJSON(jsonbar)
+	if err != nil {
+		t.Errorf("problem unmarshalling set", err)
+	}
+	if len(set2.Keys) != 2 {
+		t.Errorf("set should contain two keys not %d ", len(set2.Keys))
+	}
+	jsonbar2, err := set2.MarshalJSON()
+	if err != nil {
+		t.Errorf("problem marshalling set", err)
+	}
+	if !bytes.Equal(jsonbar, jsonbar2) {
+		t.Error("roundtrip should not lose information")
+	}
+}
+
+func TestJWKSetKey(t *testing.T) {
+	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JsonWebKeySet
+	set.Keys = append(set.Keys, jwk1)
+	set.Keys = append(set.Keys, jwk2)
+	k := set.Key("ABCDEFG")
+	if len(k) != 1 {
+		t.Errorf("method should return slice with one key not %d", len(k))
+	}
+	if k[0].KeyID != "ABCDEFG" {
+		t.Error("method should return key with ID ABCDEFG")
+	}
+}

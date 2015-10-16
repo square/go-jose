@@ -56,6 +56,67 @@ type JsonWebKey struct {
 	Algorithm string
 }
 
+// rawJsonWebKeySet represents a JWK Set with raw members.
+type rawJsonWebKeySet struct {
+	Keys []json.RawMessage `json:"keys"`
+}
+
+// JsonWebKeySet represents a JWK Set object.
+type JsonWebKeySet struct {
+	Keys []JsonWebKey
+}
+
+// MarshalJSON serializes the given set to its JSON representation.
+func (s JsonWebKeySet) MarshalJSON() ([]byte, error) {
+	var rawSet rawJsonWebKeySet
+
+	for _, key := range s.Keys {
+		data, err := key.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		rawSet.Keys = append(rawSet.Keys, data)
+	}
+
+	return json.Marshal(rawSet)
+}
+
+// UnmarshalJSON reads a set from its JSON representation.
+func (s *JsonWebKeySet) UnmarshalJSON(data []byte) error {
+	var rawSet rawJsonWebKeySet
+
+	if err := json.Unmarshal(data, &rawSet); err != nil {
+		return err
+	}
+
+	for _, raw := range rawSet.Keys {
+
+		jwk := JsonWebKey{}
+		if err := jwk.UnmarshalJSON(raw); err != nil {
+			return err
+		}
+		s.Keys = append(s.Keys, jwk)
+	}
+
+	return nil
+}
+
+// Key convenience method returns keys by key ID. Specification states
+// that a JWK Set "SHOULD" use distinct key IDs, but allows for some
+// cases where they are not distinct. Hence method returns a slice
+// of JsonWebKeys.
+func (s *JsonWebKeySet) Key(kid string) []JsonWebKey {
+	var keys []JsonWebKey
+
+	for _, key := range s.Keys {
+		if key.KeyID == kid {
+			keys = append(keys, key)
+		}
+	}
+
+	return keys
+}
+
 // MarshalJSON serializes the given key to its JSON representation.
 func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 	var raw *rawJsonWebKey
