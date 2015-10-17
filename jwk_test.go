@@ -431,9 +431,6 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	if err != nil {
 		t.Error("problem unmarshalling set", err)
 	}
-	if len(set2.Keys) != 2 {
-		t.Errorf("set should contain two keys not %d ", len(set2.Keys))
-	}
 	jsonbar2, err := json.Marshal(&set2)
 	if err != nil {
 		t.Error("problem marshalling set", err)
