@@ -421,21 +421,22 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	var set JsonWebKeySet
 	set.Keys = append(set.Keys, jwk1)
 	set.Keys = append(set.Keys, jwk2)
-	jsonbar, err := set.MarshalJSON()
+
+	jsonbar, err := json.Marshal(&set)
 	if err != nil {
-		t.Errorf("problem marshalling set", err)
+		t.Error("problem marshalling set", err)
 	}
 	var set2 JsonWebKeySet
-	err = set2.UnmarshalJSON(jsonbar)
+	err = json.Unmarshal(jsonbar, &set2)
 	if err != nil {
-		t.Errorf("problem unmarshalling set", err)
+		t.Error("problem unmarshalling set", err)
 	}
 	if len(set2.Keys) != 2 {
 		t.Errorf("set should contain two keys not %d ", len(set2.Keys))
 	}
-	jsonbar2, err := set2.MarshalJSON()
+	jsonbar2, err := json.Marshal(&set2)
 	if err != nil {
-		t.Errorf("problem marshalling set", err)
+		t.Error("problem marshalling set", err)
 	}
 	if !bytes.Equal(jsonbar, jsonbar2) {
 		t.Error("roundtrip should not lose information")
