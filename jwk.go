@@ -72,7 +72,7 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 	case *rsa.PrivateKey:
 		raw, err = fromRsaPrivateKey(key)
 	default:
-		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
+		return nil, fmt.Errorf("square/go-jose: unknown key type '%s'", reflect.TypeOf(key))
 	}
 
 	if err != nil {
@@ -115,6 +115,26 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 		*k = JsonWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg}
 	}
 	return
+}
+
+// JsonWebKeySet represents a JWK Set object.
+type JsonWebKeySet struct {
+	Keys []JsonWebKey `json:"keys"`
+}
+
+// Key convenience method returns keys by key ID. Specification states
+// that a JWK Set "SHOULD" use distinct key IDs, but allows for some
+// cases where they are not distinct. Hence method returns a slice
+// of JsonWebKeys.
+func (s *JsonWebKeySet) Key(kid string) []JsonWebKey {
+	var keys []JsonWebKey
+	for _, key := range s.Keys {
+		if key.KeyID == kid {
+			keys = append(keys, key)
+		}
+	}
+
+	return keys
 }
 
 const rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`

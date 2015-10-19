@@ -414,3 +414,93 @@ func TestThumbprint(t *testing.T) {
 		}
 	}
 }
+
+func TestMarshalUnmarshalJWKSet(t *testing.T) {
+	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JsonWebKeySet
+	set.Keys = append(set.Keys, jwk1)
+	set.Keys = append(set.Keys, jwk2)
+
+	jsonbar, err := json.Marshal(&set)
+	if err != nil {
+		t.Error("problem marshalling set", err)
+	}
+	var set2 JsonWebKeySet
+	err = json.Unmarshal(jsonbar, &set2)
+	if err != nil {
+		t.Error("problem unmarshalling set", err)
+	}
+	jsonbar2, err := json.Marshal(&set2)
+	if err != nil {
+		t.Error("problem marshalling set", err)
+	}
+	if !bytes.Equal(jsonbar, jsonbar2) {
+		t.Error("roundtrip should not lose information")
+	}
+}
+
+var JWKSetDuplicates = stripWhitespace(`{
+     "keys": [{
+         "kty": "RSA",
+         "kid": "exclude-me",
+         "use": "sig",
+         "n": "n4EPtAOCc9AlkeQHPzHStgAbgs7bTZLwUBZdR8_KuKPEHLd4rHVTeT
+             -O-XV2jRojdNhxJWTDvNd7nqQ0VEiZQHz_AJmSCpMaJMRBSFKrKb2wqV
+             wGU_NsYOYL-QtiWN2lbzcEe6XC0dApr5ydQLrHqkHHig3RBordaZ6Aj-
+             oBHqFEHYpPe7Tpe-OfVfHd1E6cS6M1FZcD1NNLYD5lFHpPI9bTwJlsde
+             3uhGqC0ZCuEHg8lhzwOHrtIQbS0FVbb9k3-tVTU4fg_3L_vniUFAKwuC
+             LqKnS2BYwdq_mzSnbLY7h_qixoR7jig3__kRhuaxwUkRz5iaiQkqgc5g
+             HdrNP5zw",
+         "e": "AQAB"
+     }],
+     "keys": [{
+         "kty": "RSA",
+         "kid": "include-me",
+         "use": "sig",
+         "n": "n4EPtAOCc9AlkeQHPzHStgAbgs7bTZLwUBZdR8_KuKPEHLd4rHVTeT
+             -O-XV2jRojdNhxJWTDvNd7nqQ0VEiZQHz_AJmSCpMaJMRBSFKrKb2wqV
+             wGU_NsYOYL-QtiWN2lbzcEe6XC0dApr5ydQLrHqkHHig3RBordaZ6Aj-
+             oBHqFEHYpPe7Tpe-OfVfHd1E6cS6M1FZcD1NNLYD5lFHpPI9bTwJlsde
+             3uhGqC0ZCuEHg8lhzwOHrtIQbS0FVbb9k3-tVTU4fg_3L_vniUFAKwuC
+             LqKnS2BYwdq_mzSnbLY7h_qixoR7jig3__kRhuaxwUkRz5iaiQkqgc5g
+             HdrNP5zw",
+         "e": "AQAB"
+     }],
+     "custom": "exclude-me",
+     "custom": "include-me"
+   }`)
+
+func TestDuplicateJWKSetMembersIgnored(t *testing.T) {
+	type CustomSet struct {
+		JsonWebKeySet
+		CustomMember string `json:"custom"`
+	}
+	data := []byte(JWKSetDuplicates)
+	var set CustomSet
+	json.Unmarshal(data, &set)
+	if len(set.Keys) != 1 {
+		t.Error("expected only one key in set")
+	}
+	if set.Keys[0].KeyID != "include-me" {
+		t.Errorf("expected key with kid: \"include-me\", got: %s", set.Keys[0].KeyID)
+	}
+	if set.CustomMember != "include-me" {
+		t.Errorf("expected custom member value: \"include-me\", got: %s", set.CustomMember)
+	}
+}
+
+func TestJWKSetKey(t *testing.T) {
+	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JsonWebKeySet
+	set.Keys = append(set.Keys, jwk1)
+	set.Keys = append(set.Keys, jwk2)
+	k := set.Key("ABCDEFG")
+	if len(k) != 1 {
+		t.Errorf("method should return slice with one key not %d", len(k))
+	}
+	if k[0].KeyID != "ABCDEFG" {
+		t.Error("method should return key with ID ABCDEFG")
+	}
+}
