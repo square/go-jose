@@ -161,33 +161,42 @@ func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
 	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
-		jwk := JsonWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
-		jsonbar, err := jwk.MarshalJSON()
-		if err != nil {
-			t.Error("problem marshaling", i, err)
-		}
+		for _, use := range []string{ "", "sig", "enc" } {
+			jwk := JsonWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
+			if use != "" {
+				jwk.Use = use
+			}
 
-		var jwk2 JsonWebKey
-		err = jwk2.UnmarshalJSON(jsonbar)
-		if err != nil {
-			t.Error("problem unmarshalling", i, err)
-		}
+			jsonbar, err := jwk.MarshalJSON()
+			if err != nil {
+				t.Error("problem marshaling", i, err)
+			}
 
-		jsonbar2, err := jwk2.MarshalJSON()
-		if err != nil {
-			t.Error("problem marshaling", i, err)
-		}
+			var jwk2 JsonWebKey
+			err = jwk2.UnmarshalJSON(jsonbar)
+			if err != nil {
+				t.Error("problem unmarshalling", i, err)
+			}
 
-		if !bytes.Equal(jsonbar, jsonbar2) {
-			t.Error("roundtrip should not lose information", i)
-		}
+			jsonbar2, err := jwk2.MarshalJSON()
+			if err != nil {
+				t.Error("problem marshaling", i, err)
+			}
 
-		if jwk2.KeyID != kid {
-			t.Error("kid did not roundtrip JSON marshalling", i)
-		}
+			if !bytes.Equal(jsonbar, jsonbar2) {
+				t.Error("roundtrip should not lose information", i)
+			}
+			if jwk2.KeyID != kid {
+				t.Error("kid did not roundtrip JSON marshalling", i)
+			}
 
-		if jwk2.Algorithm != "foo" {
-			t.Error("alg did not roundtrip JSON marshalling", i)
+			if jwk2.Algorithm != "foo" {
+				t.Error("alg did not roundtrip JSON marshalling", i)
+			}
+
+			if jwk2.Use != use {
+				t.Error("use did not roundtrip JSON marshalling", i)
+			}
 		}
 	}
 }
