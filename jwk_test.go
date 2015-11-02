@@ -186,7 +186,6 @@ func TestMarshalUnmarshal(t *testing.T) {
 			if !bytes.Equal(jsonbar, jsonbar2) {
 				t.Error("roundtrip should not lose information", i)
 			}
-t.Logf("json = '%s'", jsonbar)
 			if jwk2.KeyID != kid {
 				t.Error("kid did not roundtrip JSON marshalling", i)
 			}
