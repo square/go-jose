@@ -28,6 +28,7 @@ type Encrypter interface {
 	Encrypt(plaintext []byte) (*JsonWebEncryption, error)
 	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
 	SetCompression(alg CompressionAlgorithm)
+	SetKid(kid string)
 }
 
 // MultiEncrypter represents an encrypter which supports multiple recipients.
@@ -68,6 +69,7 @@ type genericEncrypter struct {
 	cipher         contentCipher
 	recipients     []recipientKeyInfo
 	keyGenerator   keyGenerator
+	kid            string
 }
 
 type recipientKeyInfo struct {
@@ -78,6 +80,11 @@ type recipientKeyInfo struct {
 // SetCompression sets a compression algorithm to be applied before encryption.
 func (ctx *genericEncrypter) SetCompression(compressionAlg CompressionAlgorithm) {
 	ctx.compressionAlg = compressionAlg
+}
+
+// SetUnprotectedHeader sets a JWE unprotected header
+func (ctx *genericEncrypter) SetKid(kid string) {
+	ctx.kid = kid
 }
 
 // NewEncrypter creates an appropriate encrypter based on the key type
@@ -245,6 +252,10 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 		}
 
 		obj.protected.Zip = ctx.compressionAlg
+	}
+
+	if ctx.kid != "" {
+		obj.protected.Kid = ctx.kid
 	}
 
 	authData := obj.computeAuthData()
