@@ -34,12 +34,12 @@ var ecTestKey256, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 var ecTestKey384, _ = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 var ecTestKey521, _ = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 
-func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
+func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}, kid string) error {
 	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
 	if err != nil {
 		return fmt.Errorf("error on new encrypter: %s", err)
 	}
-
+	enc.SetKid(kid)
 	enc.SetCompression(compressionAlg)
 
 	input := []byte("Lorem ipsum dolor sit amet")
@@ -87,6 +87,7 @@ func TestRoundtripsJWE(t *testing.T) {
 		RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW, A192GCMKW, A256GCMKW}
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 	zipAlgs := []CompressionAlgorithm{NONE, DEFLATE}
+	kid := "round-trip-kid"
 
 	serializers := []func(*JsonWebEncryption) (string, error){
 		func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() },
@@ -107,7 +108,7 @@ func TestRoundtripsJWE(t *testing.T) {
 			for _, key := range generateTestKeys(alg, enc) {
 				for _, zip := range zipAlgs {
 					for i, serializer := range serializers {
-						err := RoundtripJWE(alg, enc, zip, serializer, corrupter, aads[i], key.enc, key.dec)
+						err := RoundtripJWE(alg, enc, zip, serializer, corrupter, aads[i], key.enc, key.dec, kid)
 						if err != nil {
 							t.Error(err, alg, enc, zip, i)
 						}
@@ -123,6 +124,7 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 	keyAlgs := []KeyAlgorithm{DIRECT, ECDH_ES, ECDH_ES_A128KW, A128KW, RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW}
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 	zipAlgs := []CompressionAlgorithm{NONE, DEFLATE}
+	kid := "roundtrip-kid-corrupted"
 
 	serializers := []func(*JsonWebEncryption) (string, error){
 		func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() },
@@ -173,7 +175,7 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 				for _, zip := range zipAlgs {
 					for i, serializer := range serializers {
 						for j, corrupter := range corrupters {
-							err := RoundtripJWE(alg, enc, zip, serializer, corrupter, aads[i], key.enc, key.dec)
+							err := RoundtripJWE(alg, enc, zip, serializer, corrupter, aads[i], key.enc, key.dec, kid)
 							if err == nil {
 								t.Error("failed to detect corrupt data", err, alg, enc, zip, i, j)
 							}
@@ -191,6 +193,7 @@ func TestEncrypterWithBrokenRand(t *testing.T) {
 
 	serializer := func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() }
 	corrupter := func(obj *JsonWebEncryption) bool { return false }
+	kid := "broken-rand-kid"
 
 	// Break rand reader
 	readers := []func() io.Reader{
@@ -207,7 +210,7 @@ func TestEncrypterWithBrokenRand(t *testing.T) {
 			for _, key := range generateTestKeys(alg, enc) {
 				for i, getReader := range readers {
 					randReader = getReader()
-					err := RoundtripJWE(alg, enc, NONE, serializer, corrupter, nil, key.enc, key.dec)
+					err := RoundtripJWE(alg, enc, NONE, serializer, corrupter, nil, key.enc, key.dec, kid)
 					if err == nil {
 						t.Error("encrypter should fail if rand is broken", i)
 					}
@@ -386,7 +389,7 @@ func RunRoundtripsJWE(b *testing.B, alg KeyAlgorithm, enc ContentEncryption, zip
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := RoundtripJWE(alg, enc, zip, serializer, corrupter, nil, pub, priv)
+		err := RoundtripJWE(alg, enc, zip, serializer, corrupter, nil, pub, priv, "runroundtrip-kid")
 		if err != nil {
 			b.Error(err)
 		}
