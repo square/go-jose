@@ -56,6 +56,15 @@ type recipientInfo struct {
 	encryptedKey []byte
 }
 
+// GetKid retrieces the (optional) kid attached to the object
+func (obj JsonWebEncryption) GetKid() string {
+	if obj.protected.Kid != "" || len(obj.protected.Kid) > 0 {
+		return obj.protected.Kid
+	}
+
+	return ""
+}
+
 // GetAuthData retrieves the (optional) authenticated data attached to the object.
 func (obj JsonWebEncryption) GetAuthData() []byte {
 	if obj.aad != nil {
@@ -141,7 +150,6 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 			return nil, fmt.Errorf("square/go-jose: invalid protected header: %s, %s", err, parsed.Protected.base64())
 		}
 	}
-
 	if len(parsed.Recipients) == 0 {
 		obj.recipients = []recipientInfo{
 			recipientInfo{

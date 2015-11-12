@@ -25,6 +25,18 @@ import (
 	"testing"
 )
 
+func TestParseWithKID(t *testing.T) {
+	msg := "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIiwia2lkIjoidGVzdC1raWQifQ..A2-5nOmm7R0MkryZ.cokkpwQjbfmTCR1AJXXwU5UhrKNLGRrkFJo9.5G4lcb__qQUMy8SHgU9NTA"
+	parsed, err := ParseEncrypted(msg)
+	if err != nil {
+		t.Error("Unable to parse valid message:", err)
+	}
+	expectedKid := "test-kid"
+	if parsed.GetKid() != expectedKid {
+		t.Error("Expected kid was not there")
+	}
+}
+
 func TestCompactParseJWE(t *testing.T) {
 	// Should parse
 	msg := "eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkExMjhHQ00ifQ.dGVzdA.dGVzdA.dGVzdA.dGVzdA"
