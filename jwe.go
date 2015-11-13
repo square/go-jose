@@ -56,7 +56,7 @@ type recipientInfo struct {
 	encryptedKey []byte
 }
 
-// GetKid retrieces the (optional) kid attached to the object
+// GetKid retrieves the (optional) kid attached to the object
 func (obj JsonWebEncryption) GetKid() string {
 	if obj.protected.Kid != "" || len(obj.protected.Kid) > 0 {
 		return obj.protected.Kid
