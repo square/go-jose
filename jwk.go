@@ -55,7 +55,6 @@ type rawJsonWebKey struct {
 // JsonWebKey represents a public or private key in JWK format.
 type JsonWebKey struct {
 	Key       interface{}
-	KeyType   string
 	KeyID     string
 	Algorithm string
 	Use       string
@@ -121,7 +120,7 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if err == nil {
-		*k = JsonWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use, KeyType: raw.Kty}
+		*k = JsonWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
 	}
 	return
 }

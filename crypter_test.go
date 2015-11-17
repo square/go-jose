@@ -187,9 +187,8 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 
 func TestEncrypterWithJWKAndKeyID(t *testing.T) {
 	enc, err := NewEncrypter(A128KW, A128GCM, &JsonWebKey{
-		KeyType: "oct",
-		KeyID:   "test-id",
-		Key:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+		KeyID: "test-id",
+		Key:   []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
 	})
 	if err != nil {
 		t.Error(err)
@@ -366,8 +365,8 @@ func symmetricTestKey(size int) []testKey {
 			dec: key,
 		},
 		testKey{
-			enc: &JsonWebKey{KeyType: "oct", KeyID: "test", Key: key},
-			dec: &JsonWebKey{KeyType: "oct", KeyID: "test", Key: key},
+			enc: &JsonWebKey{KeyID: "test", Key: key},
+			dec: &JsonWebKey{KeyID: "test", Key: key},
 		},
 	}
 }
@@ -391,8 +390,8 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 				enc: &ecTestKey521.PublicKey,
 			},
 			testKey{
-				dec: &JsonWebKey{KeyType: "EC", KeyID: "test", Key: ecTestKey256},
-				enc: &JsonWebKey{KeyType: "EC", KeyID: "test", Key: &ecTestKey256.PublicKey},
+				dec: &JsonWebKey{KeyID: "test", Key: ecTestKey256},
+				enc: &JsonWebKey{KeyID: "test", Key: &ecTestKey256.PublicKey},
 			},
 		}
 	case A128GCMKW, A128KW:

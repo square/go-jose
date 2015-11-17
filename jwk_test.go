@@ -521,9 +521,6 @@ func TestJWKSymmetricKey(t *testing.T) {
 	var jwk1 JsonWebKey
 	json.Unmarshal([]byte(sample1), &jwk1)
 
-	if jwk1.KeyType != "oct" {
-		t.Errorf("expected KeyType to be oct, but was '%s'", jwk1.KeyType)
-	}
 	if jwk1.Algorithm != "A128KW" {
 		t.Errorf("expected Algorithm to be A128KW, but was '%s'", jwk1.Algorithm)
 	}
@@ -535,9 +532,6 @@ func TestJWKSymmetricKey(t *testing.T) {
 	var jwk2 JsonWebKey
 	json.Unmarshal([]byte(sample2), &jwk2)
 
-	if jwk2.KeyType != "oct" {
-		t.Errorf("expected KeyType to be oct, but was '%s'", jwk2.KeyType)
-	}
 	if jwk2.KeyID != "HMAC key used in JWS spec Appendix A.1 example" {
 		t.Errorf("expected KeyID to be 'HMAC key used in JWS spec Appendix A.1 example', but was '%s'", jwk2.KeyID)
 	}
@@ -550,7 +544,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 }
 
 func TestJWKSymmetricRoundtrip(t *testing.T) {
-	jwk1 := JsonWebKey{KeyType: "oct", Key: []byte{1, 2, 3, 4}}
+	jwk1 := JsonWebKey{Key: []byte{1, 2, 3, 4}}
 	marshaled, err := jwk1.MarshalJSON()
 	if err != nil {
 		t.Errorf("failed to marshal valid JWK object", err)
@@ -562,16 +556,13 @@ func TestJWKSymmetricRoundtrip(t *testing.T) {
 		t.Errorf("failed to unmarshal valid JWK object", err)
 	}
 
-	if jwk1.KeyType != jwk2.KeyType {
-		t.Error("round-trip of symmetric JWK gave different key types")
-	}
 	if !bytes.Equal(jwk1.Key.([]byte), jwk2.Key.([]byte)) {
 		t.Error("round-trip of symmetric JWK gave different raw keys")
 	}
 }
 
 func TestJWKSymmetricInvalid(t *testing.T) {
-	invalid := JsonWebKey{KeyType: "oct"}
+	invalid := JsonWebKey{}
 	_, err := invalid.MarshalJSON()
 	if err == nil {
 		t.Error("excepted error on marshaling invalid symmetric JWK object")
