@@ -161,7 +161,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
 	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
-		for _, use := range []string{ "", "sig", "enc" } {
+		for _, use := range []string{"", "sig", "enc"} {
 			jwk := JsonWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
 			if use != "" {
 				jwk.Use = use
