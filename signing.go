@@ -102,7 +102,7 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 }
 
 func (ctx *genericSigner) AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error {
-	recipient, err := makeRecipient(alg, signingKey)
+	recipient, err := makeJWSRecipient(alg, signingKey)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (ctx *genericSigner) AddRecipient(alg SignatureAlgorithm, signingKey interf
 	return nil
 }
 
-func makeRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSigInfo, error) {
+func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSigInfo, error) {
 	switch signingKey := signingKey.(type) {
 	case *rsa.PrivateKey:
 		return newRSASigner(alg, signingKey)
@@ -120,7 +120,7 @@ func makeRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSig
 	case []byte:
 		return newSymmetricSigner(alg, signingKey)
 	case *JsonWebKey:
-		recipient, err := makeRecipient(alg, signingKey.Key)
+		recipient, err := makeJWSRecipient(alg, signingKey.Key)
 		if err != nil {
 			return recipientSigInfo{}, err
 		}
