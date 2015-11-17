@@ -161,7 +161,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
 	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
-		for _, use := range []string{ "", "sig", "enc" } {
+		for _, use := range []string{"", "sig", "enc"} {
 			jwk := JsonWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
 			if use != "" {
 				jwk.Use = use
@@ -511,5 +511,40 @@ func TestJWKSetKey(t *testing.T) {
 	}
 	if k[0].KeyID != "ABCDEFG" {
 		t.Error("method should return key with ID ABCDEFG")
+	}
+}
+
+func TestJWKSymmetricKey(t *testing.T) {
+	sample1 := `{"kty":"oct","alg":"A128KW","k":"GawgguFyGrWKav7AX4VKUg"}`
+	sample2 := `{"kty":"oct","k":"AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow","kid":"HMAC key used in JWS spec Appendix A.1 example"}`
+
+	var jwk1 JsonWebKey
+	json.Unmarshal([]byte(sample1), &jwk1)
+
+	if jwk1.KeyType != "oct" {
+		t.Errorf("expected KeyType to be oct, but was '%s'", jwk1.KeyType)
+	}
+	if jwk1.Algorithm != "A128KW" {
+		t.Errorf("expected Algorithm to be A128KW, but was '%s'", jwk1.Algorithm)
+	}
+	expected1 := fromHexBytes("19ac2082e1721ab58a6afec05f854a52")
+	if !bytes.Equal(jwk1.Key.([]byte), expected1) {
+		t.Errorf("expected Key to be '%s', but was '%s'", hex.EncodeToString(expected1), hex.EncodeToString(jwk1.Key.([]byte)))
+	}
+
+	var jwk2 JsonWebKey
+	json.Unmarshal([]byte(sample2), &jwk2)
+
+	if jwk2.KeyType != "oct" {
+		t.Errorf("expected KeyType to be oct, but was '%s'", jwk2.KeyType)
+	}
+	if jwk2.KeyID != "HMAC key used in JWS spec Appendix A.1 example" {
+		t.Errorf("expected KeyID to be 'HMAC key used in JWS spec Appendix A.1 example', but was '%s'", jwk2.KeyID)
+	}
+	expected2 := fromHexBytes(`
+    0323354b2b0fa5bc837e0665777ba68f5ab328e6f054c928a90f84b2d2502ebf
+    d3fb5a92d20647ef968ab4c377623d223d2e2172052e4f08c0cd9af567d080a3`)
+	if !bytes.Equal(jwk2.Key.([]byte), expected2) {
+		t.Errorf("expected Key to be '%s', but was '%s'", hex.EncodeToString(expected2), hex.EncodeToString(jwk2.Key.([]byte)))
 	}
 }
