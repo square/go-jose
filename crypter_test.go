@@ -365,6 +365,10 @@ func symmetricTestKey(size int) []testKey {
 			enc: key,
 			dec: key,
 		},
+		testKey{
+			enc: &JsonWebKey{KeyType: "oct", KeyID: "test", Key: key},
+			dec: &JsonWebKey{KeyType: "oct", KeyID: "test", Key: key},
+		},
 	}
 }
 
@@ -385,6 +389,10 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 			testKey{
 				dec: ecTestKey521,
 				enc: &ecTestKey521.PublicKey,
+			},
+			testKey{
+				dec: &JsonWebKey{KeyType: "EC", KeyID: "test", Key: ecTestKey256},
+				enc: &JsonWebKey{KeyType: "EC", KeyID: "test", Key: &ecTestKey256.PublicKey},
 			},
 		}
 	case A128GCMKW, A128KW:

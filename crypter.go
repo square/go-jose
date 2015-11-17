@@ -217,6 +217,8 @@ func newDecrypter(decryptionKey interface{}) (keyDecrypter, error) {
 		return &symmetricKeyCipher{
 			key: decryptionKey,
 		}, nil
+	case *JsonWebKey:
+		return newDecrypter(decryptionKey.Key)
 	default:
 		return nil, ErrUnsupportedKeyType
 	}
