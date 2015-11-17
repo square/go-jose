@@ -35,6 +35,7 @@ type rawJsonWebKey struct {
 	Kid string      `json:"kid,omitempty"`
 	Crv string      `json:"crv,omitempty"`
 	Alg string      `json:"alg,omitempty"`
+	K   *byteBuffer `json:"k,omitempty"`
 	X   *byteBuffer `json:"x,omitempty"`
 	Y   *byteBuffer `json:"y,omitempty"`
 	N   *byteBuffer `json:"n,omitempty"`
@@ -73,6 +74,8 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 		raw, err = fromEcPrivateKey(key)
 	case *rsa.PrivateKey:
 		raw, err = fromRsaPrivateKey(key)
+	case []byte:
+		raw, err = fromSymmetricKey(key)
 	default:
 		return nil, fmt.Errorf("square/go-jose: unknown key type '%s'", reflect.TypeOf(key))
 	}
@@ -110,6 +113,8 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 		} else {
 			key, err = raw.rsaPublicKey()
 		}
+	case "oct":
+		key, err = raw.symmetricKey()
 	default:
 		err = fmt.Errorf("square/go-jose: unkown json web key type '%s'", raw.Kty)
 	}
@@ -359,4 +364,18 @@ func fromEcPrivateKey(ec *ecdsa.PrivateKey) (*rawJsonWebKey, error) {
 	raw.D = newBuffer(ec.D.Bytes())
 
 	return raw, nil
+}
+
+func fromSymmetricKey(key []byte) (*rawJsonWebKey, error) {
+	return &rawJsonWebKey{
+		Kty: "oct",
+		K:   newBuffer(key),
+	}, nil
+}
+
+func (key rawJsonWebKey) symmetricKey() ([]byte, error) {
+	if key.K == nil {
+		return nil, fmt.Errorf("square/go-jose: invalid OCT (symmetric) key, missing k value")
+	}
+	return key.K.bytes(), nil
 }

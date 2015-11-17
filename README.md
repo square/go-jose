@@ -67,13 +67,15 @@ has a list of constants.
 
 See below for a table of supported key types. These are understood by the
 library, and can be passed to corresponding functions such as `NewEncrypter` or
-`NewSigner`.
+`NewSigner`. Note that if you are creating a new encrypter or signer with a
+JsonWebKey, the key id of the JsonWebKey (if present) will be added to any
+resulting messages.
 
  Algorithm(s)               | Corresponding types
  :------------------------- | -------------------------------
- RSA                        | *[rsa.PublicKey](http://golang.org/pkg/crypto/rsa/#PublicKey), *[rsa.PrivateKey](http://golang.org/pkg/crypto/rsa/#PrivateKey)
- ECDH, ECDSA                | *[ecdsa.PublicKey](http://golang.org/pkg/crypto/ecdsa/#PublicKey), *[ecdsa.PrivateKey](http://golang.org/pkg/crypto/ecdsa/#PrivateKey)
- AES, HMAC                  | []byte
+ RSA                        | *[rsa.PublicKey](http://golang.org/pkg/crypto/rsa/#PublicKey), *[rsa.PrivateKey](http://golang.org/pkg/crypto/rsa/#PrivateKey), *[jose.JsonWebKey](https://godoc.org/github.com/square/go-jose#JsonWebKey)
+ ECDH, ECDSA                | *[ecdsa.PublicKey](http://golang.org/pkg/crypto/ecdsa/#PublicKey), *[ecdsa.PrivateKey](http://golang.org/pkg/crypto/ecdsa/#PrivateKey), *[jose.JsonWebKey](https://godoc.org/github.com/square/go-jose#JsonWebKey)
+ AES, HMAC                  | []byte, *[jose.JsonWebKey](https://godoc.org/github.com/square/go-jose#JsonWebKey)
 
 ## Examples
 

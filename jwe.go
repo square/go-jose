@@ -127,8 +127,6 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 		unprotected: parsed.Unprotected,
 	}
 
-	obj.Header = obj.mergedHeaders(nil).sanitized()
-
 	// Check that there is not a nonce in the unprotected headers
 	if (parsed.Unprotected != nil && parsed.Unprotected.Nonce != "") ||
 		(parsed.Header != nil && parsed.Header.Nonce != "") {
@@ -141,6 +139,10 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 			return nil, fmt.Errorf("square/go-jose: invalid protected header: %s, %s", err, parsed.Protected.base64())
 		}
 	}
+
+	// Note: this must be called _after_ we parse the protected header,
+	// otherwise fields from the protected header will not get picked up.
+	obj.Header = obj.mergedHeaders(nil).sanitized()
 
 	if len(parsed.Recipients) == 0 {
 		obj.recipients = []recipientInfo{

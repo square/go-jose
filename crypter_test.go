@@ -185,6 +185,31 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 	}
 }
 
+func TestEncrypterWithJWKAndKeyID(t *testing.T) {
+	enc, err := NewEncrypter(A128KW, A128GCM, &JsonWebKey{
+		KeyID: "test-id",
+		Key:   []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	ciphertext, _ := enc.Encrypt([]byte("Lorem ipsum dolor sit amet"))
+
+	serialized1, _ := ciphertext.CompactSerialize()
+	serialized2 := ciphertext.FullSerialize()
+
+	parsed1, _ := ParseEncrypted(serialized1)
+	parsed2, _ := ParseEncrypted(serialized2)
+
+	if parsed1.Header.KeyID != "test-id" {
+		t.Errorf("expected message to have key id from JWK, but found '%s' instead", parsed1.Header.KeyID)
+	}
+	if parsed2.Header.KeyID != "test-id" {
+		t.Errorf("expected message to have key id from JWK, but found '%s' instead", parsed2.Header.KeyID)
+	}
+}
+
 func TestEncrypterWithBrokenRand(t *testing.T) {
 	keyAlgs := []KeyAlgorithm{ECDH_ES_A128KW, A128KW, RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW}
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
@@ -339,6 +364,10 @@ func symmetricTestKey(size int) []testKey {
 			enc: key,
 			dec: key,
 		},
+		testKey{
+			enc: &JsonWebKey{KeyID: "test", Key: key},
+			dec: &JsonWebKey{KeyID: "test", Key: key},
+		},
 	}
 }
 
@@ -359,6 +388,10 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 			testKey{
 				dec: ecTestKey521,
 				enc: &ecTestKey521.PublicKey,
+			},
+			testKey{
+				dec: &JsonWebKey{KeyID: "test", Key: ecTestKey256},
+				enc: &JsonWebKey{KeyID: "test", Key: &ecTestKey256.PublicKey},
 			},
 		}
 	case A128GCMKW, A128KW:
