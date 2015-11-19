@@ -18,6 +18,7 @@ package jose
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -286,5 +287,16 @@ func TestSampleNimbusJWSMessagesHMAC(t *testing.T) {
 		if string(payload) != "Lorem ipsum dolor sit amet" {
 			t.Error("payload is not what we expected for msg", msg)
 		}
+	}
+}
+
+// Test vectors generated with nimbus-jose-jwt
+func TestErrorMissingPayloadJWS(t *testing.T) {
+	_, err := (&rawJsonWebSignature{}).sanitized()
+	if err == nil {
+		t.Error("was able to parse message with missing payload")
+	}
+	if !strings.Contains(err.Error(), "missing payload") {
+		t.Errorf("unexpected error message, should contain 'missing payload': %s", err)
 	}
 }
