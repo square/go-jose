@@ -106,7 +106,7 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 // sanitized produces a cleaned-up JWS object from the raw JSON.
 func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 	if parsed.Payload == nil {
-		return nil, ErrUnprotectedNonce
+		return nil, fmt.Errorf("square/go-jose: missing payload in JWS message")
 	}
 
 	obj := &JsonWebSignature{
