@@ -23,8 +23,9 @@ standard (RFC 7516) and
 standard (RFC 7515). Tables of supported algorithms are shown below.
 The library supports both the compact and full serialization formats, and has
 optional support for multiple recipients. It also comes with a small
-command-line utility (`jose-util`) for encrypting/decrypting JWE messages in a
-shell.
+command-line utility
+([`jose-util`](https://github.com/square/go-jose/tree/master/jose-util))
+for dealing with JOSE messages in a shell.
 
 ### Supported algorithms
 
@@ -183,5 +184,6 @@ fmt.Printf(string(output))
 
 More examples can be found in the [Godoc
 reference](https://godoc.org/github.com/square/go-jose) for this package. The
-`jose-util` subdirectory also contains a small command-line utility for
-encrypting/decrypting JWE messages which might be useful as an example.
+[`jose-util`](https://github.com/square/go-jose/tree/master/jose-util)
+subdirectory also contains a small command-line utility which might
+be useful as an example.
