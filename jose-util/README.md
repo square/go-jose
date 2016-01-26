@@ -1,8 +1,8 @@
 # JOSE CLI
 
 The `jose-util` command line utility allows for encryption, decryption, signing
-and verification of JWE/JWS messages. Its main purpose is to facilitate dealing
-with JWE/JWS messages when testing or debugging.
+and verification of JOSE messages. Its main purpose is to facilitate dealing
+with JOSE messages when testing or debugging.
 
 ## Usage
 
@@ -12,8 +12,8 @@ The utility includes the subcommands `encrypt`, `decrypt`, `sign`, `verify` and
 Algorithms are selected via the `--alg` and `--enc` flags, which influence the
 `alg` and `enc` headers in respectively. For JWE, `--alg` specifies the key
 managment algorithm (e.g. `RSA-OAEP`) and `--enc` specifies the content
-encryption (e.g. `A128GCM`). For JWS, `--alg` specifies the signature algorithm
-(e.g. `PS256`).
+encryption algorithm (e.g. `A128GCM`). For JWS, `--alg` specifies the
+signature algorithm (e.g. `PS256`).
 
 Input and output files can be specified via the `--in` and `--out` flags.
 Either flag can be omitted, in which case `jose-util` uses stdin/stdout for
