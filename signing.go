@@ -31,12 +31,14 @@ type NonceSource interface {
 type Signer interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
 	SetNonceSource(source NonceSource)
+	SetEmbedJwk(embed bool)
 }
 
 // MultiSigner represents a signer which supports multiple recipients.
 type MultiSigner interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
 	SetNonceSource(source NonceSource)
+	SetEmbedJwk(embed bool)
 	AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error
 }
 
@@ -51,6 +53,7 @@ type payloadVerifier interface {
 type genericSigner struct {
 	recipients  []recipientSigInfo
 	nonceSource NonceSource
+	embedJwk    bool
 }
 
 type recipientSigInfo struct {
@@ -76,6 +79,7 @@ func NewSigner(alg SignatureAlgorithm, signingKey interface{}) (Signer, error) {
 func NewMultiSigner() MultiSigner {
 	return &genericSigner{
 		recipients: []recipientSigInfo{},
+		embedJwk: true,
 	}
 }
 
@@ -142,7 +146,9 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 		}
 
 		if recipient.publicKey != nil {
-			protected.Jwk = recipient.publicKey
+			if ctx.embedJwk {
+				protected.Jwk = recipient.publicKey
+			}
 			protected.Kid = recipient.publicKey.KeyID
 		}
 
@@ -177,6 +183,12 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 // signature, returning an error it is unable to get a nonce.
 func (ctx *genericSigner) SetNonceSource(source NonceSource) {
 	ctx.nonceSource = source
+}
+
+// SetEmbedJwk specifies if the signing key should be embedded in the protected header,
+// if any. It defaults to 'true'.
+func (ctx *genericSigner) SetEmbedJwk(embed bool) {
+	ctx.embedJwk = embed
 }
 
 // Verify validates the signature on the object and returns the payload.
