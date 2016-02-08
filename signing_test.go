@@ -377,3 +377,47 @@ func TestSignerKid(t *testing.T) {
 		t.Error("KeyID did not survive trip")
 	}
 }
+
+func TestEmbedJwk(t *testing.T) {
+	var payload = []byte("Lorem ipsum dolor sit amet")
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Error("Failed to generate key")
+	}
+
+	signer, err := NewSigner(ES256, key)
+	if err != nil {
+		t.Error("Failed to create signer")
+	}
+
+	object, err := signer.Sign(payload)
+	if err != nil {
+		t.Error("Failed to sign payload")
+	}
+
+	object, err = ParseSigned(object.FullSerialize())
+	if err != nil {
+		t.Error("Failed to parse jws")
+	}
+
+	if object.Signatures[0].protected.Jwk == nil {
+		t.Error("JWK isn't set in protected header")
+	}
+
+	// Now sign it again, but don't embed JWK.
+	signer.SetEmbedJwk(false)
+
+	object, err = signer.Sign(payload)
+	if err != nil {
+		t.Error("Failed to sign payload")
+	}
+
+	object, err = ParseSigned(object.FullSerialize())
+	if err != nil {
+		t.Error("Failed to parse jws")
+	}
+
+	if object.Signatures[0].protected.Jwk != nil {
+		t.Error("JWK is set in protected header")
+	}
+}
