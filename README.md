@@ -27,6 +27,19 @@ command-line utility
 ([`jose-util`](https://github.com/square/go-jose/tree/master/jose-util))
 for dealing with JOSE messages in a shell.
 
+### Versions
+
+We use [gopkg.in](https://gopkg.in) for versioning.
+
+[Version 1](https://gopkg.in/square/go-jose.v1) is the current stable version:
+
+    import "gopkg.in/square/go-jose.v1"
+
+The interface for [go-jose.v1](https://gopkg.in/square/go-jose.v1) will remain
+backwards compatible. We're currently sketching out ideas for a new version, to
+clean up the interface a bit. If you have ideas or feature requests [please let
+us know](https://github.com/square/go-jose/issues/64)!
+
 ### Supported algorithms
 
 See below for a table of supported algorithms. Algorithm identifiers match
