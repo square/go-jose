@@ -35,12 +35,10 @@ var ecTestKey384, _ = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 var ecTestKey521, _ = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 
 func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
-	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
+	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, EncryptionKey: encryptionKey}, &EncrypterOptions{Compression: compressionAlg})
 	if err != nil {
 		return fmt.Errorf("error on new encrypter: %s", err)
 	}
-
-	enc.SetCompression(compressionAlg)
 
 	input := []byte("Lorem ipsum dolor sit amet")
 	obj, err := enc.EncryptWithAuthData(input, aad)
@@ -186,10 +184,10 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 }
 
 func TestEncrypterWithJWKAndKeyID(t *testing.T) {
-	enc, err := NewEncrypter(A128KW, A128GCM, &JsonWebKey{
+	enc, err := NewEncrypter(A128GCM, Recipient{Algorithm: A128KW, EncryptionKey: &JsonWebKey{
 		KeyID: "test-id",
 		Key:   []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-	})
+	}}, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -243,47 +241,39 @@ func TestEncrypterWithBrokenRand(t *testing.T) {
 }
 
 func TestNewEncrypterErrors(t *testing.T) {
-	_, err := NewEncrypter("XYZ", "XYZ", nil)
+	_, err := NewEncrypter("XYZ", Recipient{}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid cipher")
 	}
 
-	_, err = NewMultiEncrypter("XYZ")
+	_, err = NewMultiEncrypter("XYZ", []Recipient{}, nil)
 	if err == nil {
 		t.Error("was able to instantiate multi-encrypter with invalid cipher")
 	}
 
-	_, err = NewEncrypter(DIRECT, A128GCM, nil)
+	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: DIRECT, EncryptionKey: nil}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid direct key")
 	}
 
-	_, err = NewEncrypter(ECDH_ES, A128GCM, nil)
+	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: ECDH_ES, EncryptionKey: nil}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid EC key")
 	}
 }
 
 func TestMultiRecipientJWE(t *testing.T) {
-	enc, err := NewMultiEncrypter(A128GCM)
-	if err != nil {
-		panic(err)
-	}
-
-	err = enc.AddRecipient(RSA_OAEP, &rsaTestKey.PublicKey)
-	if err != nil {
-		t.Error("error when adding RSA recipient", err)
-	}
-
 	sharedKey := []byte{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 	}
 
-	err = enc.AddRecipient(A256GCMKW, sharedKey)
+	enc, err := NewMultiEncrypter(A128GCM, []Recipient{
+		Recipient{Algorithm: RSA_OAEP, EncryptionKey: &rsaTestKey.PublicKey},
+		Recipient{Algorithm: A256GCMKW, EncryptionKey: sharedKey},
+	}, nil)
 	if err != nil {
-		t.Error("error when adding AES recipient: ", err)
-		return
+		panic(err)
 	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
@@ -325,30 +315,9 @@ func TestMultiRecipientJWE(t *testing.T) {
 }
 
 func TestMultiRecipientErrors(t *testing.T) {
-	enc, err := NewMultiEncrypter(A128GCM)
-	if err != nil {
-		panic(err)
-	}
-
-	input := []byte("Lorem ipsum dolor sit amet")
-	_, err = enc.Encrypt(input)
+	_, err := NewMultiEncrypter(A128GCM, []Recipient{}, nil)
 	if err == nil {
-		t.Error("should fail when encrypting to zero recipients")
-	}
-
-	err = enc.AddRecipient(DIRECT, nil)
-	if err == nil {
-		t.Error("should reject DIRECT mode when encrypting to multiple recipients")
-	}
-
-	err = enc.AddRecipient(ECDH_ES, nil)
-	if err == nil {
-		t.Error("should reject ECDH_ES mode when encrypting to multiple recipients")
-	}
-
-	err = enc.AddRecipient(RSA1_5, nil)
-	if err == nil {
-		t.Error("should reject invalid recipient key")
+		t.Error("should fail to instantiate with zero recipients")
 	}
 }
 
@@ -776,7 +745,7 @@ func benchDecrypt(chunkKey, primKey string, b *testing.B) {
 }
 
 func mustEncrypter(keyAlg KeyAlgorithm, encAlg ContentEncryption, encryptionKey interface{}) Encrypter {
-	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
+	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, EncryptionKey: encryptionKey}, nil)
 	if err != nil {
 		panic(err)
 	}

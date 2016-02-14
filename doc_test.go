@@ -24,7 +24,7 @@ import (
 )
 
 // Dummy encrypter for use in examples
-var encrypter, _ = NewEncrypter(DIRECT, A128GCM, []byte{})
+var encrypter Encrypter
 
 func Example_jWE() {
 	// Generate a public/private key pair to use for this example. The library
@@ -38,7 +38,7 @@ func Example_jWE() {
 	// Instantiate an encrypter using RSA-OAEP with AES128-GCM. An error would
 	// indicate that the selected algorithm(s) are not currently supported.
 	publicKey := &privateKey.PublicKey
-	encrypter, err := NewEncrypter(RSA_OAEP, A128GCM, publicKey)
+	encrypter, err := NewEncrypter(A128GCM, Recipient{RSA_OAEP, publicKey}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -128,20 +128,20 @@ func ExampleNewEncrypter_publicKey() {
 	var publicKey *rsa.PublicKey
 
 	// Instantiate an encrypter using RSA-OAEP with AES128-GCM.
-	NewEncrypter(RSA_OAEP, A128GCM, publicKey)
+	NewEncrypter(A128GCM, Recipient{RSA_OAEP, publicKey}, nil)
 
 	// Instantiate an encrypter using RSA-PKCS1v1.5 with AES128-CBC+HMAC.
-	NewEncrypter(RSA1_5, A128CBC_HS256, publicKey)
+	NewEncrypter(A128CBC_HS256, Recipient{RSA1_5, publicKey}, nil)
 }
 
 func ExampleNewEncrypter_symmetric() {
 	var sharedKey []byte
 
 	// Instantiate an encrypter using AES128-GCM with AES-GCM key wrap.
-	NewEncrypter(A128GCMKW, A128GCM, sharedKey)
+	NewEncrypter(A128GCM, Recipient{A128GCMKW, sharedKey}, nil)
 
-	// Instantiate an encrypter using AES256-GCM directly, w/o key wrapping.
-	NewEncrypter(DIRECT, A256GCM, sharedKey)
+	// Instantiate an encrypter using AES128-GCM directly, w/o key wrapping.
+	NewEncrypter(A128GCM, Recipient{DIRECT, sharedKey}, nil)
 }
 
 func ExampleNewSigner_publicKey() {
@@ -170,22 +170,10 @@ func ExampleNewMultiEncrypter() {
 	var sharedKey []byte
 
 	// Instantiate an encrypter using AES-GCM.
-	encrypter, err := NewMultiEncrypter(A128GCM)
-	if err != nil {
-		panic(err)
-	}
-
-	// Add a recipient using a shared key with AES-GCM key wap
-	err = encrypter.AddRecipient(A128GCMKW, sharedKey)
-	if err != nil {
-		panic(err)
-	}
-
-	// Add a recipient using an RSA public key with RSA-OAEP
-	err = encrypter.AddRecipient(RSA_OAEP, publicKey)
-	if err != nil {
-		panic(err)
-	}
+	NewMultiEncrypter(A128GCM, []Recipient{
+		Recipient{A128GCMKW, sharedKey},
+		Recipient{RSA_OAEP, publicKey},
+	}, nil)
 }
 
 func ExampleNewMultiSigner() {

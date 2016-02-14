@@ -27,15 +27,12 @@ import (
 type Encrypter interface {
 	Encrypt(plaintext []byte) (*JsonWebEncryption, error)
 	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
-	SetCompression(alg CompressionAlgorithm)
 }
 
 // MultiEncrypter represents an encrypter which supports multiple recipients.
 type MultiEncrypter interface {
 	Encrypt(plaintext []byte) (*JsonWebEncryption, error)
 	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
-	SetCompression(alg CompressionAlgorithm)
-	AddRecipient(alg KeyAlgorithm, encryptionKey interface{}) error
 }
 
 // A generic content cipher
@@ -76,18 +73,24 @@ type recipientKeyInfo struct {
 	keyEncrypter keyEncrypter
 }
 
-// SetCompression sets a compression algorithm to be applied before encryption.
-func (ctx *genericEncrypter) SetCompression(compressionAlg CompressionAlgorithm) {
-	ctx.compressionAlg = compressionAlg
+type EncrypterOptions struct {
+	Compression CompressionAlgorithm
+}
+
+type Recipient struct {
+	Algorithm     KeyAlgorithm
+	EncryptionKey interface{}
 }
 
 // NewEncrypter creates an appropriate encrypter based on the key type
-func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interface{}) (Encrypter, error) {
+func NewEncrypter(enc ContentEncryption, recipient Recipient, options *EncrypterOptions) (Encrypter, error) {
 	encrypter := &genericEncrypter{
-		contentAlg:     enc,
-		compressionAlg: NONE,
-		recipients:     []recipientKeyInfo{},
-		cipher:         getContentCipher(enc),
+		contentAlg: enc,
+		recipients: []recipientKeyInfo{},
+		cipher:     getContentCipher(enc),
+	}
+	if options != nil {
+		encrypter.compressionAlg = options.Compression
 	}
 
 	if encrypter.cipher == nil {
@@ -96,7 +99,7 @@ func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interfa
 
 	var keyID string
 	var rawKey interface{}
-	switch encryptionKey := encryptionKey.(type) {
+	switch encryptionKey := recipient.EncryptionKey.(type) {
 	case *JsonWebKey:
 		keyID = encryptionKey.KeyID
 		rawKey = encryptionKey.Key
@@ -104,7 +107,7 @@ func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interfa
 		rawKey = encryptionKey
 	}
 
-	switch alg {
+	switch recipient.Algorithm {
 	case DIRECT:
 		// Direct encryption mode must be treated differently
 		if reflect.TypeOf(rawKey) != reflect.TypeOf([]byte{}) {
@@ -113,7 +116,7 @@ func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interfa
 		encrypter.keyGenerator = staticKeyGenerator{
 			key: rawKey.([]byte),
 		}
-		recipient, _ := newSymmetricRecipient(alg, rawKey.([]byte))
+		recipient, _ := newSymmetricRecipient(recipient.Algorithm, rawKey.([]byte))
 		if keyID != "" {
 			recipient.keyID = keyID
 		}
@@ -130,7 +133,7 @@ func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interfa
 			algID:     string(enc),
 			publicKey: rawKey.(*ecdsa.PublicKey),
 		}
-		recipient, _ := newECDHRecipient(alg, rawKey.(*ecdsa.PublicKey))
+		recipient, _ := newECDHRecipient(recipient.Algorithm, rawKey.(*ecdsa.PublicKey))
 		if keyID != "" {
 			recipient.keyID = keyID
 		}
@@ -141,44 +144,54 @@ func NewEncrypter(alg KeyAlgorithm, enc ContentEncryption, encryptionKey interfa
 		encrypter.keyGenerator = randomKeyGenerator{
 			size: encrypter.cipher.keySize(),
 		}
-		err := encrypter.AddRecipient(alg, encryptionKey)
+		err := encrypter.addRecipient(recipient)
 		return encrypter, err
 	}
 }
 
 // NewMultiEncrypter creates a multi-encrypter based on the given parameters
-func NewMultiEncrypter(enc ContentEncryption) (MultiEncrypter, error) {
+func NewMultiEncrypter(enc ContentEncryption, recipients []Recipient, options *EncrypterOptions) (MultiEncrypter, error) {
 	cipher := getContentCipher(enc)
 
 	if cipher == nil {
 		return nil, ErrUnsupportedAlgorithm
 	}
+	if recipients == nil || len(recipients) == 0 {
+		return nil, fmt.Errorf("square/go-jose: recipients is nil or empty")
+	}
 
 	encrypter := &genericEncrypter{
-		contentAlg:     enc,
-		compressionAlg: NONE,
-		recipients:     []recipientKeyInfo{},
-		cipher:         cipher,
+		contentAlg: enc,
+		recipients: []recipientKeyInfo{},
+		cipher:     cipher,
 		keyGenerator: randomKeyGenerator{
 			size: cipher.keySize(),
 		},
 	}
 
+	if options != nil {
+		encrypter.compressionAlg = options.Compression
+	}
+
+	for _, recipient := range recipients {
+		encrypter.addRecipient(recipient)
+	}
+
 	return encrypter, nil
 }
 
-func (ctx *genericEncrypter) AddRecipient(alg KeyAlgorithm, encryptionKey interface{}) (err error) {
-	var recipient recipientKeyInfo
+func (ctx *genericEncrypter) addRecipient(recipient Recipient) (err error) {
+	var recipientInfo recipientKeyInfo
 
-	switch alg {
+	switch recipient.Algorithm {
 	case DIRECT, ECDH_ES:
-		return fmt.Errorf("square/go-jose: key algorithm '%s' not supported in multi-recipient mode", alg)
+		return fmt.Errorf("square/go-jose: key algorithm '%s' not supported in multi-recipient mode", recipient.Algorithm)
 	}
 
-	recipient, err = makeJWERecipient(alg, encryptionKey)
+	recipientInfo, err = makeJWERecipient(recipient.Algorithm, recipient.EncryptionKey)
 
 	if err == nil {
-		ctx.recipients = append(ctx.recipients, recipient)
+		ctx.recipients = append(ctx.recipients, recipientInfo)
 	}
 	return err
 }

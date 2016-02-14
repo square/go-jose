@@ -275,7 +275,7 @@ func TestVectorsJWE(t *testing.T) {
 	defer resetRandReader()
 
 	// Encrypt with a dummy key
-	encrypter, err := NewEncrypter(RSA_OAEP, A256GCM, publicKey)
+	encrypter, err := NewEncrypter(A256GCM, Recipient{RSA_OAEP, publicKey}, nil)
 	if err != nil {
 		panic(err)
 	}
