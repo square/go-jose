@@ -29,12 +29,6 @@ type Encrypter interface {
 	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
 }
 
-// MultiEncrypter represents an encrypter which supports multiple recipients.
-type MultiEncrypter interface {
-	Encrypt(plaintext []byte) (*JsonWebEncryption, error)
-	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
-}
-
 // A generic content cipher
 type contentCipher interface {
 	keySize() int
@@ -84,14 +78,14 @@ type Recipient struct {
 }
 
 // NewEncrypter creates an appropriate encrypter based on the key type
-func NewEncrypter(enc ContentEncryption, recipient Recipient, options *EncrypterOptions) (Encrypter, error) {
+func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions) (Encrypter, error) {
 	encrypter := &genericEncrypter{
 		contentAlg: enc,
 		recipients: []recipientKeyInfo{},
 		cipher:     getContentCipher(enc),
 	}
-	if options != nil {
-		encrypter.compressionAlg = options.Compression
+	if opts != nil {
+		encrypter.compressionAlg = opts.Compression
 	}
 
 	if encrypter.cipher == nil {
@@ -100,7 +94,7 @@ func NewEncrypter(enc ContentEncryption, recipient Recipient, options *Encrypter
 
 	var keyID string
 	var rawKey interface{}
-	switch encryptionKey := recipient.EncryptionKey.(type) {
+	switch encryptionKey := rcpt.EncryptionKey.(type) {
 	case *JsonWebKey:
 		keyID = encryptionKey.KeyID
 		rawKey = encryptionKey.Key
@@ -108,7 +102,7 @@ func NewEncrypter(enc ContentEncryption, recipient Recipient, options *Encrypter
 		rawKey = encryptionKey
 	}
 
-	switch recipient.Algorithm {
+	switch rcpt.Algorithm {
 	case DIRECT:
 		// Direct encryption mode must be treated differently
 		if reflect.TypeOf(rawKey) != reflect.TypeOf([]byte{}) {
@@ -117,10 +111,10 @@ func NewEncrypter(enc ContentEncryption, recipient Recipient, options *Encrypter
 		encrypter.keyGenerator = staticKeyGenerator{
 			key: rawKey.([]byte),
 		}
-		recipientInfo, _ := newSymmetricRecipient(recipient.Algorithm, rawKey.([]byte))
+		recipientInfo, _ := newSymmetricRecipient(rcpt.Algorithm, rawKey.([]byte))
 		recipientInfo.keyID = keyID
-		if recipient.KeyID != "" {
-			recipientInfo.keyID = recipient.KeyID
+		if rcpt.KeyID != "" {
+			recipientInfo.keyID = rcpt.KeyID
 		}
 		encrypter.recipients = []recipientKeyInfo{recipientInfo}
 		return encrypter, nil
@@ -135,10 +129,10 @@ func NewEncrypter(enc ContentEncryption, recipient Recipient, options *Encrypter
 			algID:     string(enc),
 			publicKey: rawKey.(*ecdsa.PublicKey),
 		}
-		recipientInfo, _ := newECDHRecipient(recipient.Algorithm, rawKey.(*ecdsa.PublicKey))
+		recipientInfo, _ := newECDHRecipient(rcpt.Algorithm, rawKey.(*ecdsa.PublicKey))
 		recipientInfo.keyID = keyID
-		if recipient.KeyID != "" {
-			recipientInfo.keyID = recipient.KeyID
+		if rcpt.KeyID != "" {
+			recipientInfo.keyID = rcpt.KeyID
 		}
 		encrypter.recipients = []recipientKeyInfo{recipientInfo}
 		return encrypter, nil
@@ -147,19 +141,19 @@ func NewEncrypter(enc ContentEncryption, recipient Recipient, options *Encrypter
 		encrypter.keyGenerator = randomKeyGenerator{
 			size: encrypter.cipher.keySize(),
 		}
-		err := encrypter.addRecipient(recipient)
+		err := encrypter.addRecipient(rcpt)
 		return encrypter, err
 	}
 }
 
 // NewMultiEncrypter creates a multi-encrypter based on the given parameters
-func NewMultiEncrypter(enc ContentEncryption, recipients []Recipient, options *EncrypterOptions) (MultiEncrypter, error) {
+func NewMultiEncrypter(enc ContentEncryption, rcpts []Recipient, opts *EncrypterOptions) (Encrypter, error) {
 	cipher := getContentCipher(enc)
 
 	if cipher == nil {
 		return nil, ErrUnsupportedAlgorithm
 	}
-	if recipients == nil || len(recipients) == 0 {
+	if rcpts == nil || len(rcpts) == 0 {
 		return nil, fmt.Errorf("square/go-jose: recipients is nil or empty")
 	}
 
@@ -172,12 +166,15 @@ func NewMultiEncrypter(enc ContentEncryption, recipients []Recipient, options *E
 		},
 	}
 
-	if options != nil {
-		encrypter.compressionAlg = options.Compression
+	if opts != nil {
+		encrypter.compressionAlg = opts.Compression
 	}
 
-	for _, recipient := range recipients {
-		encrypter.addRecipient(recipient)
+	for _, recipient := range rcpts {
+		err := encrypter.addRecipient(recipient)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return encrypter, nil
