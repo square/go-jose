@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"crypto/x509"
 	"math/big"
 	"testing"
 )
@@ -354,7 +355,7 @@ func TestVectorsJWECorrupt(t *testing.T) {
 
 // Test vectors generated with nimbus-jose-jwt
 func TestSampleNimbusJWEMessagesRSA(t *testing.T) {
-	rsaPrivateKey, err := LoadPrivateKey(fromBase64Bytes(`
+	rsaPrivateKey, err := x509.ParsePKCS8PrivateKey(fromBase64Bytes(`
 		MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCNRCEmf5PlbXKuT4uwnb
 		wGKvFrtpi+bDYxOZxxqxdVkZM/bYATAnD1fg9pNvLMKeF+MWJ9kPIMmDgOh9RdnRdLvQGb
 		BzhLmxwhhcua2QYiHEZizXmiaXvNP12bzEBhebdX7ObW8izMVW0p0lqHPNzkK3K75B0Sxo

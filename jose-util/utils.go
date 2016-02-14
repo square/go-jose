@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package jose
+package main
 
 import (
 	"crypto/x509"

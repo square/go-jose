@@ -67,7 +67,7 @@ func main() {
 				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
 				exitOnError(err, "unable to read key file")
 
-				pub, err := jose.LoadPublicKey(keyBytes)
+				pub, err := LoadPublicKey(keyBytes)
 				exitOnError(err, "unable to read public key")
 
 				alg := jose.KeyAlgorithm(requiredFlag(c, "alg"))
@@ -111,7 +111,7 @@ func main() {
 				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
 				exitOnError(err, "unable to read private key")
 
-				priv, err := jose.LoadPrivateKey(keyBytes)
+				priv, err := LoadPrivateKey(keyBytes)
 				exitOnError(err, "unable to read private key")
 
 				obj, err := jose.ParseEncrypted(string(readInput(c.String("input"))))
@@ -152,7 +152,7 @@ func main() {
 				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
 				exitOnError(err, "unable to read key file")
 
-				signingKey, err := jose.LoadPrivateKey(keyBytes)
+				signingKey, err := LoadPrivateKey(keyBytes)
 				exitOnError(err, "unable to read private key")
 
 				alg := jose.SignatureAlgorithm(requiredFlag(c, "algorithm"))
@@ -194,7 +194,7 @@ func main() {
 				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
 				exitOnError(err, "unable to read key file")
 
-				verificationKey, err := jose.LoadPublicKey(keyBytes)
+				verificationKey, err := LoadPublicKey(keyBytes)
 				exitOnError(err, "unable to read private key")
 
 				obj, err := jose.ParseSigned(string(readInput(c.String("input"))))
