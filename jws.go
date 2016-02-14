@@ -17,6 +17,7 @@
 package jose
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -82,14 +83,14 @@ func (obj JsonWebSignature) computeAuthData(signature *Signature) []byte {
 	if signature.original != nil && signature.original.Protected != nil {
 		serializedProtected = signature.original.Protected.base64()
 	} else if signature.protected != nil {
-		serializedProtected = base64URLEncode(mustSerializeJSON(signature.protected))
+		serializedProtected = base64.RawURLEncoding.EncodeToString(mustSerializeJSON(signature.protected))
 	} else {
 		serializedProtected = ""
 	}
 
 	return []byte(fmt.Sprintf("%s.%s",
 		serializedProtected,
-		base64URLEncode(obj.payload)))
+		base64.RawURLEncoding.EncodeToString(obj.payload)))
 }
 
 // parseSignedFull parses a message in full format.
@@ -184,17 +185,17 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 		return nil, fmt.Errorf("square/go-jose: compact JWS format must have three parts")
 	}
 
-	rawProtected, err := base64URLDecode(parts[0])
+	rawProtected, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
 		return nil, err
 	}
 
-	payload, err := base64URLDecode(parts[1])
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return nil, err
 	}
 
-	signature, err := base64URLDecode(parts[2])
+	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
 		return nil, err
 	}
@@ -217,9 +218,9 @@ func (obj JsonWebSignature) CompactSerialize() (string, error) {
 
 	return fmt.Sprintf(
 		"%s.%s.%s",
-		base64URLEncode(serializedProtected),
-		base64URLEncode(obj.payload),
-		base64URLEncode(obj.Signatures[0].Signature)), nil
+		base64.RawURLEncoding.EncodeToString(serializedProtected),
+		base64.RawURLEncoding.EncodeToString(obj.payload),
+		base64.RawURLEncoding.EncodeToString(obj.Signatures[0].Signature)), nil
 }
 
 // FullSerialize serializes an object using the full JSON serialization format.

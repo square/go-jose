@@ -40,9 +40,9 @@ func fromHexInt(base16 string) *big.Int {
 }
 
 // Build big int from base64-encoded string. Strips whitespace (for testing).
-func fromBase64Int(base64 string) *big.Int {
+func fromBase64Int(encoded string) *big.Int {
 	re := regexp.MustCompile(`\s+`)
-	val, err := base64URLDecode(re.ReplaceAllString(base64, ""))
+	val, err := base64.RawURLEncoding.DecodeString(re.ReplaceAllString(encoded, ""))
 	if err != nil {
 		panic("Invalid test data")
 	}

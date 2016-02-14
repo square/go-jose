@@ -22,57 +22,6 @@ import (
 	"testing"
 )
 
-func TestBase64URLEncode(t *testing.T) {
-	// Test arrays with various sizes
-	if base64URLEncode([]byte{}) != "" {
-		t.Error("failed to encode empty array")
-	}
-
-	if base64URLEncode([]byte{0}) != "AA" {
-		t.Error("failed to encode [0x00]")
-	}
-
-	if base64URLEncode([]byte{0, 1}) != "AAE" {
-		t.Error("failed to encode [0x00, 0x01]")
-	}
-
-	if base64URLEncode([]byte{0, 1, 2}) != "AAEC" {
-		t.Error("failed to encode [0x00, 0x01, 0x02]")
-	}
-
-	if base64URLEncode([]byte{0, 1, 2, 3}) != "AAECAw" {
-		t.Error("failed to encode [0x00, 0x01, 0x02, 0x03]")
-	}
-}
-
-func TestBase64URLDecode(t *testing.T) {
-	// Test arrays with various sizes
-	val, err := base64URLDecode("")
-	if err != nil || !bytes.Equal(val, []byte{}) {
-		t.Error("failed to decode empty array")
-	}
-
-	val, err = base64URLDecode("AA")
-	if err != nil || !bytes.Equal(val, []byte{0}) {
-		t.Error("failed to decode [0x00]")
-	}
-
-	val, err = base64URLDecode("AAE")
-	if err != nil || !bytes.Equal(val, []byte{0, 1}) {
-		t.Error("failed to decode [0x00, 0x01]")
-	}
-
-	val, err = base64URLDecode("AAEC")
-	if err != nil || !bytes.Equal(val, []byte{0, 1, 2}) {
-		t.Error("failed to decode [0x00, 0x01, 0x02]")
-	}
-
-	val, err = base64URLDecode("AAECAw")
-	if err != nil || !bytes.Equal(val, []byte{0, 1, 2, 3}) {
-		t.Error("failed to decode [0x00, 0x01, 0x02, 0x03]")
-	}
-}
-
 func TestDeflateRoundtrip(t *testing.T) {
 	original := []byte("Lorem ipsum dolor sit amet")
 

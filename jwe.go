@@ -17,6 +17,7 @@
 package jose
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -87,13 +88,13 @@ func (obj JsonWebEncryption) computeAuthData() []byte {
 	if obj.original != nil {
 		protected = obj.original.Protected.base64()
 	} else {
-		protected = base64URLEncode(mustSerializeJSON((obj.protected)))
+		protected = base64.RawURLEncoding.EncodeToString(mustSerializeJSON((obj.protected)))
 	}
 
 	output := []byte(protected)
 	if obj.aad != nil {
 		output = append(output, '.')
-		output = append(output, []byte(base64URLEncode(obj.aad))...)
+		output = append(output, []byte(base64.RawURLEncoding.EncodeToString(obj.aad))...)
 	}
 
 	return output
@@ -154,7 +155,7 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 	} else {
 		obj.recipients = make([]recipientInfo, len(parsed.Recipients))
 		for r := range parsed.Recipients {
-			encryptedKey, err := base64URLDecode(parsed.Recipients[r].EncryptedKey)
+			encryptedKey, err := base64.RawURLEncoding.DecodeString(parsed.Recipients[r].EncryptedKey)
 			if err != nil {
 				return nil, err
 			}
@@ -191,27 +192,27 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, fmt.Errorf("square/go-jose: compact JWE format must have five parts")
 	}
 
-	rawProtected, err := base64URLDecode(parts[0])
+	rawProtected, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
 		return nil, err
 	}
 
-	encryptedKey, err := base64URLDecode(parts[1])
+	encryptedKey, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return nil, err
 	}
 
-	iv, err := base64URLDecode(parts[2])
+	iv, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
 		return nil, err
 	}
 
-	ciphertext, err := base64URLDecode(parts[3])
+	ciphertext, err := base64.RawURLEncoding.DecodeString(parts[3])
 	if err != nil {
 		return nil, err
 	}
 
-	tag, err := base64URLDecode(parts[4])
+	tag, err := base64.RawURLEncoding.DecodeString(parts[4])
 	if err != nil {
 		return nil, err
 	}
@@ -238,11 +239,11 @@ func (obj JsonWebEncryption) CompactSerialize() (string, error) {
 
 	return fmt.Sprintf(
 		"%s.%s.%s.%s.%s",
-		base64URLEncode(serializedProtected),
-		base64URLEncode(obj.recipients[0].encryptedKey),
-		base64URLEncode(obj.iv),
-		base64URLEncode(obj.ciphertext),
-		base64URLEncode(obj.tag)), nil
+		base64.RawURLEncoding.EncodeToString(serializedProtected),
+		base64.RawURLEncoding.EncodeToString(obj.recipients[0].encryptedKey),
+		base64.RawURLEncoding.EncodeToString(obj.iv),
+		base64.RawURLEncoding.EncodeToString(obj.ciphertext),
+		base64.RawURLEncoding.EncodeToString(obj.tag)), nil
 }
 
 // FullSerialize serializes an object using the full JSON serialization format.
@@ -261,7 +262,7 @@ func (obj JsonWebEncryption) FullSerialize() string {
 		for _, recipient := range obj.recipients {
 			info := rawRecipientInfo{
 				Header:       recipient.header,
-				EncryptedKey: base64URLEncode(recipient.encryptedKey),
+				EncryptedKey: base64.RawURLEncoding.EncodeToString(recipient.encryptedKey),
 			}
 			raw.Recipients = append(raw.Recipients, info)
 		}
