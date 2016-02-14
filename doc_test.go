@@ -38,7 +38,7 @@ func Example_jWE() {
 	// Instantiate an encrypter using RSA-OAEP with AES128-GCM. An error would
 	// indicate that the selected algorithm(s) are not currently supported.
 	publicKey := &privateKey.PublicKey
-	encrypter, err := NewEncrypter(A128GCM, Recipient{RSA_OAEP, publicKey}, nil)
+	encrypter, err := NewEncrypter(A128GCM, Recipient{Algorithm: RSA_OAEP, EncryptionKey: publicKey}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -128,20 +128,20 @@ func ExampleNewEncrypter_publicKey() {
 	var publicKey *rsa.PublicKey
 
 	// Instantiate an encrypter using RSA-OAEP with AES128-GCM.
-	NewEncrypter(A128GCM, Recipient{RSA_OAEP, publicKey}, nil)
+	NewEncrypter(A128GCM, Recipient{Algorithm: RSA_OAEP, EncryptionKey: publicKey}, nil)
 
 	// Instantiate an encrypter using RSA-PKCS1v1.5 with AES128-CBC+HMAC.
-	NewEncrypter(A128CBC_HS256, Recipient{RSA1_5, publicKey}, nil)
+	NewEncrypter(A128CBC_HS256, Recipient{Algorithm: RSA1_5, EncryptionKey: publicKey}, nil)
 }
 
 func ExampleNewEncrypter_symmetric() {
 	var sharedKey []byte
 
 	// Instantiate an encrypter using AES128-GCM with AES-GCM key wrap.
-	NewEncrypter(A128GCM, Recipient{A128GCMKW, sharedKey}, nil)
+	NewEncrypter(A128GCM, Recipient{Algorithm: A128GCMKW, EncryptionKey: sharedKey}, nil)
 
 	// Instantiate an encrypter using AES128-GCM directly, w/o key wrapping.
-	NewEncrypter(A128GCM, Recipient{DIRECT, sharedKey}, nil)
+	NewEncrypter(A128GCM, Recipient{Algorithm: DIRECT, EncryptionKey: sharedKey}, nil)
 }
 
 func ExampleNewSigner_publicKey() {
@@ -171,8 +171,8 @@ func ExampleNewMultiEncrypter() {
 
 	// Instantiate an encrypter using AES-GCM.
 	NewMultiEncrypter(A128GCM, []Recipient{
-		Recipient{A128GCMKW, sharedKey},
-		Recipient{RSA_OAEP, publicKey},
+		Recipient{Algorithm: A128GCMKW, EncryptionKey: sharedKey},
+		Recipient{Algorithm: RSA_OAEP, EncryptionKey: publicKey},
 	}, nil)
 }
 

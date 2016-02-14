@@ -80,6 +80,7 @@ type EncrypterOptions struct {
 type Recipient struct {
 	Algorithm     KeyAlgorithm
 	EncryptionKey interface{}
+	KeyID         string
 }
 
 // NewEncrypter creates an appropriate encrypter based on the key type
@@ -116,11 +117,12 @@ func NewEncrypter(enc ContentEncryption, recipient Recipient, options *Encrypter
 		encrypter.keyGenerator = staticKeyGenerator{
 			key: rawKey.([]byte),
 		}
-		recipient, _ := newSymmetricRecipient(recipient.Algorithm, rawKey.([]byte))
-		if keyID != "" {
-			recipient.keyID = keyID
+		recipientInfo, _ := newSymmetricRecipient(recipient.Algorithm, rawKey.([]byte))
+		recipientInfo.keyID = keyID
+		if recipient.KeyID != "" {
+			recipientInfo.keyID = recipient.KeyID
 		}
-		encrypter.recipients = []recipientKeyInfo{recipient}
+		encrypter.recipients = []recipientKeyInfo{recipientInfo}
 		return encrypter, nil
 	case ECDH_ES:
 		// ECDH-ES (w/o key wrapping) is similar to DIRECT mode
@@ -133,11 +135,12 @@ func NewEncrypter(enc ContentEncryption, recipient Recipient, options *Encrypter
 			algID:     string(enc),
 			publicKey: rawKey.(*ecdsa.PublicKey),
 		}
-		recipient, _ := newECDHRecipient(recipient.Algorithm, rawKey.(*ecdsa.PublicKey))
-		if keyID != "" {
-			recipient.keyID = keyID
+		recipientInfo, _ := newECDHRecipient(recipient.Algorithm, rawKey.(*ecdsa.PublicKey))
+		recipientInfo.keyID = keyID
+		if recipient.KeyID != "" {
+			recipientInfo.keyID = recipient.KeyID
 		}
-		encrypter.recipients = []recipientKeyInfo{recipient}
+		encrypter.recipients = []recipientKeyInfo{recipientInfo}
 		return encrypter, nil
 	default:
 		// Can just add a standard recipient
@@ -189,6 +192,9 @@ func (ctx *genericEncrypter) addRecipient(recipient Recipient) (err error) {
 	}
 
 	recipientInfo, err = makeJWERecipient(recipient.Algorithm, recipient.EncryptionKey)
+	if recipient.KeyID != "" {
+		recipientInfo.keyID = recipient.KeyID
+	}
 
 	if err == nil {
 		ctx.recipients = append(ctx.recipients, recipientInfo)
@@ -206,9 +212,7 @@ func makeJWERecipient(alg KeyAlgorithm, encryptionKey interface{}) (recipientKey
 		return newSymmetricRecipient(alg, encryptionKey)
 	case *JsonWebKey:
 		recipient, err := makeJWERecipient(alg, encryptionKey.Key)
-		if err == nil && encryptionKey.KeyID != "" {
-			recipient.keyID = encryptionKey.KeyID
-		}
+		recipient.keyID = encryptionKey.KeyID
 		return recipient, err
 	default:
 		return recipientKeyInfo{}, ErrUnsupportedKeyType

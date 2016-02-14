@@ -73,7 +73,7 @@ func main() {
 				alg := jose.KeyAlgorithm(requiredFlag(c, "alg"))
 				enc := jose.ContentEncryption(requiredFlag(c, "enc"))
 
-				crypter, err := jose.NewEncrypter(enc, jose.Recipient{alg, pub}, nil)
+				crypter, err := jose.NewEncrypter(enc, jose.Recipient{Algorithm: alg, EncryptionKey: pub}, nil)
 				exitOnError(err, "unable to instantiate encrypter")
 
 				obj, err := crypter.Encrypt(readInput(c.String("input")))
