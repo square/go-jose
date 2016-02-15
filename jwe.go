@@ -147,7 +147,7 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 
 	if len(parsed.Recipients) == 0 {
 		obj.recipients = []recipientInfo{
-			recipientInfo{
+			{
 				header:       parsed.Header,
 				encryptedKey: parsed.EncryptedKey.bytes(),
 			},
