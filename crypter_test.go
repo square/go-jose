@@ -35,7 +35,7 @@ var ecTestKey384, _ = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 var ecTestKey521, _ = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 
 func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
-	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, EncryptionKey: encryptionKey}, &EncrypterOptions{Compression: compressionAlg})
+	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, Key: encryptionKey}, &EncrypterOptions{Compression: compressionAlg})
 	if err != nil {
 		return fmt.Errorf("error on new encrypter: %s", err)
 	}
@@ -184,7 +184,7 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 }
 
 func TestEncrypterWithJWKAndKeyID(t *testing.T) {
-	enc, err := NewEncrypter(A128GCM, Recipient{Algorithm: A128KW, EncryptionKey: &JsonWebKey{
+	enc, err := NewEncrypter(A128GCM, Recipient{Algorithm: A128KW, Key: &JsonWebKey{
 		KeyID: "test-id",
 		Key:   []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
 	}}, nil)
@@ -251,12 +251,12 @@ func TestNewEncrypterErrors(t *testing.T) {
 		t.Error("was able to instantiate multi-encrypter with invalid cipher")
 	}
 
-	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: DIRECT, EncryptionKey: nil}, nil)
+	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: DIRECT, Key: nil}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid direct key")
 	}
 
-	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: ECDH_ES, EncryptionKey: nil}, nil)
+	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: ECDH_ES, Key: nil}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid EC key")
 	}
@@ -269,8 +269,8 @@ func TestMultiRecipientJWE(t *testing.T) {
 	}
 
 	enc, err := NewMultiEncrypter(A128GCM, []Recipient{
-		Recipient{Algorithm: RSA_OAEP, EncryptionKey: &rsaTestKey.PublicKey},
-		Recipient{Algorithm: A256GCMKW, EncryptionKey: sharedKey},
+		{Algorithm: RSA_OAEP, Key: &rsaTestKey.PublicKey},
+		{Algorithm: A256GCMKW, Key: sharedKey},
 	}, nil)
 	if err != nil {
 		panic(err)
@@ -745,7 +745,7 @@ func benchDecrypt(chunkKey, primKey string, b *testing.B) {
 }
 
 func mustEncrypter(keyAlg KeyAlgorithm, encAlg ContentEncryption, encryptionKey interface{}) Encrypter {
-	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, EncryptionKey: encryptionKey}, nil)
+	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, Key: encryptionKey}, nil)
 	if err != nil {
 		panic(err)
 	}

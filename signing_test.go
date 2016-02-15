@@ -34,13 +34,14 @@ func (sns staticNonceSource) Nonce() (string, error) {
 }
 
 func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) (string, error), corrupter func(*JsonWebSignature), signingKey interface{}, verificationKey interface{}, nonce string) error {
-	signer, err := NewSigner(sigAlg, signingKey)
-	if err != nil {
-		return fmt.Errorf("error on new signer: %s", err)
+	opts := &SignerOptions{}
+	if nonce != "" {
+		opts.NonceSource = staticNonceSource(nonce)
 	}
 
-	if nonce != "" {
-		signer.SetNonceSource(staticNonceSource(nonce))
+	signer, err := NewSigner(SigningKey{Algorithm: sigAlg, Key: signingKey}, opts)
+	if err != nil {
+		return fmt.Errorf("error on new signer: %s", err)
 	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
@@ -179,7 +180,7 @@ func TestJWSInvalidKey(t *testing.T) {
 	signingKey0, verificationKey0 := GenerateSigningTestKey(RS256)
 	_, verificationKey1 := GenerateSigningTestKey(ES256)
 
-	signer, err := NewSigner(RS256, signingKey0)
+	signer, err := NewSigner(SigningKey{Algorithm: RS256, Key: signingKey0}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -210,15 +211,15 @@ func TestJWSInvalidKey(t *testing.T) {
 }
 
 func TestMultiRecipientJWS(t *testing.T) {
-	signer := NewMultiSigner()
-
 	sharedKey := []byte{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 	}
 
-	signer.AddRecipient(RS256, rsaTestKey)
-	signer.AddRecipient(HS384, sharedKey)
+	signer, err := NewMultiSigner([]SigningKey{
+		{RS256, rsaTestKey},
+		{HS384, sharedKey},
+	}, nil)
 
 	input := []byte("Lorem ipsum dolor sit amet")
 	obj, err := signer.Sign(input)
@@ -291,19 +292,19 @@ func GenerateSigningTestKey(sigAlg SignatureAlgorithm) (sig, ver interface{}) {
 }
 
 func TestInvalidSignerAlg(t *testing.T) {
-	_, err := NewSigner("XYZ", nil)
+	_, err := NewSigner(SigningKey{"XYZ", nil}, nil)
 	if err == nil {
 		t.Error("should not accept invalid algorithm")
 	}
 
-	_, err = NewSigner("XYZ", []byte{})
+	_, err = NewSigner(SigningKey{"XYZ", []byte{}}, nil)
 	if err == nil {
 		t.Error("should not accept invalid algorithm")
 	}
 }
 
 func TestInvalidJWS(t *testing.T) {
-	signer, err := NewSigner(PS256, rsaTestKey)
+	signer, err := NewSigner(SigningKey{PS256, rsaTestKey}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -360,7 +361,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem unmarshalling kided JWK", err)
 	}
 
-	signer, err := NewSigner(ES256, &jwk)
+	signer, err := NewSigner(SigningKey{ES256, &jwk}, nil)
 	if err != nil {
 		t.Error("problem creating signer", err)
 	}
@@ -385,7 +386,7 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("Failed to generate key")
 	}
 
-	signer, err := NewSigner(ES256, key)
+	signer, err := NewSigner(SigningKey{ES256, key}, &SignerOptions{EmbedJWK: true})
 	if err != nil {
 		t.Error("Failed to create signer")
 	}
@@ -404,8 +405,8 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("JWK isn't set in protected header")
 	}
 
-	// Now sign it again, but don't embed JWK.
-	signer.SetEmbedJwk(false)
+	// This time, sign and do not embed JWK in message
+	signer, err = NewSigner(SigningKey{ES256, key}, &SignerOptions{EmbedJWK: false})
 
 	object, err = signer.Sign(payload)
 	if err != nil {

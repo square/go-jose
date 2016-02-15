@@ -31,16 +31,17 @@ type NonceSource interface {
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
 	Sign(payload []byte) (*JsonWebSignature, error)
-	SetNonceSource(source NonceSource)
-	SetEmbedJwk(embed bool)
 }
 
-// MultiSigner represents a signer which supports multiple recipients.
-type MultiSigner interface {
-	Sign(payload []byte) (*JsonWebSignature, error)
-	SetNonceSource(source NonceSource)
-	SetEmbedJwk(embed bool)
-	AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error
+type SigningKey struct {
+	Algorithm SignatureAlgorithm
+	Key       interface{}
+}
+
+// SignerOptions represents options that can be set when creating signers.
+type SignerOptions struct {
+	NonceSource NonceSource
+	EmbedJWK    bool
 }
 
 type payloadSigner interface {
@@ -54,7 +55,7 @@ type payloadVerifier interface {
 type genericSigner struct {
 	recipients  []recipientSigInfo
 	nonceSource NonceSource
-	embedJwk    bool
+	embedJWK    bool
 }
 
 type recipientSigInfo struct {
@@ -64,24 +65,27 @@ type recipientSigInfo struct {
 }
 
 // NewSigner creates an appropriate signer based on the key type
-func NewSigner(alg SignatureAlgorithm, signingKey interface{}) (Signer, error) {
-	// NewMultiSigner never fails (currently)
-	signer := NewMultiSigner()
-
-	err := signer.AddRecipient(alg, signingKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return signer, nil
+func NewSigner(sig SigningKey, opts *SignerOptions) (Signer, error) {
+	return NewMultiSigner([]SigningKey{sig}, opts)
 }
 
 // NewMultiSigner creates a signer for multiple recipients
-func NewMultiSigner() MultiSigner {
-	return &genericSigner{
-		recipients: []recipientSigInfo{},
-		embedJwk:   true,
+func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
+	signer := &genericSigner{recipients: []recipientSigInfo{}}
+
+	if opts != nil {
+		signer.nonceSource = opts.NonceSource
+		signer.embedJWK = opts.EmbedJWK
 	}
+
+	for _, sig := range sigs {
+		err := signer.addRecipient(sig.Algorithm, sig.Key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return signer, nil
 }
 
 // newVerifier creates a verifier based on the key type
@@ -106,7 +110,7 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 	}
 }
 
-func (ctx *genericSigner) AddRecipient(alg SignatureAlgorithm, signingKey interface{}) error {
+func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interface{}) error {
 	recipient, err := makeJWSRecipient(alg, signingKey)
 	if err != nil {
 		return err
@@ -147,7 +151,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 		}
 
 		if recipient.publicKey != nil {
-			if ctx.embedJwk {
+			if ctx.embedJWK {
 				protected.Jwk = recipient.publicKey
 			}
 			protected.Kid = recipient.publicKey.KeyID
@@ -177,19 +181,6 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 	}
 
 	return obj, nil
-}
-
-// SetNonceSource provides or updates a nonce pool to the first recipients.
-// After this method is called, the signer will consume one nonce per
-// signature, returning an error it is unable to get a nonce.
-func (ctx *genericSigner) SetNonceSource(source NonceSource) {
-	ctx.nonceSource = source
-}
-
-// SetEmbedJwk specifies if the signing key should be embedded in the protected header,
-// if any. It defaults to 'true'.
-func (ctx *genericSigner) SetEmbedJwk(embed bool) {
-	ctx.embedJwk = embed
 }
 
 // Verify validates the signature on the object and returns the payload.

@@ -72,9 +72,9 @@ type EncrypterOptions struct {
 }
 
 type Recipient struct {
-	Algorithm     KeyAlgorithm
-	EncryptionKey interface{}
-	KeyID         string
+	Algorithm KeyAlgorithm
+	Key       interface{}
+	KeyID     string
 }
 
 // NewEncrypter creates an appropriate encrypter based on the key type
@@ -94,7 +94,7 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 
 	var keyID string
 	var rawKey interface{}
-	switch encryptionKey := rcpt.EncryptionKey.(type) {
+	switch encryptionKey := rcpt.Key.(type) {
 	case *JsonWebKey:
 		keyID = encryptionKey.KeyID
 		rawKey = encryptionKey.Key
@@ -188,7 +188,7 @@ func (ctx *genericEncrypter) addRecipient(recipient Recipient) (err error) {
 		return fmt.Errorf("square/go-jose: key algorithm '%s' not supported in multi-recipient mode", recipient.Algorithm)
 	}
 
-	recipientInfo, err = makeJWERecipient(recipient.Algorithm, recipient.EncryptionKey)
+	recipientInfo, err = makeJWERecipient(recipient.Algorithm, recipient.Key)
 	if recipient.KeyID != "" {
 		recipientInfo.keyID = recipient.KeyID
 	}
