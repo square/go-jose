@@ -547,13 +547,13 @@ func TestJWKSymmetricRoundtrip(t *testing.T) {
 	jwk1 := JsonWebKey{Key: []byte{1, 2, 3, 4}}
 	marshaled, err := jwk1.MarshalJSON()
 	if err != nil {
-		t.Errorf("failed to marshal valid JWK object", err)
+		t.Error("failed to marshal valid JWK object", err)
 	}
 
 	var jwk2 JsonWebKey
 	err = jwk2.UnmarshalJSON(marshaled)
 	if err != nil {
-		t.Errorf("failed to unmarshal valid JWK object", err)
+		t.Error("failed to unmarshal valid JWK object", err)
 	}
 
 	if !bytes.Equal(jwk1.Key.([]byte), jwk2.Key.([]byte)) {
