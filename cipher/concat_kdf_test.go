@@ -89,19 +89,21 @@ func TestCache(t *testing.T) {
 	outputs := [][]byte{}
 
 	// Read the same amount of data in different chunk sizes
-	for i := 10; i <= 100; i++ {
+	chunkSizes := []int{1, 2, 4, 8, 16, 32, 64, 128, 256, 512}
+
+	for _, c := range chunkSizes {
 		out := make([]byte, 1024)
 		reader := NewConcatKDF(crypto.SHA256, z, algID, ptyUInfo, ptyVInfo, supPubInfo, supPrivInfo)
 
-		for j := 0; j < 1024/i; j++ {
-			_, _ = reader.Read(out[j*i:])
+		for i := 0; i < 1024; i += c {
+			_, _ = reader.Read(out[i : i+c])
 		}
 
 		outputs = append(outputs, out)
 	}
 
 	for i := range outputs {
-		if bytes.Compare(outputs[i], outputs[i%len(outputs)]) != 0 {
+		if bytes.Compare(outputs[i], outputs[(i+1)%len(outputs)]) != 0 {
 			t.Error("not all outputs from KDF matched")
 		}
 	}
