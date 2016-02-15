@@ -23,8 +23,8 @@ import (
 	"strings"
 )
 
-// rawJsonWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
-type rawJsonWebEncryption struct {
+// rawJSONWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
+type rawJSONWebEncryption struct {
 	Protected    *byteBuffer        `json:"protected,omitempty"`
 	Unprotected  *rawHeader         `json:"unprotected,omitempty"`
 	Header       *rawHeader         `json:"header,omitempty"`
@@ -42,13 +42,13 @@ type rawRecipientInfo struct {
 	EncryptedKey string     `json:"encrypted_key,omitempty"`
 }
 
-// JsonWebEncryption represents an encrypted JWE object after parsing.
-type JsonWebEncryption struct {
-	Header                   JoseHeader
+// JSONWebEncryption represents an encrypted JWE object after parsing.
+type JSONWebEncryption struct {
+	Header                   Header
 	protected, unprotected   *rawHeader
 	recipients               []recipientInfo
 	aad, iv, ciphertext, tag []byte
-	original                 *rawJsonWebEncryption
+	original                 *rawJSONWebEncryption
 }
 
 // recipientInfo represents a raw JWE Per-Recipient header JSON object after parsing.
@@ -58,7 +58,7 @@ type recipientInfo struct {
 }
 
 // GetAuthData retrieves the (optional) authenticated data attached to the object.
-func (obj JsonWebEncryption) GetAuthData() []byte {
+func (obj JSONWebEncryption) GetAuthData() []byte {
 	if obj.aad != nil {
 		out := make([]byte, len(obj.aad))
 		copy(out, obj.aad)
@@ -69,7 +69,7 @@ func (obj JsonWebEncryption) GetAuthData() []byte {
 }
 
 // Get the merged header values
-func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) rawHeader {
+func (obj JSONWebEncryption) mergedHeaders(recipient *recipientInfo) rawHeader {
 	out := rawHeader{}
 	out.merge(obj.protected)
 	out.merge(obj.unprotected)
@@ -82,7 +82,7 @@ func (obj JsonWebEncryption) mergedHeaders(recipient *recipientInfo) rawHeader {
 }
 
 // Get the additional authenticated data from a JWE object.
-func (obj JsonWebEncryption) computeAuthData() []byte {
+func (obj JSONWebEncryption) computeAuthData() []byte {
 	var protected string
 
 	if obj.original != nil {
@@ -101,7 +101,7 @@ func (obj JsonWebEncryption) computeAuthData() []byte {
 }
 
 // ParseEncrypted parses an encrypted message in compact or full serialization format.
-func ParseEncrypted(input string) (*JsonWebEncryption, error) {
+func ParseEncrypted(input string) (*JSONWebEncryption, error) {
 	input = stripWhitespace(input)
 	if strings.HasPrefix(input, "{") {
 		return parseEncryptedFull(input)
@@ -111,8 +111,8 @@ func ParseEncrypted(input string) (*JsonWebEncryption, error) {
 }
 
 // parseEncryptedFull parses a message in compact format.
-func parseEncryptedFull(input string) (*JsonWebEncryption, error) {
-	var parsed rawJsonWebEncryption
+func parseEncryptedFull(input string) (*JSONWebEncryption, error) {
+	var parsed rawJSONWebEncryption
 	err := json.Unmarshal([]byte(input), &parsed)
 	if err != nil {
 		return nil, err
@@ -122,8 +122,8 @@ func parseEncryptedFull(input string) (*JsonWebEncryption, error) {
 }
 
 // sanitized produces a cleaned-up JWE object from the raw JSON.
-func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
-	obj := &JsonWebEncryption{
+func (parsed *rawJSONWebEncryption) sanitized() (*JSONWebEncryption, error) {
+	obj := &JSONWebEncryption{
 		original:    parsed,
 		unprotected: parsed.Unprotected,
 	}
@@ -186,7 +186,7 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 }
 
 // parseEncryptedCompact parses a message in compact format.
-func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
+func parseEncryptedCompact(input string) (*JSONWebEncryption, error) {
 	parts := strings.Split(input, ".")
 	if len(parts) != 5 {
 		return nil, fmt.Errorf("square/go-jose: compact JWE format must have five parts")
@@ -217,7 +217,7 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 		return nil, err
 	}
 
-	raw := &rawJsonWebEncryption{
+	raw := &rawJSONWebEncryption{
 		Protected:    newBuffer(rawProtected),
 		EncryptedKey: newBuffer(encryptedKey),
 		Iv:           newBuffer(iv),
@@ -229,7 +229,7 @@ func parseEncryptedCompact(input string) (*JsonWebEncryption, error) {
 }
 
 // CompactSerialize serializes an object using the compact serialization format.
-func (obj JsonWebEncryption) CompactSerialize() (string, error) {
+func (obj JSONWebEncryption) CompactSerialize() (string, error) {
 	if len(obj.recipients) != 1 || obj.unprotected != nil ||
 		obj.protected == nil || obj.recipients[0].header != nil {
 		return "", ErrNotSupported
@@ -247,8 +247,8 @@ func (obj JsonWebEncryption) CompactSerialize() (string, error) {
 }
 
 // FullSerialize serializes an object using the full JSON serialization format.
-func (obj JsonWebEncryption) FullSerialize() string {
-	raw := rawJsonWebEncryption{
+func (obj JSONWebEncryption) FullSerialize() string {
+	raw := rawJSONWebEncryption{
 		Unprotected:  obj.unprotected,
 		Iv:           newBuffer(obj.iv),
 		Ciphertext:   newBuffer(obj.ciphertext),

@@ -250,7 +250,7 @@ func TestInvalidECDecrypt(t *testing.T) {
 	}
 
 	// Invalid epk header
-	headers.Epk = &JsonWebKey{}
+	headers.Epk = &JSONWebKey{}
 
 	_, err = dec.decryptKey(headers, nil, generator)
 	if err == nil {

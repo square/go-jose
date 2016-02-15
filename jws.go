@@ -23,8 +23,8 @@ import (
 	"strings"
 )
 
-// rawJsonWebSignature represents a raw JWS JSON object. Used for parsing/serializing.
-type rawJsonWebSignature struct {
+// rawJSONWebSignature represents a raw JWS JSON object. Used for parsing/serializing.
+type rawJSONWebSignature struct {
 	Payload    *byteBuffer        `json:"payload,omitempty"`
 	Signatures []rawSignatureInfo `json:"signatures,omitempty"`
 	Protected  *byteBuffer        `json:"protected,omitempty"`
@@ -39,8 +39,8 @@ type rawSignatureInfo struct {
 	Signature *byteBuffer `json:"signature,omitempty"`
 }
 
-// JsonWebSignature represents a signed JWS object after parsing.
-type JsonWebSignature struct {
+// JSONWebSignature represents a signed JWS object after parsing.
+type JSONWebSignature struct {
 	payload    []byte
 	Signatures []Signature
 }
@@ -48,7 +48,7 @@ type JsonWebSignature struct {
 // Signature represents a single signature over the JWS payload and protected header.
 type Signature struct {
 	// Header fields, such as the signature algorithm
-	Header JoseHeader
+	Header Header
 
 	// The actual signature value
 	Signature []byte
@@ -59,7 +59,7 @@ type Signature struct {
 }
 
 // ParseSigned parses an encrypted message in compact or full serialization format.
-func ParseSigned(input string) (*JsonWebSignature, error) {
+func ParseSigned(input string) (*JSONWebSignature, error) {
 	input = stripWhitespace(input)
 	if strings.HasPrefix(input, "{") {
 		return parseSignedFull(input)
@@ -77,7 +77,7 @@ func (sig Signature) mergedHeaders() rawHeader {
 }
 
 // Compute data to be signed
-func (obj JsonWebSignature) computeAuthData(signature *Signature) []byte {
+func (obj JSONWebSignature) computeAuthData(signature *Signature) []byte {
 	var serializedProtected string
 
 	if signature.original != nil && signature.original.Protected != nil {
@@ -94,8 +94,8 @@ func (obj JsonWebSignature) computeAuthData(signature *Signature) []byte {
 }
 
 // parseSignedFull parses a message in full format.
-func parseSignedFull(input string) (*JsonWebSignature, error) {
-	var parsed rawJsonWebSignature
+func parseSignedFull(input string) (*JSONWebSignature, error) {
+	var parsed rawJSONWebSignature
 	err := json.Unmarshal([]byte(input), &parsed)
 	if err != nil {
 		return nil, err
@@ -105,12 +105,12 @@ func parseSignedFull(input string) (*JsonWebSignature, error) {
 }
 
 // sanitized produces a cleaned-up JWS object from the raw JSON.
-func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
+func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 	if parsed.Payload == nil {
 		return nil, fmt.Errorf("square/go-jose: missing payload in JWS message")
 	}
 
-	obj := &JsonWebSignature{
+	obj := &JSONWebSignature{
 		payload:    parsed.Payload.bytes(),
 		Signatures: make([]Signature, len(parsed.Signatures)),
 	}
@@ -179,7 +179,7 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 }
 
 // parseSignedCompact parses a message in compact format.
-func parseSignedCompact(input string) (*JsonWebSignature, error) {
+func parseSignedCompact(input string) (*JSONWebSignature, error) {
 	parts := strings.Split(input, ".")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("square/go-jose: compact JWS format must have three parts")
@@ -200,7 +200,7 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 		return nil, err
 	}
 
-	raw := &rawJsonWebSignature{
+	raw := &rawJSONWebSignature{
 		Payload:   newBuffer(payload),
 		Protected: newBuffer(rawProtected),
 		Signature: newBuffer(signature),
@@ -209,7 +209,7 @@ func parseSignedCompact(input string) (*JsonWebSignature, error) {
 }
 
 // CompactSerialize serializes an object using the compact serialization format.
-func (obj JsonWebSignature) CompactSerialize() (string, error) {
+func (obj JSONWebSignature) CompactSerialize() (string, error) {
 	if len(obj.Signatures) != 1 || obj.Signatures[0].header != nil || obj.Signatures[0].protected == nil {
 		return "", ErrNotSupported
 	}
@@ -224,8 +224,8 @@ func (obj JsonWebSignature) CompactSerialize() (string, error) {
 }
 
 // FullSerialize serializes an object using the full JSON serialization format.
-func (obj JsonWebSignature) FullSerialize() string {
-	raw := rawJsonWebSignature{
+func (obj JSONWebSignature) FullSerialize() string {
+	raw := rawJSONWebSignature{
 		Payload: newBuffer(obj.payload),
 	}
 

@@ -121,7 +121,7 @@ func TestFullParseJWE(t *testing.T) {
 }
 
 func TestMissingInvalidHeaders(t *testing.T) {
-	obj := &JsonWebEncryption{
+	obj := &JSONWebEncryption{
 		protected:   &rawHeader{Enc: A128GCM},
 		unprotected: &rawHeader{},
 		recipients: []recipientInfo{
@@ -212,7 +212,7 @@ func TestRejectUnprotectedJWENonce(t *testing.T) {
 
 func TestCompactSerialize(t *testing.T) {
 	// Compact serialization must fail if we have unprotected headers
-	obj := &JsonWebEncryption{
+	obj := &JSONWebEncryption{
 		unprotected: &rawHeader{Alg: "XYZ"},
 	}
 

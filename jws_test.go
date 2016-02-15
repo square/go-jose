@@ -146,10 +146,10 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 		t.Error("Too many or too few signatures.")
 	}
 	sig := jws.Signatures[0]
-	if sig.Header.JsonWebKey == nil {
+	if sig.Header.JSONWebKey == nil {
 		t.Error("No JWK in signature header.")
 	}
-	payload, err := jws.Verify(sig.Header.JsonWebKey)
+	payload, err := jws.Verify(sig.Header.JSONWebKey)
 	if err != nil {
 		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
 	}
@@ -172,10 +172,10 @@ func TestVerifyFlattenedWithPrivateProtected(t *testing.T) {
 		t.Error("Too many or too few signatures.")
 	}
 	sig := jws.Signatures[0]
-	if sig.Header.JsonWebKey == nil {
+	if sig.Header.JSONWebKey == nil {
 		t.Error("No JWK in signature header.")
 	}
-	payload, err := jws.Verify(sig.Header.JsonWebKey)
+	payload, err := jws.Verify(sig.Header.JSONWebKey)
 	if err != nil {
 		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
 	}
@@ -293,7 +293,7 @@ func TestSampleNimbusJWSMessagesHMAC(t *testing.T) {
 
 // Test vectors generated with nimbus-jose-jwt
 func TestErrorMissingPayloadJWS(t *testing.T) {
-	_, err := (&rawJsonWebSignature{}).sanitized()
+	_, err := (&rawJSONWebSignature{}).sanitized()
 	if err == nil {
 		t.Error("was able to parse message with missing payload")
 	}

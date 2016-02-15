@@ -33,7 +33,7 @@ func (sns staticNonceSource) Nonce() (string, error) {
 	return string(sns), nil
 }
 
-func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) (string, error), corrupter func(*JsonWebSignature), signingKey interface{}, verificationKey interface{}, nonce string) error {
+func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JSONWebSignature) (string, error), corrupter func(*JSONWebSignature), signingKey interface{}, verificationKey interface{}, nonce string) error {
 	opts := &SignerOptions{}
 	if nonce != "" {
 		opts.NonceSource = staticNonceSource(nonce)
@@ -70,8 +70,8 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 
 	// Check that verify works with embedded keys (if present)
 	for i, sig := range obj.Signatures {
-		if sig.Header.JsonWebKey != nil {
-			_, err = obj.Verify(sig.Header.JsonWebKey)
+		if sig.Header.JSONWebKey != nil {
+			_, err = obj.Verify(sig.Header.JSONWebKey)
 			if err != nil {
 				return fmt.Errorf("error on verify with embedded key %d: %s", i, err)
 			}
@@ -94,12 +94,12 @@ func TestRoundtripsJWS(t *testing.T) {
 	// Test matrix
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512}
 
-	serializers := []func(*JsonWebSignature) (string, error){
-		func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() },
-		func(obj *JsonWebSignature) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JSONWebSignature) (string, error){
+		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },
+		func(obj *JSONWebSignature) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupter := func(obj *JsonWebSignature) {}
+	corrupter := func(obj *JSONWebSignature) {}
 
 	for _, alg := range sigAlgs {
 		signingKey, verificationKey := GenerateSigningTestKey(alg)
@@ -117,17 +117,17 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	// Test matrix
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512}
 
-	serializers := []func(*JsonWebSignature) (string, error){
-		func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() },
-		func(obj *JsonWebSignature) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JSONWebSignature) (string, error){
+		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },
+		func(obj *JSONWebSignature) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupters := []func(*JsonWebSignature){
-		func(obj *JsonWebSignature) {
+	corrupters := []func(*JSONWebSignature){
+		func(obj *JSONWebSignature) {
 			// Changes bytes in signature
 			obj.Signatures[0].Signature[10]++
 		},
-		func(obj *JsonWebSignature) {
+		func(obj *JSONWebSignature) {
 			// Set totally invalid signature
 			obj.Signatures[0].Signature = []byte("###")
 		},
@@ -151,8 +151,8 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 func TestSignerWithBrokenRand(t *testing.T) {
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512}
 
-	serializer := func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() }
-	corrupter := func(obj *JsonWebSignature) {}
+	serializer := func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() }
+	corrupter := func(obj *JSONWebSignature) {}
 
 	// Break rand reader
 	readers := []func() io.Reader{
@@ -338,7 +338,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem generating test signing key", err)
 	}
 
-	basejwk := JsonWebKey{Key: key}
+	basejwk := JSONWebKey{Key: key}
 	jsonbar, err := basejwk.MarshalJSON()
 	if err != nil {
 		t.Error("problem marshalling base JWK", err)
@@ -355,7 +355,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem marshalling kided JWK", err)
 	}
 
-	var jwk JsonWebKey
+	var jwk JSONWebKey
 	err = jwk.UnmarshalJSON(jsonbar2)
 	if err != nil {
 		t.Error("problem unmarshalling kided JWK", err)

@@ -122,27 +122,27 @@ type rawHeader struct {
 	Crit  []string             `json:"crit,omitempty"`
 	Apu   *byteBuffer          `json:"apu,omitempty"`
 	Apv   *byteBuffer          `json:"apv,omitempty"`
-	Epk   *JsonWebKey          `json:"epk,omitempty"`
+	Epk   *JSONWebKey          `json:"epk,omitempty"`
 	Iv    *byteBuffer          `json:"iv,omitempty"`
 	Tag   *byteBuffer          `json:"tag,omitempty"`
-	Jwk   *JsonWebKey          `json:"jwk,omitempty"`
+	Jwk   *JSONWebKey          `json:"jwk,omitempty"`
 	Kid   string               `json:"kid,omitempty"`
 	Nonce string               `json:"nonce,omitempty"`
 }
 
-// JoseHeader represents the read-only JOSE header for JWE/JWS objects.
-type JoseHeader struct {
+// Header represents the read-only JOSE header for JWE/JWS objects.
+type Header struct {
 	KeyID      string
-	JsonWebKey *JsonWebKey
+	JSONWebKey *JSONWebKey
 	Algorithm  string
 	Nonce      string
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
-func (parsed rawHeader) sanitized() JoseHeader {
-	return JoseHeader{
+func (parsed rawHeader) sanitized() Header {
+	return Header{
 		KeyID:      parsed.Kid,
-		JsonWebKey: parsed.Jwk,
+		JSONWebKey: parsed.Jwk,
 		Algorithm:  parsed.Alg,
 		Nonce:      parsed.Nonce,
 	}

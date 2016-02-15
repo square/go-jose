@@ -230,13 +230,13 @@ func main() {
 				var err error
 				switch c.String("format") {
 				case "", "JWE":
-					var jwe *jose.JsonWebEncryption
+					var jwe *jose.JSONWebEncryption
 					jwe, err = jose.ParseEncrypted(input)
 					if err == nil {
 						serialized = jwe.FullSerialize()
 					}
 				case "JWS":
-					var jws *jose.JsonWebSignature
+					var jws *jose.JSONWebSignature
 					jws, err = jose.ParseSigned(input)
 					if err == nil {
 						serialized = jws.FullSerialize()

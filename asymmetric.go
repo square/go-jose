@@ -86,7 +86,7 @@ func newRSASigner(sigAlg SignatureAlgorithm, privateKey *rsa.PrivateKey) (recipi
 
 	return recipientSigInfo{
 		sigAlg: sigAlg,
-		publicKey: &JsonWebKey{
+		publicKey: &JSONWebKey{
 			Key: &privateKey.PublicKey,
 		},
 		signer: &rsaDecrypterSigner{
@@ -123,7 +123,7 @@ func newECDSASigner(sigAlg SignatureAlgorithm, privateKey *ecdsa.PrivateKey) (re
 
 	return recipientSigInfo{
 		sigAlg: sigAlg,
-		publicKey: &JsonWebKey{
+		publicKey: &JSONWebKey{
 			Key: &privateKey.PublicKey,
 		},
 		signer: &ecDecrypterSigner{
@@ -351,7 +351,7 @@ func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
 	out := josecipher.DeriveECDHES(ctx.algID, []byte{}, []byte{}, priv, ctx.publicKey, ctx.size)
 
 	headers := rawHeader{
-		Epk: &JsonWebKey{
+		Epk: &JSONWebKey{
 			Key: &priv.PublicKey,
 		},
 	}
@@ -437,7 +437,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 
 	keyBytes := curveBits / 8
 	if curveBits%8 > 0 {
-		keyBytes += 1
+		keyBytes++
 	}
 
 	// We serialize the outpus (r and s) into big-endian byte arrays and pad

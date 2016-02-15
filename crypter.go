@@ -25,8 +25,8 @@ import (
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.
 type Encrypter interface {
-	Encrypt(plaintext []byte) (*JsonWebEncryption, error)
-	EncryptWithAuthData(plaintext []byte, aad []byte) (*JsonWebEncryption, error)
+	Encrypt(plaintext []byte) (*JSONWebEncryption, error)
+	EncryptWithAuthData(plaintext []byte, aad []byte) (*JSONWebEncryption, error)
 }
 
 // A generic content cipher
@@ -67,10 +67,12 @@ type recipientKeyInfo struct {
 	keyEncrypter keyEncrypter
 }
 
+// EncrypterOptions represents options that can be set on new encrypters.
 type EncrypterOptions struct {
 	Compression CompressionAlgorithm
 }
 
+// Recipient represents an algorithm/key to encrypt messages to.
 type Recipient struct {
 	Algorithm KeyAlgorithm
 	Key       interface{}
@@ -95,7 +97,7 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 	var keyID string
 	var rawKey interface{}
 	switch encryptionKey := rcpt.Key.(type) {
-	case *JsonWebKey:
+	case *JSONWebKey:
 		keyID = encryptionKey.KeyID
 		rawKey = encryptionKey.Key
 	default:
@@ -207,7 +209,7 @@ func makeJWERecipient(alg KeyAlgorithm, encryptionKey interface{}) (recipientKey
 		return newECDHRecipient(alg, encryptionKey)
 	case []byte:
 		return newSymmetricRecipient(alg, encryptionKey)
-	case *JsonWebKey:
+	case *JSONWebKey:
 		recipient, err := makeJWERecipient(alg, encryptionKey.Key)
 		recipient.keyID = encryptionKey.KeyID
 		return recipient, err
@@ -231,7 +233,7 @@ func newDecrypter(decryptionKey interface{}) (keyDecrypter, error) {
 		return &symmetricKeyCipher{
 			key: decryptionKey,
 		}, nil
-	case *JsonWebKey:
+	case *JSONWebKey:
 		return newDecrypter(decryptionKey.Key)
 	default:
 		return nil, ErrUnsupportedKeyType
@@ -239,13 +241,13 @@ func newDecrypter(decryptionKey interface{}) (keyDecrypter, error) {
 }
 
 // Implementation of encrypt method producing a JWE object.
-func (ctx *genericEncrypter) Encrypt(plaintext []byte) (*JsonWebEncryption, error) {
+func (ctx *genericEncrypter) Encrypt(plaintext []byte) (*JSONWebEncryption, error) {
 	return ctx.EncryptWithAuthData(plaintext, nil)
 }
 
 // Implementation of encrypt method producing a JWE object.
-func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWebEncryption, error) {
-	obj := &JsonWebEncryption{}
+func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWebEncryption, error) {
+	obj := &JSONWebEncryption{}
 	obj.aad = aad
 
 	obj.protected = &rawHeader{
@@ -307,7 +309,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 }
 
 // Decrypt and validate the object and return the plaintext.
-func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) {
+func (obj JSONWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) {
 	headers := obj.mergedHeaders(nil)
 
 	if len(headers.Crit) > 0 {

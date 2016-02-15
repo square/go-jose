@@ -30,9 +30,10 @@ type NonceSource interface {
 
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
-	Sign(payload []byte) (*JsonWebSignature, error)
+	Sign(payload []byte) (*JSONWebSignature, error)
 }
 
+// SigningKey represents an algorithm/key used to sign a message.
 type SigningKey struct {
 	Algorithm SignatureAlgorithm
 	Key       interface{}
@@ -60,7 +61,7 @@ type genericSigner struct {
 
 type recipientSigInfo struct {
 	sigAlg    SignatureAlgorithm
-	publicKey *JsonWebKey
+	publicKey *JSONWebKey
 	signer    payloadSigner
 }
 
@@ -103,7 +104,7 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 		return &symmetricMac{
 			key: verificationKey,
 		}, nil
-	case *JsonWebKey:
+	case *JSONWebKey:
 		return newVerifier(verificationKey.Key)
 	default:
 		return nil, ErrUnsupportedKeyType
@@ -128,7 +129,7 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipient
 		return newECDSASigner(alg, signingKey)
 	case []byte:
 		return newSymmetricSigner(alg, signingKey)
-	case *JsonWebKey:
+	case *JSONWebKey:
 		recipient, err := makeJWSRecipient(alg, signingKey.Key)
 		if err != nil {
 			return recipientSigInfo{}, err
@@ -140,8 +141,8 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipient
 	}
 }
 
-func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
-	obj := &JsonWebSignature{}
+func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
+	obj := &JSONWebSignature{}
 	obj.payload = payload
 	obj.Signatures = make([]Signature, len(ctx.recipients))
 
@@ -184,7 +185,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
 }
 
 // Verify validates the signature on the object and returns the payload.
-func (obj JsonWebSignature) Verify(verificationKey interface{}) ([]byte, error) {
+func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) {
 	verifier, err := newVerifier(verificationKey)
 	if err != nil {
 		return nil, err

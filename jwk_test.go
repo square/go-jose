@@ -162,7 +162,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 
 	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
 		for _, use := range []string{"", "sig", "enc"} {
-			jwk := JsonWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
+			jwk := JSONWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
 			if use != "" {
 				jwk.Use = use
 			}
@@ -172,7 +172,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 				t.Error("problem marshaling", i, err)
 			}
 
-			var jwk2 JsonWebKey
+			var jwk2 JSONWebKey
 			err = jwk2.UnmarshalJSON(jsonbar)
 			if err != nil {
 				t.Error("problem unmarshalling", i, err)
@@ -203,16 +203,16 @@ func TestMarshalUnmarshal(t *testing.T) {
 
 func TestMarshalNonPointer(t *testing.T) {
 	type EmbedsKey struct {
-		Key JsonWebKey
+		Key JSONWebKey
 	}
 
-	keyJson := []byte(`{
+	keyJSON := []byte(`{
 		"e": "AQAB",
 		"kty": "RSA",
 		"n": "vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw"
 	}`)
-	var parsedKey JsonWebKey
-	err := json.Unmarshal(keyJson, &parsedKey)
+	var parsedKey JSONWebKey
+	err := json.Unmarshal(keyJSON, &parsedKey)
 	if err != nil {
 		t.Error(fmt.Sprintf("Error unmarshalling key: %v", err))
 		return
@@ -273,7 +273,7 @@ func TestMarshalUnmarshalInvalid(t *testing.T) {
 	}
 
 	for i, key := range keys {
-		jwk := JsonWebKey{Key: key}
+		jwk := JSONWebKey{Key: key}
 		_, err := jwk.MarshalJSON()
 		if err == nil {
 			t.Error("managed to serialize invalid key", i)
@@ -301,7 +301,7 @@ func TestWebKeyVectorsInvalid(t *testing.T) {
 	}
 
 	for _, key := range keys {
-		var jwk2 JsonWebKey
+		var jwk2 JSONWebKey
 		err := jwk2.UnmarshalJSON([]byte(key))
 		if err == nil {
 			t.Error("managed to parse invalid key:", key)
@@ -396,7 +396,7 @@ var cookbookJWKThumbprints = []string{
 
 func TestWebKeyVectorsValid(t *testing.T) {
 	for _, key := range cookbookJWKs {
-		var jwk2 JsonWebKey
+		var jwk2 JSONWebKey
 		err := jwk2.UnmarshalJSON([]byte(key))
 		if err != nil {
 			t.Error("unable to parse valid key:", key, err)
@@ -406,7 +406,7 @@ func TestWebKeyVectorsValid(t *testing.T) {
 
 func TestThumbprint(t *testing.T) {
 	for i, key := range cookbookJWKs {
-		var jwk2 JsonWebKey
+		var jwk2 JSONWebKey
 		err := jwk2.UnmarshalJSON([]byte(key))
 		if err != nil {
 			t.Error("unable to parse valid key:", key, err)
@@ -425,9 +425,9 @@ func TestThumbprint(t *testing.T) {
 }
 
 func TestMarshalUnmarshalJWKSet(t *testing.T) {
-	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
-	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
-	var set JsonWebKeySet
+	jwk1 := JSONWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JSONWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JSONWebKeySet
 	set.Keys = append(set.Keys, jwk1)
 	set.Keys = append(set.Keys, jwk2)
 
@@ -435,7 +435,7 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	if err != nil {
 		t.Error("problem marshalling set", err)
 	}
-	var set2 JsonWebKeySet
+	var set2 JSONWebKeySet
 	err = json.Unmarshal(jsonbar, &set2)
 	if err != nil {
 		t.Error("problem unmarshalling set", err)
@@ -482,7 +482,7 @@ var JWKSetDuplicates = stripWhitespace(`{
 
 func TestDuplicateJWKSetMembersIgnored(t *testing.T) {
 	type CustomSet struct {
-		JsonWebKeySet
+		JSONWebKeySet
 		CustomMember string `json:"custom"`
 	}
 	data := []byte(JWKSetDuplicates)
@@ -500,9 +500,9 @@ func TestDuplicateJWKSetMembersIgnored(t *testing.T) {
 }
 
 func TestJWKSetKey(t *testing.T) {
-	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
-	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
-	var set JsonWebKeySet
+	jwk1 := JSONWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JSONWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JSONWebKeySet
 	set.Keys = append(set.Keys, jwk1)
 	set.Keys = append(set.Keys, jwk2)
 	k := set.Key("ABCDEFG")
@@ -518,7 +518,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 	sample1 := `{"kty":"oct","alg":"A128KW","k":"GawgguFyGrWKav7AX4VKUg"}`
 	sample2 := `{"kty":"oct","k":"AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow","kid":"HMAC key used in JWS spec Appendix A.1 example"}`
 
-	var jwk1 JsonWebKey
+	var jwk1 JSONWebKey
 	json.Unmarshal([]byte(sample1), &jwk1)
 
 	if jwk1.Algorithm != "A128KW" {
@@ -529,7 +529,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 		t.Errorf("expected Key to be '%s', but was '%s'", hex.EncodeToString(expected1), hex.EncodeToString(jwk1.Key.([]byte)))
 	}
 
-	var jwk2 JsonWebKey
+	var jwk2 JSONWebKey
 	json.Unmarshal([]byte(sample2), &jwk2)
 
 	if jwk2.KeyID != "HMAC key used in JWS spec Appendix A.1 example" {
@@ -544,13 +544,13 @@ func TestJWKSymmetricKey(t *testing.T) {
 }
 
 func TestJWKSymmetricRoundtrip(t *testing.T) {
-	jwk1 := JsonWebKey{Key: []byte{1, 2, 3, 4}}
+	jwk1 := JSONWebKey{Key: []byte{1, 2, 3, 4}}
 	marshaled, err := jwk1.MarshalJSON()
 	if err != nil {
 		t.Error("failed to marshal valid JWK object", err)
 	}
 
-	var jwk2 JsonWebKey
+	var jwk2 JSONWebKey
 	err = jwk2.UnmarshalJSON(marshaled)
 	if err != nil {
 		t.Error("failed to unmarshal valid JWK object", err)
@@ -562,13 +562,13 @@ func TestJWKSymmetricRoundtrip(t *testing.T) {
 }
 
 func TestJWKSymmetricInvalid(t *testing.T) {
-	invalid := JsonWebKey{}
+	invalid := JSONWebKey{}
 	_, err := invalid.MarshalJSON()
 	if err == nil {
 		t.Error("excepted error on marshaling invalid symmetric JWK object")
 	}
 
-	var jwk JsonWebKey
+	var jwk JSONWebKey
 	err = jwk.UnmarshalJSON([]byte(`{"kty":"oct"}`))
 	if err == nil {
 		t.Error("excepted error on unmarshaling invalid symmetric JWK object")
