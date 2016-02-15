@@ -199,7 +199,7 @@ func (ctx rsaDecrypterSigner) decrypt(jek []byte, alg KeyAlgorithm, generator ke
 		// When decrypting an RSA-PKCS1v1.5 payload, we must take precautions to
 		// prevent chosen-ciphertext attacks as described in RFC 3218, "Preventing
 		// the Million Message Attack on Cryptographic Message Syntax". We are
-		// therefore deliberatly ignoring errors here.
+		// therefore deliberately ignoring errors here.
 		_ = rsa.DecryptPKCS1v15SessionKey(rand.Reader, ctx.privateKey, jek, cek)
 
 		return cek, nil
