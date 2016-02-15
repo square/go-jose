@@ -24,7 +24,6 @@ import (
 	"crypto/rsa"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
@@ -214,7 +213,7 @@ func TestMarshalNonPointer(t *testing.T) {
 	var parsedKey JSONWebKey
 	err := json.Unmarshal(keyJSON, &parsedKey)
 	if err != nil {
-		t.Error(fmt.Sprintf("Error unmarshalling key: %v", err))
+		t.Errorf("Error unmarshalling key: %v", err)
 		return
 	}
 	ek := EmbedsKey{
@@ -222,7 +221,7 @@ func TestMarshalNonPointer(t *testing.T) {
 	}
 	out, err := json.Marshal(ek)
 	if err != nil {
-		t.Error(fmt.Sprintf("Error marshalling JSON: %v", err))
+		t.Errorf("Error marshalling JSON: %v", err)
 		return
 	}
 	expected := "{\"Key\":{\"kty\":\"RSA\",\"n\":\"vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw\",\"e\":\"AQAB\"}}"

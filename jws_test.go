@@ -18,7 +18,6 @@ package jose
 
 import (
 	"crypto/x509"
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -151,10 +150,10 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 	}
 	payload, err := jws.Verify(sig.Header.JSONWebKey)
 	if err != nil {
-		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
+		t.Errorf("Signature did not validate: %v", err)
 	}
 	if string(payload) != "foo\n" {
-		t.Error(fmt.Sprintf("Payload was incorrect: '%s' should have been 'foo\\n'", string(payload)))
+		t.Errorf("Payload was incorrect: '%s' should have been 'foo\\n'", string(payload))
 	}
 }
 
@@ -177,11 +176,11 @@ func TestVerifyFlattenedWithPrivateProtected(t *testing.T) {
 	}
 	payload, err := jws.Verify(sig.Header.JSONWebKey)
 	if err != nil {
-		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
+		t.Errorf("Signature did not validate: %v", err)
 	}
 	expected := "{\"contact\":[\"mailto:foo@bar.com\"]}"
 	if string(payload) != expected {
-		t.Error(fmt.Sprintf("Payload was incorrect: '%s' should have been '%s'", string(payload), expected))
+		t.Errorf("Payload was incorrect: '%s' should have been '%s'", string(payload), expected)
 	}
 }
 
