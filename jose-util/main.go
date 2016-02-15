@@ -73,7 +73,7 @@ func main() {
 				alg := jose.KeyAlgorithm(requiredFlag(c, "alg"))
 				enc := jose.ContentEncryption(requiredFlag(c, "enc"))
 
-				crypter, err := jose.NewEncrypter(enc, jose.Recipient{Algorithm: alg, EncryptionKey: pub}, nil)
+				crypter, err := jose.NewEncrypter(enc, jose.Recipient{Algorithm: alg, Key: pub}, nil)
 				exitOnError(err, "unable to instantiate encrypter")
 
 				obj, err := crypter.Encrypt(readInput(c.String("input")))
@@ -156,7 +156,7 @@ func main() {
 				exitOnError(err, "unable to read private key")
 
 				alg := jose.SignatureAlgorithm(requiredFlag(c, "algorithm"))
-				signer, err := jose.NewSigner(alg, signingKey)
+				signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: signingKey}, nil)
 				exitOnError(err, "unable to make signer")
 
 				obj, err := signer.Sign(readInput(c.String("input")))
