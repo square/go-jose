@@ -107,7 +107,7 @@ if err != nil {
 // Instantiate an encrypter using RSA-OAEP with AES128-GCM. An error would
 // indicate that the selected algorithm(s) are not currently supported.
 publicKey := &privateKey.PublicKey
-encrypter, err := NewEncrypter(RSA_OAEP, A128GCM, publicKey)
+encrypter, err := NewEncrypter(A128GCM, Recipient{Algorithm: RSA_OAEP, Key: publicKey}, nil)
 if err != nil {
 	panic(err)
 }
@@ -157,7 +157,7 @@ if err != nil {
 }
 
 // Instantiate a signer using RSASSA-PSS (SHA512) with the given private key.
-signer, err := NewSigner(PS512, privateKey)
+signer, err := NewSigner(SigningKey{Algorithm: PS512, Key: privateKey}, nil)
 if err != nil {
 	panic(err)
 }
