@@ -1,6 +1,10 @@
 # Go JOSE 
 
-[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/square/go-jose) [![license](http://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE) [![build](https://img.shields.io/travis/square/go-jose.svg?style=flat)](https://travis-ci.org/square/go-jose) [![coverage](https://img.shields.io/coveralls/square/go-jose.svg?style=flat)](https://coveralls.io/r/square/go-jose)
+[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/square/go-jose)
+[![license](http://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE)
+[![build](https://img.shields.io/travis/square/go-jose.svg?style=flat)](https://travis-ci.org/square/go-jose)
+[![coverage](https://img.shields.io/coveralls/square/go-jose.svg?style=flat)](https://coveralls.io/r/square/go-jose)
+[![Go Report Card](https://goreportcard.com/badge/github.com/square/go-jose)](https://goreportcard.com/report/github.com/square/go-jose)
 
 Package jose aims to provide an implementation of the Javascript Object Signing
 and Encryption set of standards. For the moment, it mainly focuses on encryption
