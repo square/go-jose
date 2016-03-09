@@ -81,6 +81,8 @@ func TestFullParseJWS(t *testing.T) {
 		"{\"payload\":\"###\",\"signatures\":[{\"protected\":\"CUJD\",\"header\":{\"kid\":\"XYZ\"},\"signature\":\"CUJD\"}]}",
 		// Invalid payload
 		"{\"payload\":\"CUJD\",\"signatures\":[{\"protected\":\"e30\",\"header\":{\"kid\":\"XYZ\"},\"signature\":\"###\"}]}",
+		// Fields with invalid case
+		"{\"PAYLOAD\":\"CUJD\",\"signatures\":[{\"protected\":\"e30\",\"signature\":\"CUJD\"}]}",
 	}
 
 	for i := range failures {

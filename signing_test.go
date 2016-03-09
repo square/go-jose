@@ -21,10 +21,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/square/go-jose/json"
 )
 
 type staticNonceSource string

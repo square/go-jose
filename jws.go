@@ -17,9 +17,10 @@
 package jose
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/square/go-jose/json"
 )
 
 // rawJsonWebSignature represents a raw JWS JSON object. Used for parsing/serializing.

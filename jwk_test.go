@@ -23,11 +23,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/square/go-jose/json"
 )
 
 func TestCurveSize(t *testing.T) {

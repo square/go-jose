@@ -21,11 +21,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
+
+	"github.com/square/go-jose/json"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.

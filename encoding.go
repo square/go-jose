@@ -21,11 +21,12 @@ import (
 	"compress/flate"
 	"encoding/base64"
 	"encoding/binary"
-	"encoding/json"
 	"io"
 	"math/big"
 	"regexp"
 	"strings"
+
+	"github.com/square/go-jose/json"
 )
 
 var stripWhitespaceRegex = regexp.MustCompile("\\s")
