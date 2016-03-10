@@ -26,8 +26,6 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
-
-	"github.com/square/go-jose/json"
 )
 
 func TestCurveSize(t *testing.T) {
@@ -220,7 +218,7 @@ func TestMarshalNonPointer(t *testing.T) {
 	ek := EmbedsKey{
 		Key: parsedKey,
 	}
-	out, err := json.Marshal(ek)
+	out, err := MarshalJSON(ek)
 	if err != nil {
 		t.Errorf("Error marshalling JSON: %v", err)
 		return
@@ -431,7 +429,7 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	set.Keys = append(set.Keys, jwk1)
 	set.Keys = append(set.Keys, jwk2)
 
-	jsonbar, err := json.Marshal(&set)
+	jsonbar, err := MarshalJSON(&set)
 	if err != nil {
 		t.Error("problem marshalling set", err)
 	}
@@ -440,7 +438,7 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	if err != nil {
 		t.Error("problem unmarshalling set", err)
 	}
-	jsonbar2, err := json.Marshal(&set2)
+	jsonbar2, err := MarshalJSON(&set2)
 	if err != nil {
 		t.Error("problem marshalling set", err)
 	}
