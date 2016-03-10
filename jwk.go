@@ -21,11 +21,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
+
+	"github.com/square/go-jose/json"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
@@ -94,7 +95,7 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON reads a key from its JSON representation.
 func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	var raw rawJsonWebKey
-	err = json.Unmarshal(data, &raw)
+	err = UnmarshalJSON(data, &raw)
 	if err != nil {
 		return err
 	}

@@ -79,7 +79,7 @@ func NewSigner(alg SignatureAlgorithm, signingKey interface{}) (Signer, error) {
 func NewMultiSigner() MultiSigner {
 	return &genericSigner{
 		recipients: []recipientSigInfo{},
-		embedJwk: true,
+		embedJwk:   true,
 	}
 }
 

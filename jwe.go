@@ -17,7 +17,6 @@
 package jose
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -112,7 +111,7 @@ func ParseEncrypted(input string) (*JsonWebEncryption, error) {
 // parseEncryptedFull parses a message in compact format.
 func parseEncryptedFull(input string) (*JsonWebEncryption, error) {
 	var parsed rawJsonWebEncryption
-	err := json.Unmarshal([]byte(input), &parsed)
+	err := UnmarshalJSON([]byte(input), &parsed)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +133,7 @@ func (parsed *rawJsonWebEncryption) sanitized() (*JsonWebEncryption, error) {
 	}
 
 	if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
-		err := json.Unmarshal(parsed.Protected.bytes(), &obj.protected)
+		err := UnmarshalJSON(parsed.Protected.bytes(), &obj.protected)
 		if err != nil {
 			return nil, fmt.Errorf("square/go-jose: invalid protected header: %s, %s", err, parsed.Protected.base64())
 		}
