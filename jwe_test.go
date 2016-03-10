@@ -105,8 +105,6 @@ func TestFullParseJWE(t *testing.T) {
 		"{\"protected\":\"eyJhbGciOiJYWVoifQ\",\"encrypted_key\":\"QUJD\",\"iv\":\"QUJD\",\"ciphertext\":\"QUJD\",\"tag\":\"QUJD\"}",
 		// Missing alg header
 		"{\"protected\":\"eyJlbmMiOiJYWVoifQ\",\"encrypted_key\":\"QUJD\",\"iv\":\"QUJD\",\"ciphertext\":\"QUJD\",\"tag\":\"QUJD\"}",
-		// Header with invalid case ('ALG' instead of 'alg')
-		"{\"protected\":\"eyJlbmMiOiJYWVoiLCJBTEciOiJYWVoifQo\",\"encrypted_key\":\"QUJD\",\"iv\":\"QUJD\",\"ciphertext\":\"QUJD\",\"tag\":\"QUJD\"}",
 		// Unflattened serialization, single recipient, invalid encrypted_key
 		"{\"protected\":\"\",\"recipients\":[{\"header\":{\"alg\":\"XYZ\", \"enc\":\"XYZ\"},\"encrypted_key\":\"###\"}],\"iv\":\"QUJD\",\"ciphertext\":\"QUJD\",\"tag\":\"QUJD\"}",
 		// Unflattened serialization, single recipient, missing alg

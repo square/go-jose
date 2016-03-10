@@ -153,7 +153,7 @@ func (b *byteBuffer) MarshalJSON() ([]byte, error) {
 
 func (b *byteBuffer) UnmarshalJSON(data []byte) error {
 	var encoded string
-	err := json.Unmarshal(data, &encoded)
+	err := UnmarshalJSON(data, &encoded)
 	if err != nil {
 		return err
 	}

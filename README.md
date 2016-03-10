@@ -32,7 +32,8 @@ standard library which uses case-sensitive matching for member names (instead
 of [case-insensitive matching](https://www.ietf.org/mail-archive/web/json/current/msg03763.html)).
 This is to avoid differences in interpretation of messages between go-jose and
 libraries in other languages. See [issue #73](https://github.com/square/go-jose/issues/73)
-for more info.
+for more info. If you do not like this behavior, you can use the `std_json`
+build tag to disable it (though we do not recommend doing so).
 
 ### Versions
 

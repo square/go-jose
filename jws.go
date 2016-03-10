@@ -19,8 +19,6 @@ package jose
 import (
 	"fmt"
 	"strings"
-
-	"github.com/square/go-jose/json"
 )
 
 // rawJsonWebSignature represents a raw JWS JSON object. Used for parsing/serializing.
@@ -96,7 +94,7 @@ func (obj JsonWebSignature) computeAuthData(signature *Signature) []byte {
 // parseSignedFull parses a message in full format.
 func parseSignedFull(input string) (*JsonWebSignature, error) {
 	var parsed rawJsonWebSignature
-	err := json.Unmarshal([]byte(input), &parsed)
+	err := UnmarshalJSON([]byte(input), &parsed)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +118,7 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 		signature := Signature{}
 		if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
 			signature.protected = &rawHeader{}
-			err := json.Unmarshal(parsed.Protected.bytes(), signature.protected)
+			err := UnmarshalJSON(parsed.Protected.bytes(), signature.protected)
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +152,7 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 	for i, sig := range parsed.Signatures {
 		if sig.Protected != nil && len(sig.Protected.bytes()) > 0 {
 			obj.Signatures[i].protected = &rawHeader{}
-			err := json.Unmarshal(sig.Protected.bytes(), obj.Signatures[i].protected)
+			err := UnmarshalJSON(sig.Protected.bytes(), obj.Signatures[i].protected)
 			if err != nil {
 				return nil, err
 			}

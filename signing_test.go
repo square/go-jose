@@ -345,7 +345,7 @@ func TestSignerKid(t *testing.T) {
 	}
 
 	var jsonmsi map[string]interface{}
-	err = json.Unmarshal(jsonbar, &jsonmsi)
+	err = UnmarshalJSON(jsonbar, &jsonmsi)
 	if err != nil {
 		t.Error("problem unmarshalling base JWK", err)
 	}
