@@ -24,8 +24,6 @@ import (
 	"fmt"
 	"io"
 	"testing"
-
-	"github.com/square/go-jose/json"
 )
 
 type staticNonceSource string
@@ -350,7 +348,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem unmarshalling base JWK", err)
 	}
 	jsonmsi["kid"] = kid
-	jsonbar2, err := json.Marshal(jsonmsi)
+	jsonbar2, err := MarshalJSON(jsonmsi)
 	if err != nil {
 		t.Error("problem marshalling kided JWK", err)
 	}
