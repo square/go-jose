@@ -18,7 +18,6 @@ package jose
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -96,7 +95,7 @@ func (obj JSONWebSignature) computeAuthData(signature *Signature) []byte {
 // parseSignedFull parses a message in full format.
 func parseSignedFull(input string) (*JSONWebSignature, error) {
 	var parsed rawJSONWebSignature
-	err := json.Unmarshal([]byte(input), &parsed)
+	err := UnmarshalJSON([]byte(input), &parsed)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +119,7 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 		signature := Signature{}
 		if parsed.Protected != nil && len(parsed.Protected.bytes()) > 0 {
 			signature.protected = &rawHeader{}
-			err := json.Unmarshal(parsed.Protected.bytes(), signature.protected)
+			err := UnmarshalJSON(parsed.Protected.bytes(), signature.protected)
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +153,7 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 	for i, sig := range parsed.Signatures {
 		if sig.Protected != nil && len(sig.Protected.bytes()) > 0 {
 			obj.Signatures[i].protected = &rawHeader{}
-			err := json.Unmarshal(sig.Protected.bytes(), obj.Signatures[i].protected)
+			err := UnmarshalJSON(sig.Protected.bytes(), obj.Signatures[i].protected)
 			if err != nil {
 				return nil, err
 			}

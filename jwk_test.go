@@ -23,10 +23,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/hex"
-	"encoding/json"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/square/go-jose/json"
 )
 
 func TestCurveSize(t *testing.T) {
@@ -211,7 +212,7 @@ func TestMarshalNonPointer(t *testing.T) {
 		"n": "vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw"
 	}`)
 	var parsedKey JSONWebKey
-	err := json.Unmarshal(keyJSON, &parsedKey)
+	err := UnmarshalJSON(keyJSON, &parsedKey)
 	if err != nil {
 		t.Errorf("Error unmarshalling key: %v", err)
 		return
@@ -435,7 +436,7 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 		t.Error("problem marshalling set", err)
 	}
 	var set2 JSONWebKeySet
-	err = json.Unmarshal(jsonbar, &set2)
+	err = UnmarshalJSON(jsonbar, &set2)
 	if err != nil {
 		t.Error("problem unmarshalling set", err)
 	}
@@ -486,7 +487,7 @@ func TestDuplicateJWKSetMembersIgnored(t *testing.T) {
 	}
 	data := []byte(JWKSetDuplicates)
 	var set CustomSet
-	json.Unmarshal(data, &set)
+	UnmarshalJSON(data, &set)
 	if len(set.Keys) != 1 {
 		t.Error("expected only one key in set")
 	}
@@ -518,7 +519,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 	sample2 := `{"kty":"oct","k":"AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow","kid":"HMAC key used in JWS spec Appendix A.1 example"}`
 
 	var jwk1 JSONWebKey
-	json.Unmarshal([]byte(sample1), &jwk1)
+	UnmarshalJSON([]byte(sample1), &jwk1)
 
 	if jwk1.Algorithm != "A128KW" {
 		t.Errorf("expected Algorithm to be A128KW, but was '%s'", jwk1.Algorithm)
@@ -529,7 +530,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 	}
 
 	var jwk2 JSONWebKey
-	json.Unmarshal([]byte(sample2), &jwk2)
+	UnmarshalJSON([]byte(sample2), &jwk2)
 
 	if jwk2.KeyID != "HMAC key used in JWS spec Appendix A.1 example" {
 		t.Errorf("expected KeyID to be 'HMAC key used in JWS spec Appendix A.1 example', but was '%s'", jwk2.KeyID)

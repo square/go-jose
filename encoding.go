@@ -21,10 +21,11 @@ import (
 	"compress/flate"
 	"encoding/base64"
 	"encoding/binary"
-	"encoding/json"
 	"io"
 	"math/big"
 	"regexp"
+
+	"github.com/square/go-jose/json"
 )
 
 var stripWhitespaceRegex = regexp.MustCompile("\\s")
@@ -138,7 +139,7 @@ func (b *byteBuffer) MarshalJSON() ([]byte, error) {
 
 func (b *byteBuffer) UnmarshalJSON(data []byte) error {
 	var encoded string
-	err := json.Unmarshal(data, &encoded)
+	err := UnmarshalJSON(data, &encoded)
 	if err != nil {
 		return err
 	}

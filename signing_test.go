@@ -21,10 +21,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/square/go-jose/json"
 )
 
 type staticNonceSource string
@@ -345,7 +346,7 @@ func TestSignerKid(t *testing.T) {
 	}
 
 	var jsonmsi map[string]interface{}
-	err = json.Unmarshal(jsonbar, &jsonmsi)
+	err = UnmarshalJSON(jsonbar, &jsonmsi)
 	if err != nil {
 		t.Error("problem unmarshalling base JWK", err)
 	}

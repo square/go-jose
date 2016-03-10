@@ -4,7 +4,7 @@
 [![license](http://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE)
 [![build](https://img.shields.io/travis/square/go-jose.svg?style=flat)](https://travis-ci.org/square/go-jose)
 [![coverage](https://img.shields.io/coveralls/square/go-jose.svg?style=flat)](https://coveralls.io/r/square/go-jose)
-[![Go Report Card](https://goreportcard.com/badge/github.com/square/go-jose)](https://goreportcard.com/report/github.com/square/go-jose)
+[![report card](https://goreportcard.com/badge/github.com/square/go-jose)](https://goreportcard.com/report/github.com/square/go-jose)
 
 Package jose aims to provide an implementation of the Javascript Object Signing
 and Encryption set of standards. For the moment, it mainly focuses on encryption
@@ -30,6 +30,14 @@ optional support for multiple recipients. It also comes with a small
 command-line utility
 ([`jose-util`](https://github.com/square/go-jose/tree/master/jose-util))
 for dealing with JOSE messages in a shell.
+
+**Note**: We use a forked version of the `encoding/json` package from the Go
+standard library which uses case-sensitive matching for member names (instead
+of [case-insensitive matching](https://www.ietf.org/mail-archive/web/json/current/msg03763.html)).
+This is to avoid differences in interpretation of messages between go-jose and
+libraries in other languages. See [issue #73](https://github.com/square/go-jose/issues/73)
+for more info. If you do not like this behavior, you can use the `std_json`
+build tag to disable it (though we do not recommend doing so).
 
 ### Versions
 
