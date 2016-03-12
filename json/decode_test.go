@@ -210,13 +210,6 @@ type unmarshalTest struct {
 	useNumber bool
 }
 
-type Ambig struct {
-	// Given "hello", the second match should win.
-	First  int `json:"HELLO"`
-	Second int `json:"hello"`
-	Third  int `json:"Hello"`
-}
-
 type XYZ struct {
 	X interface{}
 	Y interface{}
@@ -373,12 +366,6 @@ var unmarshalTests = []unmarshalTest{
 			},
 		},
 	},
-	{
-		in:  `{"hello": 1}`,
-		ptr: new(Ambig),
-		out: Ambig{Second: 1},
-	},
-
 	{
 		in:  `{"X": 1,"Y":2}`,
 		ptr: new(S5),
