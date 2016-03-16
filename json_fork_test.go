@@ -41,6 +41,24 @@ func TestCaseSensitiveJSON(t *testing.T) {
 	}
 }
 
+func TestRejectDuplicateKeysObject(t *testing.T) {
+	raw := []byte(`{"test":42,"test":43}`)
+	var cs CaseSensitive
+	err := UnmarshalJSON(raw, &cs)
+	if err == nil {
+		t.Error("should reject JSON with duplicate keys, but didn't")
+	}
+}
+
+func TestRejectDuplicateKeysInterface(t *testing.T) {
+	raw := []byte(`{"test":42,"test":43}`)
+	var m interface{}
+	err := UnmarshalJSON(raw, &m)
+	if err == nil {
+		t.Error("should reject JSON with duplicate keys, but didn't")
+	}
+}
+
 func TestParseCaseSensitiveJWE(t *testing.T) {
 	invalidJWE := `{"protected":"eyJlbmMiOiJYWVoiLCJBTEciOiJYWVoifQo","encrypted_key":"QUJD","iv":"QUJD","ciphertext":"QUJD","tag":"QUJD"}`
 	_, err := ParseEncrypted(invalidJWE)
