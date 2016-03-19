@@ -1,6 +1,6 @@
 # Go JOSE 
 
-[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/square/go-jose)
+[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
 [![license](http://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE)
 [![build](https://img.shields.io/travis/square/go-jose.svg?style=flat)](https://travis-ci.org/square/go-jose)
 [![coverage](https://img.shields.io/coveralls/square/go-jose.svg?style=flat)](https://coveralls.io/r/square/go-jose)
@@ -35,9 +35,8 @@ for dealing with JOSE messages in a shell.
 standard library which uses case-sensitive matching for member names (instead
 of [case-insensitive matching](https://www.ietf.org/mail-archive/web/json/current/msg03763.html)).
 This is to avoid differences in interpretation of messages between go-jose and
-libraries in other languages. See [issue #73](https://github.com/square/go-jose/issues/73)
-for more info. If you do not like this behavior, you can use the `std_json`
-build tag to disable it (though we do not recommend doing so).
+libraries in other languages. If you do not like this behavior, you can use the
+`std_json` build tag to disable it (though we do not recommend doing so).
 
 ### Versions
 
