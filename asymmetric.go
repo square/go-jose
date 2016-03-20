@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/square/go-jose/cipher"
+	"gopkg.in/square/go-jose.v1/cipher"
 )
 
 // A generic RSA-based encrypter/verifier

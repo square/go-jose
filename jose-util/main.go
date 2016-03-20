@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/square/go-jose"
+	"gopkg.in/square/go-jose.v1"
 )
 
 func main() {
