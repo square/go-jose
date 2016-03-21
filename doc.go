@@ -23,4 +23,4 @@ standards.  The library supports both the compact and full serialization
 formats, and has optional support for multiple recipients.
 
 */
-package jose
+package jose // import "gopkg.in/square/go-jose.v1"
