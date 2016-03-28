@@ -18,6 +18,7 @@ package jwt
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -56,4 +57,33 @@ func TestFieldsMatch(t *testing.T) {
 }
 
 func TestExpiryAndNotBefore(t *testing.T) {
+	now := time.Date(2016, 1, 1, 12, 0, 0, 0, time.UTC)
+	twelveHoursAgo := now.Add(-12 * time.Hour)
+
+	c := Claims{
+		IssuedAt:  twelveHoursAgo,
+		NotBefore: twelveHoursAgo,
+		Expiry:    now,
+	}
+
+	// expired - default leeway (1 minute)
+	assert.NoError(t, c.Validate(Expected{Time: now}))
+	err := c.Validate(Expected{Time: now.Add(2 * DefaultLeeway)})
+	if assert.Error(t, err) {
+		assert.Equal(t, err, ErrExpired)
+	}
+
+	// expired - no leeway
+	assert.NoError(t, c.Validate(Expected{Time: now, ExpLeeway: NoLeeway}))
+	err = c.Validate(Expected{Time: now.Add(1 * time.Second), ExpLeeway: NoLeeway})
+	if assert.Error(t, err) {
+		assert.Equal(t, err, ErrExpired)
+	}
+
+	// not before - default leeway (1 minute)
+	assert.NoError(t, c.Validate(Expected{Time: twelveHoursAgo}))
+	err = c.Validate(Expected{Time: twelveHoursAgo.Add(-2 * DefaultLeeway)})
+	if assert.Error(t, err) {
+		assert.Equal(t, err, ErrNotValidYet)
+	}
 }

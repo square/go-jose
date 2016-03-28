@@ -58,12 +58,12 @@ func (c Claims) Validate(e Expected) error {
 		}
 	}
 
-	if !e.Time.IsZero() && e.Time.Add(-leeway(e.NbfLeeway)).Before(c.NotBefore) {
-		return ErrInvalidNotBefore
+	if !e.Time.IsZero() && e.Time.Add(leeway(e.NbfLeeway)).Before(c.NotBefore) {
+		return ErrNotValidYet
 	}
 
-	if !e.Time.IsZero() && e.Time.Add(leeway(e.ExpLeeway)).After(c.Expiry) {
-		return ErrInvalidExpiry
+	if !e.Time.IsZero() && e.Time.Add(-leeway(e.ExpLeeway)).After(c.Expiry) {
+		return ErrExpired
 	}
 
 	return nil
