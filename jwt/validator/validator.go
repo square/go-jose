@@ -1,3 +1,19 @@
+/*-
+ * Copyright 2014 Square Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package validator
 
 import (
@@ -17,13 +33,12 @@ type Validator struct {
 }
 
 type Params struct {
-	Issuer      string
-	Subject     string
-	Audience    []string
-	ID          string
-	MinIssuedAt time.Time
-	ExpLeeway   time.Duration
-	NbfLeeway   time.Duration
+	Issuer    string
+	Subject   string
+	Audience  []string
+	ID        string
+	ExpLeeway time.Duration
+	NbfLeeway time.Duration
 }
 
 func New(p Params) *Validator {
@@ -70,10 +85,6 @@ func (v *Validator) Validate(c jwt.Claims, now time.Time) error {
 				return ErrInvalidAudience
 			}
 		}
-	}
-
-	if e.MinIssuedAt.After(e.MinIssuedAt) {
-		return ErrInvalidIssuedAt
 	}
 
 	if now.Add(-e.NbfLeeway).Before(c.NotBefore) {

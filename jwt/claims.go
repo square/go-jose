@@ -1,10 +1,25 @@
+/*-
+ * Copyright 2014 Square Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package jwt
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"time"
+
+	"github.com/square/go-jose"
 )
 
 type Claims struct {
@@ -17,7 +32,7 @@ type Claims struct {
 	ID        string
 }
 
-type intermediate struct {
+type rawClaims struct {
 	Iss string        `json:"iss,omitempty"`
 	Sub string        `json:"sub,omitempty"`
 	Aud StringOrArray `json:"aud,omitempty"`
@@ -28,7 +43,7 @@ type intermediate struct {
 }
 
 func (c *Claims) MarshalJSON() ([]byte, error) {
-	t := intermediate{
+	t := rawClaims{
 		Iss: c.Issuer,
 		Sub: c.Subject,
 		Aud: StringOrArray(c.Audience),
@@ -38,23 +53,19 @@ func (c *Claims) MarshalJSON() ([]byte, error) {
 		Jti: c.ID,
 	}
 
-	fmt.Println(t)
+	b, err := jose.MarshalJSON(t)
 
-	b := &bytes.Buffer{}
-	e := json.NewEncoder(b)
-	err := e.Encode(t)
 	if err != nil {
 		return nil, err
 	}
 
-	return b.Bytes(), err
+	return b, err
 }
 
 func (c *Claims) UnmarshalJSON(b []byte) error {
-	t := intermediate{}
+	t := rawClaims{}
 
-	d := json.NewDecoder(bytes.NewReader(b))
-	if err := d.Decode(&t); err != nil {
+	if err := jose.UnmarshalJSON(b, &t); err != nil {
 		return err
 	}
 
