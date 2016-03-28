@@ -88,7 +88,7 @@ var JWKSetDuplicates = stripWhitespace(`{
 
 func TestDuplicateJWKSetMembersIgnored(t *testing.T) {
 	type CustomSet struct {
-		JsonWebKeySet
+		JSONWebKeySet
 		CustomMember string `json:"custom"`
 	}
 	data := []byte(JWKSetDuplicates)
