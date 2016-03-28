@@ -17,72 +17,38 @@
 package jwt
 
 import (
-	"bytes"
-	"encoding/json"
-	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/square/go-jose"
 )
 
-type StringOrArray []string
+type Audience []string
 
-func (s *StringOrArray) UnmarshalJSON(b []byte) error {
-	r := bytes.NewReader(b)
-	d := json.NewDecoder(r)
-
-	t, err := d.Token()
-	if err != nil {
+func (s *Audience) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	if err := jose.UnmarshalJSON(b, &v); err != nil {
 		return err
 	}
 
-	switch t := t.(type) {
-	// single value
+	switch v := v.(type) {
 	case string:
-		*s = append(*s, t)
-		return nil
-	// beginning of array
-	case json.Delim:
-		if t != '[' {
-			return s.unmarshalError(r)
+		*s = append(*s, v)
+	case []interface{}:
+		a := make([]string, len(v))
+		for i, e := range v {
+			s, ok := e.(string)
+			if !ok {
+				return ErrUnmarshalAudience
+			}
+			a[i] = s
 		}
-
-	// unexpected token
+		*s = a
 	default:
-		return s.unmarshalError(r)
-	}
-
-	for d.More() {
-		t, err := d.Token()
-		if err != nil {
-			return err
-		}
-
-		if t, ok := t.(string); !ok {
-			return s.unmarshalError(r)
-		} else {
-			*s = append(*s, t)
-		}
-	}
-
-	t, err = d.Token()
-	if err != nil {
-		return err
-	}
-
-	// end of array
-	if t, ok := t.(json.Delim); !ok || t != ']' {
-		return s.unmarshalError(r)
+		return ErrUnmarshalAudience
 	}
 
 	return nil
-}
-
-func (s *StringOrArray) unmarshalError(r *bytes.Reader) error {
-	return &json.UnmarshalTypeError{
-		Value:  "string or array",
-		Type:   reflect.TypeOf(s),
-		Offset: r.Size() - int64(r.Len()),
-	}
 }
 
 type NumericDate int64
@@ -115,10 +81,7 @@ func (n *NumericDate) UnmarshalJSON(b []byte) error {
 		*n = NumericDate(f)
 	}
 
-	return &json.UnmarshalTypeError{
-		Value: "number",
-		Type:  reflect.TypeOf(n),
-	}
+	return ErrUnmarshalNumericDate
 }
 
 func (n NumericDate) Time() time.Time {

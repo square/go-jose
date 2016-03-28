@@ -33,20 +33,20 @@ type Claims struct {
 }
 
 type rawClaims struct {
-	Iss string        `json:"iss,omitempty"`
-	Sub string        `json:"sub,omitempty"`
-	Aud StringOrArray `json:"aud,omitempty"`
-	Exp NumericDate   `json:"exp,omitempty"`
-	Nbf NumericDate   `json:"nbf,omitempty"`
-	Iat NumericDate   `json:"iat,omitempty"`
-	Jti string        `json:"jti,omitempty"`
+	Iss string      `json:"iss,omitempty"`
+	Sub string      `json:"sub,omitempty"`
+	Aud Audience    `json:"aud,omitempty"`
+	Exp NumericDate `json:"exp,omitempty"`
+	Nbf NumericDate `json:"nbf,omitempty"`
+	Iat NumericDate `json:"iat,omitempty"`
+	Jti string      `json:"jti,omitempty"`
 }
 
 func (c *Claims) MarshalJSON() ([]byte, error) {
 	t := rawClaims{
 		Iss: c.Issuer,
 		Sub: c.Subject,
-		Aud: StringOrArray(c.Audience),
+		Aud: Audience(c.Audience),
 		Exp: TimeToNumericDate(c.Expiry),
 		Nbf: TimeToNumericDate(c.NotBefore),
 		Iat: TimeToNumericDate(c.IssuedAt),

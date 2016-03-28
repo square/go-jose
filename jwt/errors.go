@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package validator
+package jwt
 
 import "errors"
+
+var ErrUnmarshalAudience = errors.New("Expected string or array value to unmarshal Audience")
+var ErrUnmarshalNumericDate = errors.New("Expected number value to unmarshal NumericDate")
 
 var ErrInvalidIssuer = errors.New("JWT: invalid issuer")
 var ErrInvalidSubject = errors.New("JWT: invalid subject")

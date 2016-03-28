@@ -17,12 +17,11 @@
 package jwt
 
 import (
-	"bytes"
-	"encoding/json"
-	"reflect"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/square/go-jose"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeClaims(t *testing.T) {
@@ -36,49 +35,24 @@ func TestEncodeClaims(t *testing.T) {
 		Expiry:   now.Add(1 * time.Hour),
 	}
 
-	b := &bytes.Buffer{}
-	e := json.NewEncoder(b)
+	b, err := jose.MarshalJSON(&c)
+	assert.NoError(t, err)
 
-	if err := e.Encode(&c); err != nil {
-		t.Error(err)
-	}
-
-	expected := `{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}` + "\n"
-	v := string(b.Bytes())
-	if expected != v {
-		t.Errorf("Expected encoded message to be %s, got %s", expected, v)
-	}
+	expected := []byte(`{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}`)
+	assert.Equal(t, expected, b)
 }
 
 func TestDecodeClaims(t *testing.T) {
-	s := `{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}` + "\n"
+	s := []byte(`{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}`)
 	now := time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	r := strings.NewReader(s)
-	d := json.NewDecoder(r)
-
 	c := Claims{}
-	if err := d.Decode(&c); err != nil {
-		t.Error(err)
-	}
+	err := jose.UnmarshalJSON(s, &c)
+	assert.NoError(t, err)
 
-	if c.Issuer != "issuer" {
-		t.Errorf("Invalid iss value")
-	}
-
-	if c.Subject != "subject" {
-		t.Errorf("Invalid sub value")
-	}
-
-	if !reflect.DeepEqual([]string{"a1", "a2"}, c.Audience) {
-		t.Errorf("Invalid aud value")
-	}
-
-	if !c.IssuedAt.Equal(now) {
-		t.Errorf("Invalid iat value")
-	}
-
-	if !c.Expiry.Equal(now.Add(1 * time.Hour)) {
-		t.Errorf("Invalid exp value")
-	}
+	assert.Equal(t, "issuer", c.Issuer)
+	assert.Equal(t, "subject", c.Subject)
+	assert.Equal(t, []string{"a1", "a2"}, c.Audience)
+	assert.True(t, now.Equal(c.IssuedAt))
+	assert.True(t, now.Add(1*time.Hour).Equal(c.Expiry))
 }

@@ -14,55 +14,26 @@
  * limitations under the License.
  */
 
-package validator
+package jwt
 
-import (
-	"time"
-
-	"github.com/square/go-jose/jwt"
-)
+import "time"
 
 const (
-	DefaultExpLeeway = 1.0 * time.Minute
-	DefaultNbfLeeway = 1.0 * time.Minute
-	NoLeeway         = -1
+	DefaultLeeway = 1.0 * time.Minute
+	NoLeeway      = -1
 )
 
-type Validator struct {
-	p Params
-}
-
-type Params struct {
+type Expected struct {
 	Issuer    string
 	Subject   string
 	Audience  []string
 	ID        string
+	Time      time.Time
 	ExpLeeway time.Duration
 	NbfLeeway time.Duration
 }
 
-func New(p Params) *Validator {
-	if p.ExpLeeway == 0 {
-		p.ExpLeeway = DefaultExpLeeway
-	}
-
-	if p.NbfLeeway == 0 {
-		p.NbfLeeway = DefaultNbfLeeway
-	}
-
-	if p.ExpLeeway == NoLeeway {
-		p.ExpLeeway = 0
-	}
-
-	if p.NbfLeeway == 0 {
-		p.NbfLeeway = 0
-	}
-
-	return &Validator{p}
-}
-
-func (v *Validator) Validate(c jwt.Claims, now time.Time) error {
-	e := &v.p
+func (c Claims) Validate(e Expected) error {
 	if e.Issuer != "" && e.Issuer != c.Issuer {
 		return ErrInvalidIssuer
 	}
@@ -87,13 +58,24 @@ func (v *Validator) Validate(c jwt.Claims, now time.Time) error {
 		}
 	}
 
-	if now.Add(-e.NbfLeeway).Before(c.NotBefore) {
+	if !e.Time.IsZero() && e.Time.Add(-leeway(e.NbfLeeway)).Before(c.NotBefore) {
 		return ErrInvalidNotBefore
 	}
 
-	if now.Add(e.ExpLeeway).After(c.Expiry) {
+	if !e.Time.IsZero() && e.Time.Add(leeway(e.ExpLeeway)).After(c.Expiry) {
 		return ErrInvalidExpiry
 	}
 
 	return nil
+}
+
+func leeway(l time.Duration) time.Duration {
+	switch l {
+	case 0:
+		return DefaultLeeway
+	case NoLeeway:
+		return 0
+	default:
+		return l
+	}
 }
