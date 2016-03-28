@@ -19,10 +19,13 @@ package jwt
 import "time"
 
 const (
+	// DefaultLeeway defines leeway for matching NotBefore/Expiry claims
 	DefaultLeeway = 1.0 * time.Minute
-	NoLeeway      = -1
+	// NoLeeway disables leeway for matching NotBefore/Expiry claims
+	NoLeeway = -1
 )
 
+// Expected defines values used for Claims validation
 type Expected struct {
 	Issuer    string
 	Subject   string
@@ -33,6 +36,16 @@ type Expected struct {
 	NbfLeeway time.Duration
 }
 
+// WithTime copies expectations with new time
+func (e Expected) WithTime(t time.Time) Expected {
+	e.Time = t
+	return e
+}
+
+// Validate checks claims values against Expected
+// NotBefore and Expiry are checked with leeway as suggested in RFC7519
+// To strictly check time provide NoLeeway value to ExpLeeway/NbfLeeway
+// otherwise default leeway of 1 minute is assumed to deal with clock skew
 func (c Claims) Validate(e Expected) error {
 	if e.Issuer != "" && e.Issuer != c.Issuer {
 		return ErrInvalidIssuer

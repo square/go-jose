@@ -22,6 +22,7 @@ import (
 	"github.com/square/go-jose"
 )
 
+// Claims represents public claim values defined in RFC7519
 type Claims struct {
 	Issuer    string
 	Subject   string
@@ -35,18 +36,19 @@ type Claims struct {
 type rawClaims struct {
 	Iss string      `json:"iss,omitempty"`
 	Sub string      `json:"sub,omitempty"`
-	Aud Audience    `json:"aud,omitempty"`
+	Aud audience    `json:"aud,omitempty"`
 	Exp NumericDate `json:"exp,omitempty"`
 	Nbf NumericDate `json:"nbf,omitempty"`
 	Iat NumericDate `json:"iat,omitempty"`
 	Jti string      `json:"jti,omitempty"`
 }
 
+// MarshalJSON serializes given claims into their JSON representation
 func (c *Claims) MarshalJSON() ([]byte, error) {
 	t := rawClaims{
 		Iss: c.Issuer,
 		Sub: c.Subject,
-		Aud: Audience(c.Audience),
+		Aud: audience(c.Audience),
 		Exp: TimeToNumericDate(c.Expiry),
 		Nbf: TimeToNumericDate(c.NotBefore),
 		Iat: TimeToNumericDate(c.IssuedAt),
@@ -62,6 +64,7 @@ func (c *Claims) MarshalJSON() ([]byte, error) {
 	return b, err
 }
 
+// UnmarshalJSON reads claims from their JSON representation
 func (c *Claims) UnmarshalJSON(b []byte) error {
 	t := rawClaims{}
 

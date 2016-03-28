@@ -18,13 +18,26 @@ package jwt
 
 import "errors"
 
+// ErrUnmarshalAudience indicates that aud claim could not be unmarshalled
 var ErrUnmarshalAudience = errors.New("Expected string or array value to unmarshal Audience")
+
+// ErrUnmarshalNumericDate indicates that JWT NumericDate could not be unmarshalled
 var ErrUnmarshalNumericDate = errors.New("Expected number value to unmarshal NumericDate")
 
+// ErrInvalidIssuer indicates invalid iss claim
 var ErrInvalidIssuer = errors.New("JWT: invalid issuer")
+
+// ErrInvalidSubject indicates invalid sub claim
 var ErrInvalidSubject = errors.New("JWT: invalid subject")
+
+// ErrInvalidAudience indicated invalid aud claim
 var ErrInvalidAudience = errors.New("JWT: invalid audience")
+
+// ErrInvalidID indicates invalid jti claim
 var ErrInvalidID = errors.New("JWT: invalid ID")
-var ErrInvalidIssuedAt = errors.New("JWT: token issued before minimum issue date")
+
+// ErrNotValidYet indicates that token is used before time indicated in nbf claim
 var ErrNotValidYet = errors.New("JWT: token not valid yet")
+
+// ErrExpired indicates that token is used after expiry time indicated in exp claim
 var ErrExpired = errors.New("JWT: token is expired")
