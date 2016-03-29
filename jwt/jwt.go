@@ -16,7 +16,11 @@
 
 package jwt
 
-import "github.com/square/go-jose"
+import (
+	"reflect"
+
+	"github.com/square/go-jose"
+)
 
 // JSONWebToken represents JSON Web Token as indicated in RFC7519
 type JSONWebToken struct {
@@ -25,6 +29,11 @@ type JSONWebToken struct {
 
 // New constructs JSONWebToken containing given claims
 func New(claims interface{}) (*JSONWebToken, error) {
+	t := reflect.TypeOf(claims)
+	if t.Kind() != reflect.Map || (t.Kind() == reflect.Ptr && t.Elem().Kind() != reflect.Struct) {
+		return nil, ErrInvalidClaims
+	}
+
 	b, err := marshalClaims(claims)
 	if err != nil {
 		return nil, err

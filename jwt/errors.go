@@ -24,6 +24,9 @@ var ErrUnmarshalAudience = errors.New("Expected string or array value to unmarsh
 // ErrUnmarshalNumericDate indicates that JWT NumericDate could not be unmarshalled
 var ErrUnmarshalNumericDate = errors.New("Expected number value to unmarshal NumericDate")
 
+// ErrInvalidClaims indicates that given claims have invalid type
+var ErrInvalidClaims = errors.New("Expected claims to be value convertible into JSON object")
+
 // ErrInvalidIssuer indicates invalid iss claim
 var ErrInvalidIssuer = errors.New("JWT: invalid issuer")
 
