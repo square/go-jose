@@ -18,11 +18,16 @@ package jwt
 
 import "errors"
 
+var ErrMergeObjects = errors.New("Expected type serializable to JSON object")
+
 // ErrUnmarshalAudience indicates that aud claim could not be unmarshalled
 var ErrUnmarshalAudience = errors.New("Expected string or array value to unmarshal Audience")
 
 // ErrUnmarshalNumericDate indicates that JWT NumericDate could not be unmarshalled
 var ErrUnmarshalNumericDate = errors.New("Expected number value to unmarshal NumericDate")
+
+// ErrInvalidClaims indicates that claims argument is invalid
+var ErrInvalidClaims = errors.New("Expected non-nil struct pointer")
 
 // ErrInvalidIssuer indicates invalid iss claim
 var ErrInvalidIssuer = errors.New("JWT: invalid issuer")

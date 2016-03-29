@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/square/go-jose"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,7 +34,7 @@ func TestEncodeClaims(t *testing.T) {
 		Expiry:   now.Add(1 * time.Hour),
 	}
 
-	b, err := jose.MarshalJSON(&c)
+	b, err := c.marshalJSON()
 	assert.NoError(t, err)
 
 	expected := []byte(`{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}`)
@@ -47,7 +46,7 @@ func TestDecodeClaims(t *testing.T) {
 	now := time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	c := Claims{}
-	err := jose.UnmarshalJSON(s, &c)
+	err := c.unmarshalJSON(s)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "issuer", c.Issuer)

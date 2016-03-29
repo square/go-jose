@@ -17,6 +17,7 @@
 package jwt
 
 import (
+	"reflect"
 	"strconv"
 	"time"
 
@@ -89,6 +90,82 @@ func (s *audience) UnmarshalJSON(b []byte) error {
 		*s = a
 	default:
 		return ErrUnmarshalAudience
+	}
+
+	return nil
+}
+
+var claimsType = reflect.TypeOf((*Claims)(nil)).Elem()
+
+func publicClaims(i interface{}) *Claims {
+	v := reflect.ValueOf(i)
+	if v.Kind() != reflect.Ptr || v.IsNil() {
+		return nil
+	}
+
+	v = v.Elem()
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+
+	f := v.FieldByName("Claims")
+	if !f.IsValid() || f.Type() != claimsType {
+		return nil
+	}
+
+	c := f.Addr().Interface().(*Claims)
+	return c
+}
+
+func marshalClaims(i interface{}) ([]byte, error) {
+	// i is of jwt.Claims type
+	if c, ok := i.(Claims); ok {
+		return c.marshalJSON()
+	}
+
+	public := publicClaims(i)
+	// i doesn't contain nested jwt.Claims
+	if public == nil {
+		return jose.MarshalJSON(i)
+	}
+
+	// marshal jwt.Claims
+	b1, err := public.marshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	// marshal private claims
+	b2, err := jose.MarshalJSON(i)
+	if err != nil {
+		return nil, err
+	}
+
+	// merge claims
+	r := make([]byte, len(b1)+len(b2)-1)
+	copy(r, b1)
+	r[len(b1)-1] = ','
+	copy(r[len(b1):], b2[1:])
+
+	return r, nil
+}
+
+func unmarshalClaims(b []byte, i interface{}) error {
+	// i is of jwt.Claims type
+	if c, ok := i.(*Claims); ok {
+		return c.unmarshalJSON(b)
+	}
+
+	if err := jose.UnmarshalJSON(b, i); err != nil {
+		return err
+	}
+
+	public := publicClaims(i)
+	// unmarshal jwt.Claims
+	if public != nil {
+		if err := public.unmarshalJSON(b); err != nil {
+			return err
+		}
 	}
 
 	return nil

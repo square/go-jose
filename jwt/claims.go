@@ -24,13 +24,13 @@ import (
 
 // Claims represents public claim values defined in RFC7519
 type Claims struct {
-	Issuer    string
-	Subject   string
-	Audience  []string
-	Expiry    time.Time
-	NotBefore time.Time
-	IssuedAt  time.Time
-	ID        string
+	Issuer    string    `json:"-"`
+	Subject   string    `json:"-"`
+	Audience  []string  `json:"-"`
+	Expiry    time.Time `json:"-"`
+	NotBefore time.Time `json:"-"`
+	IssuedAt  time.Time `json:"-"`
+	ID        string    `json:"-"`
 }
 
 type rawClaims struct {
@@ -43,8 +43,7 @@ type rawClaims struct {
 	Jti string      `json:"jti,omitempty"`
 }
 
-// MarshalJSON serializes given claims into their JSON representation
-func (c *Claims) MarshalJSON() ([]byte, error) {
+func (c *Claims) marshalJSON() ([]byte, error) {
 	t := rawClaims{
 		Iss: c.Issuer,
 		Sub: c.Subject,
@@ -64,8 +63,7 @@ func (c *Claims) MarshalJSON() ([]byte, error) {
 	return b, err
 }
 
-// UnmarshalJSON reads claims from their JSON representation
-func (c *Claims) UnmarshalJSON(b []byte) error {
+func (c *Claims) unmarshalJSON(b []byte) error {
 	t := rawClaims{}
 
 	if err := jose.UnmarshalJSON(b, &t); err != nil {
