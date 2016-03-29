@@ -23,6 +23,7 @@ type JSONWebToken struct {
 	payload []byte
 }
 
+// New constructs JSONWebToken containing given claims
 func New(claims interface{}) (*JSONWebToken, error) {
 	b, err := marshalClaims(claims)
 	if err != nil {
@@ -31,14 +32,17 @@ func New(claims interface{}) (*JSONWebToken, error) {
 	return &JSONWebToken{b}, nil
 }
 
+// Claims deserializes JSONWebToken payload into given dest
 func (t *JSONWebToken) Claims(dest interface{}) error {
 	return unmarshalClaims(t.payload, dest)
 }
 
+// Encrypt converts token payload into JSONWebEncryption
 func (t JSONWebToken) Encrypt(e jose.Encrypter) (*jose.JSONWebEncryption, error) {
 	return e.Encrypt(t.payload)
 }
 
+// Sign converts token payload into JSONWebSignature
 func (t JSONWebToken) Sign(e jose.Signer) (*jose.JSONWebSignature, error) {
 	return e.Sign(t.payload)
 }
