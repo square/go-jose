@@ -420,3 +420,28 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("JWK is set in protected header")
 	}
 }
+
+func TestSignerWithJWKAndKeyID(t *testing.T) {
+	enc, err := NewSigner(HS256, &JsonWebKey{
+		KeyID: "test-id",
+		Key:   []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	signed, _ := enc.Sign([]byte("Lorem ipsum dolor sit amet"))
+
+	serialized1, _ := signed.CompactSerialize()
+	serialized2 := signed.FullSerialize()
+
+	parsed1, _ := ParseSigned(serialized1)
+	parsed2, _ := ParseSigned(serialized2)
+
+	if parsed1.Signatures[0].Header.KeyID != "test-id" {
+		t.Errorf("expected message to have key id from JWK, but found '%s' instead", parsed1.Signatures[0].Header.KeyID)
+	}
+	if parsed2.Signatures[0].Header.KeyID != "test-id" {
+		t.Errorf("expected message to have key id from JWK, but found '%s' instead", parsed2.Signatures[0].Header.KeyID)
+	}
+}
