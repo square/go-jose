@@ -21,6 +21,7 @@ import (
 
 	"github.com/square/go-jose"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var encryptionKey = []byte("secret")
@@ -32,16 +33,16 @@ type customClaims struct {
 }
 
 func TestDecodeToken(t *testing.T) {
-	tok, err := ParseSigned(rawToken, encryptionKey)
+	tok, err := ParseSigned(rawToken)
 	assert.NoError(t, err)
 	c := &Claims{}
-	if assert.NoError(t, tok.Claims(c)) {
+	if assert.NoError(t, tok.Claims(c, encryptionKey)) {
 		assert.Equal(t, c.Subject, "subject")
 		assert.Equal(t, c.Issuer, "issuer")
 	}
 
 	c2 := &customClaims{}
-	if assert.NoError(t, tok.Claims(c2)) {
+	if assert.NoError(t, tok.Claims(c2, encryptionKey)) {
 		assert.Equal(t, c2.Subject, "subject")
 		assert.Equal(t, c2.Issuer, "issuer")
 		assert.Equal(t, c2.Scopes, []string{"s1", "s2"})
@@ -49,6 +50,9 @@ func TestDecodeToken(t *testing.T) {
 }
 
 func TestEncodeToken(t *testing.T) {
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: encryptionKey}, &jose.SignerOptions{})
+	require.NoError(t, err)
+
 	c := &customClaims{
 		Claims: Claims{
 			Subject: "subject",
@@ -57,22 +61,14 @@ func TestEncodeToken(t *testing.T) {
 		Scopes: []string{"s1", "s2"},
 	}
 
-	tok, err := New(c)
-	assert.NoError(t, err)
+	raw, err := New(signer).Claims(c).CompactSerialize()
+	require.NoError(t, err)
 
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: encryptionKey}, &jose.SignerOptions{})
-
-	signed, err := tok.Sign(signer)
-	assert.NoError(t, err)
-
-	raw, err := signed.CompactSerialize()
-	assert.NoError(t, err)
-
-	tok, err = ParseSigned(raw, encryptionKey)
-	assert.NoError(t, err)
+	tok, err := ParseSigned(raw)
+	require.NoError(t, err)
 
 	c2 := &customClaims{}
-	if assert.NoError(t, tok.Claims(c2)) {
+	if assert.NoError(t, tok.Claims(c2, encryptionKey)) {
 		assert.Equal(t, c2.Subject, "subject")
 		assert.Equal(t, c2.Issuer, "issuer")
 		assert.Equal(t, c2.Scopes, []string{"s1", "s2"})

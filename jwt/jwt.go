@@ -16,72 +16,38 @@
 
 package jwt
 
-import (
-	"reflect"
-
-	"github.com/square/go-jose"
-)
+import "github.com/square/go-jose"
 
 // JSONWebToken represents JSON Web Token as indicated in RFC7519
 type JSONWebToken struct {
-	payload []byte
-}
-
-// New constructs JSONWebToken containing given claims
-func New(claims interface{}) (*JSONWebToken, error) {
-	t := reflect.TypeOf(claims)
-	if t.Kind() != reflect.Map || (t.Kind() == reflect.Ptr && t.Elem().Kind() != reflect.Struct) {
-		return nil, ErrInvalidClaims
-	}
-
-	b, err := marshalClaims(claims)
-	if err != nil {
-		return nil, err
-	}
-	return &JSONWebToken{b}, nil
+	payload func(k interface{}) ([]byte, error)
 }
 
 // Claims deserializes JSONWebToken payload into given dest
-func (t *JSONWebToken) Claims(dest interface{}) error {
-	return unmarshalClaims(t.payload, dest)
-}
-
-// Encrypt converts token payload into JSONWebEncryption
-func (t JSONWebToken) Encrypt(e jose.Encrypter) (*jose.JSONWebEncryption, error) {
-	return e.Encrypt(t.payload)
-}
-
-// Sign converts token payload into JSONWebSignature
-func (t JSONWebToken) Sign(e jose.Signer) (*jose.JSONWebSignature, error) {
-	return e.Sign(t.payload)
+func (t *JSONWebToken) Claims(dest interface{}, key interface{}) error {
+	b, err := t.payload(key)
+	if err != nil {
+		return err
+	}
+	return unmarshalClaims(b, dest)
 }
 
 // ParseSigned parses token from JWS form
-func ParseSigned(s string, key interface{}) (_ *JSONWebToken, err error) {
+func ParseSigned(s string) (_ *JSONWebToken, err error) {
 	sig, err := jose.ParseSigned(s)
 	if err != nil {
 		return
 	}
 
-	p, err := sig.Verify(key)
-	if err != nil {
-		return
-	}
-
-	return &JSONWebToken{p}, nil
+	return &JSONWebToken{sig.Verify}, nil
 }
 
 // ParseEncrypted parses token from JWE form
-func ParseEncrypted(s string, key interface{}) (_ *JSONWebToken, err error) {
+func ParseEncrypted(s string) (_ *JSONWebToken, err error) {
 	enc, err := jose.ParseEncrypted(s)
 	if err != nil {
 		return
 	}
 
-	p, err := enc.Decrypt(key)
-	if err != nil {
-		return
-	}
-
-	return &JSONWebToken{p}, nil
+	return &JSONWebToken{enc.Decrypt}, nil
 }
