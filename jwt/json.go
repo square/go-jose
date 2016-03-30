@@ -17,6 +17,7 @@
 package jwt
 
 import (
+	"math"
 	"reflect"
 	"strconv"
 	"time"
@@ -26,7 +27,7 @@ import (
 
 // NumericDate represents JSON date as number value of seconds from 1st Jan 1970
 // JSON value can be either integer or float
-type NumericDate int64
+type NumericDate float64
 
 // TimeToNumericDate converts time.Time value into NumericDate
 func TimeToNumericDate(t time.Time) NumericDate {
@@ -35,12 +36,20 @@ func TimeToNumericDate(t time.Time) NumericDate {
 		return NumericDate(0)
 	}
 
-	return NumericDate(t.Unix())
+	i := float64(t.Unix())
+	f := float64(t.UnixNano()%int64(time.Second)) / float64(time.Second)
+
+	return NumericDate(i + f)
 }
 
 // MarshalJSON serializes the given date into its JSON representation
 func (n NumericDate) MarshalJSON() ([]byte, error) {
-	s := strconv.FormatInt(int64(n), 10)
+	i, f := math.Modf(float64(n))
+	if f == 0.0 {
+		return []byte(strconv.FormatInt(int64(i), 10)), nil
+	}
+
+	s := strconv.FormatFloat(float64(n), 'G', -1, 64)
 	return []byte(s), nil
 }
 
@@ -48,23 +57,19 @@ func (n NumericDate) MarshalJSON() ([]byte, error) {
 func (n *NumericDate) UnmarshalJSON(b []byte) error {
 	s := string(b)
 
-	sec, err := strconv.ParseInt(s, 10, 64)
-	if err == nil {
-		*n = NumericDate(sec)
-		return nil
-	}
-
 	f, err := strconv.ParseFloat(s, 64)
-	if err == nil {
-		*n = NumericDate(f)
+	if err != nil {
+		return ErrUnmarshalNumericDate
 	}
 
-	return ErrUnmarshalNumericDate
+	*n = NumericDate(f)
+	return nil
 }
 
 // Time returns time.Time representation of NumericDate
 func (n NumericDate) Time() time.Time {
-	return time.Unix(int64(n), 0)
+	i, f := math.Modf(float64(n))
+	return time.Unix(int64(i), int64(f*float64(time.Second)))
 }
 
 type audience []string
