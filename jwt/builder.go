@@ -27,10 +27,13 @@ import (
 // CompactSerialize/FullSerialize allowing for single-line token creation
 // Builder is immutable therefore it can be safely reused once created
 type Builder struct {
-	transform  func([]byte) (serializer, error)
+	transform  func([]byte) (serializer, payload, error)
+	payload    payload
 	serializer serializer
 	err        error
 }
+
+type payload func(interface{}) ([]byte, error)
 
 type serializer interface {
 	FullSerialize() string
@@ -42,14 +45,22 @@ func New(t interface{}) *Builder {
 	switch t := t.(type) {
 	case jose.Signer:
 		return &Builder{
-			transform: func(b []byte) (serializer, error) {
-				return t.Sign(b)
+			transform: func(b []byte) (serializer, payload, error) {
+				if s, err := t.Sign(b); err != nil {
+					return nil, nil, err
+				} else {
+					return s, s.Verify, err
+				}
 			},
 		}
 	case jose.Encrypter:
 		return &Builder{
-			transform: func(b []byte) (serializer, error) {
-				return t.Encrypt(b)
+			transform: func(b []byte) (serializer, payload, error) {
+				if e, err := t.Encrypt(b); err != nil {
+					return nil, nil, err
+				} else {
+					return e, e.Decrypt, err
+				}
 			},
 		}
 	default:
@@ -77,8 +88,20 @@ func (b *Builder) Claims(c interface{}) *Builder {
 		return &r
 	}
 
-	r.serializer, r.err = r.transform(raw)
+	r.serializer, r.payload, r.err = r.transform(raw)
 	return &r
+}
+
+func (b *Builder) Token() (*JSONWebToken, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
+
+	if b.payload == nil {
+		panic("Claims not set")
+	}
+
+	return &JSONWebToken{b.payload}, nil
 }
 
 // FullSerialize serializes an token using the full JSON serialization format
