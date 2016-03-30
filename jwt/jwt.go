@@ -23,7 +23,7 @@ type JSONWebToken struct {
 	payload func(k interface{}) ([]byte, error)
 }
 
-// Claims deserializes JSONWebToken payload into given dest
+// Claims deserializes JSONWebToken payload into dest using provided key
 func (t *JSONWebToken) Claims(dest interface{}, key interface{}) error {
 	b, err := t.payload(key)
 	if err != nil {
