@@ -19,6 +19,8 @@ package jwt
 import (
 	"errors"
 	"net/http"
+
+	"github.com/square/go-jose"
 )
 
 const (
@@ -44,4 +46,22 @@ func FromRequest(r *http.Request, p func(string) (*JSONWebToken, error)) (*JSONW
 	}
 
 	return p(raw)
+}
+
+// ToResponse writes token to standard OAuth 2.0 response
+func (b *Builder) ToResponse(r http.ResponseWriter) error {
+	raw, err := b.CompactSerialize()
+	if err != nil {
+		return err
+	}
+
+	t := &struct {
+		AccessToken string `json:"access_token"`
+	}{
+		AccessToken: raw,
+	}
+
+	s, err := jose.MarshalJSON(t)
+	_, err = r.Write([]byte(s))
+	return err
 }
