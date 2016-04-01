@@ -115,7 +115,7 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	case "oct":
 		key, err = raw.symmetricKey()
 	default:
-		err = fmt.Errorf("square/go-jose: unkown json web key type '%s'", raw.Kty)
+		err = fmt.Errorf("square/go-jose: unknown json web key type '%s'", raw.Kty)
 	}
 
 	if err == nil {
@@ -180,7 +180,7 @@ func (k *JsonWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
 	case *rsa.PrivateKey:
 		input, err = rsaThumbprintInput(key.N, key.E)
 	default:
-		return nil, fmt.Errorf("square/go-jose: unkown key type '%s'", reflect.TypeOf(key))
+		return nil, fmt.Errorf("square/go-jose: unknown key type '%s'", reflect.TypeOf(key))
 	}
 
 	if err != nil {
