@@ -102,36 +102,37 @@ func (s *audience) UnmarshalJSON(b []byte) error {
 
 var claimsType = reflect.TypeOf((*Claims)(nil)).Elem()
 
-func publicClaims(i interface{}) *Claims {
-	v := reflect.ValueOf(i)
-	if v.Kind() != reflect.Ptr || v.IsNil() {
-		return nil
+func publicClaims(cl interface{}) (*Claims, error) {
+	v := reflect.ValueOf(cl)
+	if v.IsNil() || v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
+		return nil, ErrInvalidClaims
 	}
 
 	v = v.Elem()
-	if v.Kind() != reflect.Struct {
-		return nil
-	}
-
 	f := v.FieldByName("Claims")
 	if !f.IsValid() || f.Type() != claimsType {
-		return nil
+		return nil, nil
 	}
 
 	c := f.Addr().Interface().(*Claims)
-	return c
+	return c, nil
 }
 
-func marshalClaims(i interface{}) ([]byte, error) {
-	// i is of jwt.Claims type
-	if c, ok := i.(Claims); ok {
-		return c.marshalJSON()
+func marshalClaims(cl interface{}) ([]byte, error) {
+	switch cl := cl.(type) {
+	case *Claims:
+		return cl.marshalJSON()
+	case map[string]interface{}:
+		return jose.MarshalJSON(cl)
 	}
 
-	public := publicClaims(i)
+	public, err := publicClaims(cl)
+	if err != nil {
+		return nil, err
+	}
 	// i doesn't contain nested jwt.Claims
 	if public == nil {
-		return jose.MarshalJSON(i)
+		return jose.MarshalJSON(cl)
 	}
 
 	// marshal jwt.Claims
@@ -141,7 +142,7 @@ func marshalClaims(i interface{}) ([]byte, error) {
 	}
 
 	// marshal private claims
-	b2, err := jose.MarshalJSON(i)
+	b2, err := jose.MarshalJSON(cl)
 	if err != nil {
 		return nil, err
 	}
@@ -155,17 +156,22 @@ func marshalClaims(i interface{}) ([]byte, error) {
 	return r, nil
 }
 
-func unmarshalClaims(b []byte, i interface{}) error {
-	// i is of jwt.Claims type
-	if c, ok := i.(*Claims); ok {
-		return c.unmarshalJSON(b)
+func unmarshalClaims(b []byte, cl interface{}) error {
+	switch cl := cl.(type) {
+	case *Claims:
+		return cl.unmarshalJSON(b)
+	case map[string]interface{}:
+		return jose.UnmarshalJSON(b, cl)
 	}
 
-	if err := jose.UnmarshalJSON(b, i); err != nil {
+	if err := jose.UnmarshalJSON(b, cl); err != nil {
 		return err
 	}
 
-	public := publicClaims(i)
+	public, err := publicClaims(cl)
+	if err != nil {
+		return err
+	}
 	// unmarshal jwt.Claims
 	if public != nil {
 		if err := public.unmarshalJSON(b); err != nil {

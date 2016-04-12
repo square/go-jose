@@ -16,11 +16,7 @@
 
 package jwt
 
-import (
-	"reflect"
-
-	"github.com/square/go-jose"
-)
+import "github.com/square/go-jose"
 
 // Builder is an utility for making JSON Web Tokens
 // Calls can be chained and the errors are accumulated till final call to
@@ -76,15 +72,6 @@ func (b *Builder) Claims(c interface{}) *Builder {
 		panic("Claims already set")
 	}
 
-	r := *b
-
-	t := reflect.TypeOf(c)
-	if t.Kind() != reflect.Map && (t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct) {
-		return &Builder{
-			err: ErrInvalidClaims,
-		}
-	}
-
 	raw, err := marshalClaims(c)
 	if err != nil {
 		return &Builder{
@@ -92,7 +79,7 @@ func (b *Builder) Claims(c interface{}) *Builder {
 		}
 	}
 
-	ser, pl, err := r.transform(raw)
+	ser, pl, err := b.transform(raw)
 	return &Builder{
 		transform:  b.transform,
 		serializer: ser,
