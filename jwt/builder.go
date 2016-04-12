@@ -44,11 +44,11 @@ type serializer interface {
 func Signed(sig jose.Signer) *Builder {
 	return &Builder{
 		transform: func(b []byte) (serializer, payload, error) {
-			if s, err := sig.Sign(b); err != nil {
+			s, err := sig.Sign(b)
+			if err != nil {
 				return nil, nil, err
-			} else {
-				return s, s.Verify, err
 			}
+			return s, s.Verify, nil
 		},
 	}
 }
@@ -57,11 +57,11 @@ func Signed(sig jose.Signer) *Builder {
 func Encrypted(enc jose.Encrypter) *Builder {
 	return &Builder{
 		transform: func(b []byte) (serializer, payload, error) {
-			if e, err := enc.Encrypt(b); err != nil {
+			e, err := enc.Encrypt(b)
+			if err != nil {
 				return nil, nil, err
-			} else {
-				return e, e.Decrypt, err
 			}
+			return e, e.Decrypt, nil
 		},
 	}
 }
@@ -101,6 +101,7 @@ func (b *Builder) Claims(c interface{}) *Builder {
 	}
 }
 
+// Token builds JSONWebToken instance from provided data
 func (b *Builder) Token() (*JSONWebToken, error) {
 	if b.err != nil {
 		return nil, b.err
