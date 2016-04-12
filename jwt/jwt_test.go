@@ -61,7 +61,7 @@ func TestEncodeToken(t *testing.T) {
 		Scopes: []string{"s1", "s2"},
 	}
 
-	raw, err := New(signer).Claims(c).CompactSerialize()
+	raw, err := Signed(signer).Claims(c).CompactSerialize()
 	require.NoError(t, err)
 
 	tok, err := ParseSigned(raw)

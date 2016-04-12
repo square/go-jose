@@ -40,31 +40,29 @@ type serializer interface {
 	CompactSerialize() (string, error)
 }
 
-// New creates builder using provided Signer/Encrypter
-func New(t interface{}) *Builder {
-	switch t := t.(type) {
-	case jose.Signer:
-		return &Builder{
-			transform: func(b []byte) (serializer, payload, error) {
-				if s, err := t.Sign(b); err != nil {
-					return nil, nil, err
-				} else {
-					return s, s.Verify, err
-				}
-			},
-		}
-	case jose.Encrypter:
-		return &Builder{
-			transform: func(b []byte) (serializer, payload, error) {
-				if e, err := t.Encrypt(b); err != nil {
-					return nil, nil, err
-				} else {
-					return e, e.Decrypt, err
-				}
-			},
-		}
-	default:
-		panic("Expected Signer or Encrypter argument")
+// Signed creates builder for signed tokens
+func Signed(sig jose.Signer) *Builder {
+	return &Builder{
+		transform: func(b []byte) (serializer, payload, error) {
+			if s, err := sig.Sign(b); err != nil {
+				return nil, nil, err
+			} else {
+				return s, s.Verify, err
+			}
+		},
+	}
+}
+
+// Encrypted creates builder for encrypted tokens
+func Encrypted(enc jose.Encrypter) *Builder {
+	return &Builder{
+		transform: func(b []byte) (serializer, payload, error) {
+			if e, err := enc.Encrypt(b); err != nil {
+				return nil, nil, err
+			} else {
+				return e, e.Decrypt, err
+			}
+		},
 	}
 }
 
@@ -74,22 +72,33 @@ func (b *Builder) Claims(c interface{}) *Builder {
 		panic("Signer/Encrypter not set")
 	}
 
+	if b.payload != nil {
+		panic("Claims already set")
+	}
+
 	r := *b
 
 	t := reflect.TypeOf(c)
 	if t.Kind() != reflect.Map && (t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct) {
-		r.err = ErrInvalidClaims
-		return &r
+		return &Builder{
+			err: ErrInvalidClaims,
+		}
 	}
 
 	raw, err := marshalClaims(c)
 	if err != nil {
-		r.err = err
-		return &r
+		return &Builder{
+			err: err,
+		}
 	}
 
-	r.serializer, r.payload, r.err = r.transform(raw)
-	return &r
+	ser, pl, err := r.transform(raw)
+	return &Builder{
+		transform:  b.transform,
+		serializer: ser,
+		payload:    pl,
+		err:        err,
+	}
 }
 
 func (b *Builder) Token() (*JSONWebToken, error) {
