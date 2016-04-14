@@ -1,5 +1,5 @@
 /*-
- * Copyright 2014 Square Inc.
+ * Copyright 2016 Zbigniew Mandziejewicz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package jwt
 
-import "github.com/square/go-jose"
+import "gopkg.in/square/go-jose.v2"
 
 // JSONWebToken represents JSON Web Token as indicated in RFC7519
 type JSONWebToken struct {

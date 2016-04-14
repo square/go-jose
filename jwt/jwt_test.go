@@ -19,9 +19,9 @@ package jwt
 import (
 	"testing"
 
-	"github.com/square/go-jose"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/square/go-jose.v2"
 )
 
 var encryptionKey = []byte("secret")
