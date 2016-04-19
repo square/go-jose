@@ -1,5 +1,7 @@
 # Go JOSE 
 
+**Please note that this branch is still under active development.**
+
 [![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
 [![license](http://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE)
 [![build](https://img.shields.io/travis/square/go-jose.svg?style=flat)](https://travis-ci.org/square/go-jose)
