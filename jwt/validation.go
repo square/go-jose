@@ -45,11 +45,11 @@ func (c Claims) Validate(e Expected) error {
 	return c.ValidateWithLeeway(e, DefaultLeeway)
 }
 
-// Validate checks claims in a token against expected values.
-// A custom leeway may be specified for comparing time values.
-// You may pass a zero value to check time values with no leeway,
-// but you should not that numeric date values are rounded to
-// the nearest second and sub-second precision is not supported.
+// ValidateWithLeeway checks claims in a token against expected values. A
+// custom leeway may be specified for comparing time values. You may pass a
+// zero value to check time values with no leeway, but you should not that
+// numeric date values are rounded to the nearest second and sub-second
+// precision is not supported.
 func (c Claims) ValidateWithLeeway(e Expected, leeway time.Duration) error {
 	if e.Issuer != "" && e.Issuer != c.Issuer {
 		return ErrInvalidIssuer
