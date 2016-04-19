@@ -1,5 +1,6 @@
 /*-
- * Copyright 2014 Square Inc.
+ * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +30,7 @@ var rawToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXN
 
 type customClaims struct {
 	Claims
-	Scopes []string `json:"scopes",omitempty`
+	Scopes []string `json:"scopes,omitempty"`
 }
 
 func TestDecodeToken(t *testing.T) {

@@ -1,5 +1,6 @@
 /*-
  * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +23,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-// Claims represents public claim values defined in RFC7519
+// Claims represents public claim values (as specified in RFC 7519).
 type Claims struct {
 	Issuer    string    `json:"-"`
 	Subject   string    `json:"-"`
@@ -79,12 +80,4 @@ func (c *Claims) unmarshalJSON(b []byte) error {
 	c.ID = t.Jti
 
 	return nil
-}
-
-func timeToInt(t time.Time) int64 {
-	if t.IsZero() {
-		return 0
-	}
-
-	return t.Unix()
 }

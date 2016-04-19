@@ -1,5 +1,6 @@
 /*-
- * Copyright 2014 Square Inc.
+ * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,8 +75,8 @@ func TestExpiryAndNotBefore(t *testing.T) {
 	}
 
 	// expired - no leeway
-	assert.NoError(t, c.Validate(Expected{Time: now, ExpLeeway: NoLeeway}))
-	err = c.Validate(Expected{Time: now.Add(1 * time.Second), ExpLeeway: NoLeeway})
+	assert.NoError(t, c.ValidateWithLeeway(Expected{Time: now}, 0))
+	err = c.ValidateWithLeeway(Expected{Time: now.Add(1 * time.Second)}, 0)
 	if assert.Error(t, err) {
 		assert.Equal(t, err, ErrExpired)
 	}

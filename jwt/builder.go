@@ -1,5 +1,6 @@
 /*-
  * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +19,8 @@ package jwt
 
 import "gopkg.in/square/go-jose.v2"
 
-// Builder is an utility for making JSON Web Tokens
-// Calls can be chained and the errors are accumulated till final call to
-// CompactSerialize/FullSerialize allowing for single-line token creation
-// Builder is immutable therefore it can be safely reused once created
+// Builder is a utility for making JSON Web Tokens. Calls can be chained, and
+// errors are accumulated until the final call to CompactSerialize/FullSerialize.
 type Builder struct {
 	transform  func([]byte) (serializer, payload, error)
 	payload    payload
@@ -36,7 +35,7 @@ type serializer interface {
 	CompactSerialize() (string, error)
 }
 
-// Signed creates builder for signed tokens
+// Signed creates builder for signed tokens.
 func Signed(sig jose.Signer) *Builder {
 	return &Builder{
 		transform: func(b []byte) (serializer, payload, error) {
@@ -49,7 +48,7 @@ func Signed(sig jose.Signer) *Builder {
 	}
 }
 
-// Encrypted creates builder for encrypted tokens
+// Encrypted creates builder for encrypted tokens.
 func Encrypted(enc jose.Encrypter) *Builder {
 	return &Builder{
 		transform: func(b []byte) (serializer, payload, error) {
@@ -62,7 +61,7 @@ func Encrypted(enc jose.Encrypter) *Builder {
 	}
 }
 
-// Claims encodes claims into JWE/JWS form
+// Claims encodes claims into the builder.
 func (b *Builder) Claims(c interface{}) *Builder {
 	if b.transform == nil {
 		panic("Signer/Encrypter not set")
@@ -88,40 +87,40 @@ func (b *Builder) Claims(c interface{}) *Builder {
 	}
 }
 
-// Token builds JSONWebToken instance from provided data
+// Token builds a JSONWebToken from provided data.
 func (b *Builder) Token() (*JSONWebToken, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
 
 	if b.payload == nil {
-		panic("Claims not set")
+		return nil, ErrInvalidClaims
 	}
 
 	return &JSONWebToken{b.payload}, nil
 }
 
-// FullSerialize serializes an token using the full JSON serialization format
+// FullSerialize serializes a token using the full serialization format.
 func (b *Builder) FullSerialize() (string, error) {
 	if b.err != nil {
 		return "", b.err
 	}
 
 	if b.serializer == nil {
-		panic("Claims not set")
+		return "", ErrInvalidClaims
 	}
 
 	return b.serializer.FullSerialize(), nil
 }
 
-// CompactSerialize serializes an token using the compact serialization format
+// CompactSerialize serializes a token using the compact serialization format.
 func (b *Builder) CompactSerialize() (string, error) {
 	if b.err != nil {
 		return "", b.err
 	}
 
 	if b.serializer == nil {
-		panic("Claims not set")
+		return "", ErrInvalidClaims
 	}
 
 	return b.serializer.CompactSerialize()

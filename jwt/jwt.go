@@ -1,5 +1,6 @@
 /*-
  * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +19,12 @@ package jwt
 
 import "gopkg.in/square/go-jose.v2"
 
-// JSONWebToken represents JSON Web Token as indicated in RFC7519
+// JSONWebToken represents a JSON Web Token (as specified in RFC7519).
 type JSONWebToken struct {
 	payload func(k interface{}) ([]byte, error)
 }
 
-// Claims deserializes JSONWebToken payload into dest using provided key
+// Claims deserializes a JSONWebToken into dest using the provided key.
 func (t *JSONWebToken) Claims(dest interface{}, key interface{}) error {
 	b, err := t.payload(key)
 	if err != nil {
@@ -32,21 +33,21 @@ func (t *JSONWebToken) Claims(dest interface{}, key interface{}) error {
 	return unmarshalClaims(b, dest)
 }
 
-// ParseSigned parses token from JWS form
-func ParseSigned(s string) (_ *JSONWebToken, err error) {
+// ParseSigned parses token from JWS form.
+func ParseSigned(s string) (*JSONWebToken, error) {
 	sig, err := jose.ParseSigned(s)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return &JSONWebToken{sig.Verify}, nil
 }
 
-// ParseEncrypted parses token from JWE form
-func ParseEncrypted(s string) (_ *JSONWebToken, err error) {
+// ParseEncrypted parses token from JWE form.
+func ParseEncrypted(s string) (*JSONWebToken, error) {
 	enc, err := jose.ParseEncrypted(s)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return &JSONWebToken{enc.Decrypt}, nil

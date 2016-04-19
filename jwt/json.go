@@ -1,5 +1,6 @@
 /*-
  * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,35 +26,30 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-// NumericDate represents JSON date as number value of seconds from 1st Jan 1970
-// JSON value can be either integer or float
-type NumericDate float64
+// NumericDate represents date and time as the number of seconds since the
+// epoch, including leap seconds. Non-integer values can be represented
+// in the serialized format, but we round to the nearest second.
+type NumericDate int64
 
-// TimeToNumericDate converts time.Time value into NumericDate
+// TimeToNumericDate converts time.Time value into NumericDate.
 func TimeToNumericDate(t time.Time) NumericDate {
-	// zero value for a Time is defined as January 1, *year 1*, 00:00:00
 	if t.IsZero() {
 		return NumericDate(0)
 	}
 
-	i := float64(t.Unix())
-	f := float64(t.UnixNano()%int64(time.Second)) / float64(time.Second)
-
-	return NumericDate(i + f)
+	// While RFC 7519 technically states that NumericDate values may be
+	// non-integer values, we don't bother serializing timestamps in
+	// claims with sub-second accurancy and just round to the nearest
+	// second instead. Not convined sub-second accuracy is useful here.
+	return NumericDate(t.Unix())
 }
 
-// MarshalJSON serializes the given date into its JSON representation
+// MarshalJSON serializes the given NumericDate into its JSON representation.
 func (n NumericDate) MarshalJSON() ([]byte, error) {
-	i, f := math.Modf(float64(n))
-	if f == 0.0 {
-		return []byte(strconv.FormatInt(int64(i), 10)), nil
-	}
-
-	s := strconv.FormatFloat(float64(n), 'G', -1, 64)
-	return []byte(s), nil
+	return []byte(strconv.FormatInt(int64(n), 10)), nil
 }
 
-// UnmarshalJSON reads a date from its JSON representation
+// UnmarshalJSON reads a date from its JSON representation.
 func (n *NumericDate) UnmarshalJSON(b []byte) error {
 	s := string(b)
 
@@ -66,7 +62,7 @@ func (n *NumericDate) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Time returns time.Time representation of NumericDate
+// Time returns time.Time representation of NumericDate.
 func (n NumericDate) Time() time.Time {
 	i, f := math.Modf(float64(n))
 	return time.Unix(int64(i), int64(f*float64(time.Second)))

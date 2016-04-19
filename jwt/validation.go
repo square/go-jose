@@ -1,5 +1,6 @@
 /*-
- * Copyright 2014 Square Inc.
+ * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,34 +20,37 @@ package jwt
 import "time"
 
 const (
-	// DefaultLeeway defines leeway for matching NotBefore/Expiry claims
+	// DefaultLeeway defines the default leeway for matching NotBefore/Expiry claims.
 	DefaultLeeway = 1.0 * time.Minute
-	// NoLeeway disables leeway for matching NotBefore/Expiry claims
-	NoLeeway = -1
 )
 
-// Expected defines values used for Claims validation
+// Expected defines values used for claims validation.
 type Expected struct {
-	Issuer    string
-	Subject   string
-	Audience  []string
-	ID        string
-	Time      time.Time
-	ExpLeeway time.Duration
-	NbfLeeway time.Duration
+	Issuer   string
+	Subject  string
+	Audience []string
+	ID       string
+	Time     time.Time
 }
 
-// WithTime copies expectations with new time
+// WithTime copies expectations with new time.
 func (e Expected) WithTime(t time.Time) Expected {
 	e.Time = t
 	return e
 }
 
-// Validate checks claims values against Expected
-// NotBefore and Expiry are checked with leeway as suggested in RFC7519
-// To strictly check time provide NoLeeway value to ExpLeeway/NbfLeeway
-// otherwise default leeway of 1 minute is assumed to deal with clock skew
+// Validate checks claims in a token against expected values.
+// A default leeway value of one minute is used to compare time values.
 func (c Claims) Validate(e Expected) error {
+	return c.ValidateWithLeeway(e, DefaultLeeway)
+}
+
+// Validate checks claims in a token against expected values.
+// A custom leeway may be specified for comparing time values.
+// You may pass a zero value to check time values with no leeway,
+// but you should not that numeric date values are rounded to
+// the nearest second and sub-second precision is not supported.
+func (c Claims) ValidateWithLeeway(e Expected, leeway time.Duration) error {
 	if e.Issuer != "" && e.Issuer != c.Issuer {
 		return ErrInvalidIssuer
 	}
@@ -71,24 +75,13 @@ func (c Claims) Validate(e Expected) error {
 		}
 	}
 
-	if !e.Time.IsZero() && e.Time.Add(leeway(e.NbfLeeway)).Before(c.NotBefore) {
+	if !e.Time.IsZero() && e.Time.Add(leeway).Before(c.NotBefore) {
 		return ErrNotValidYet
 	}
 
-	if !e.Time.IsZero() && e.Time.Add(-leeway(e.ExpLeeway)).After(c.Expiry) {
+	if !e.Time.IsZero() && e.Time.Add(-leeway).After(c.Expiry) {
 		return ErrExpired
 	}
 
 	return nil
-}
-
-func leeway(l time.Duration) time.Duration {
-	switch l {
-	case 0:
-		return DefaultLeeway
-	case NoLeeway:
-		return 0
-	default:
-		return l
-	}
 }

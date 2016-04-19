@@ -1,5 +1,6 @@
 /*-
- * Copyright 2014 Square Inc.
+ * Copyright 2016 Zbigniew Mandziejewicz
+ * Copyright 2016 Square, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +38,8 @@ func TestEncodeClaims(t *testing.T) {
 	b, err := c.marshalJSON()
 	assert.NoError(t, err)
 
-	expected := []byte(`{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}`)
-	assert.Equal(t, expected, b)
+	expected := `{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}`
+	assert.Equal(t, expected, string(b))
 }
 
 func TestDecodeClaims(t *testing.T) {
