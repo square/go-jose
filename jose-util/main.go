@@ -22,14 +22,14 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/square/go-jose"
+	"gopkg.in/square/go-jose.v2"
 )
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "jose-util"
 	app.Usage = "command-line utility to deal with JOSE objects"
-	app.Version = "0.0.2"
+	app.Version = "2.0.0"
 	app.Author = ""
 	app.Email = ""
 

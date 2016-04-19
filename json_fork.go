@@ -19,7 +19,7 @@
 package jose
 
 import (
-	"github.com/square/go-jose/json"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 func MarshalJSON(v interface{}) ([]byte, error) {
