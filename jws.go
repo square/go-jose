@@ -56,7 +56,7 @@ type Signature struct {
 	original  *rawSignatureInfo
 }
 
-// ParseSigned parses an encrypted message in compact or full serialization format.
+// ParseSigned parses a signed message in compact or full serialization format.
 func ParseSigned(input string) (*JsonWebSignature, error) {
 	input = stripWhitespace(input)
 	if strings.HasPrefix(input, "{") {
