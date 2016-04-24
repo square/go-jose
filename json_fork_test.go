@@ -28,6 +28,35 @@ type CaseSensitive struct {
 	C int `json:"TEST"`
 }
 
+type UnicodeTest struct {
+	Sig string `json:"sig"`
+}
+
+func TestUnicodeComparison(t *testing.T) {
+	// Some tests from RFC 7515, Section 10.13
+	raw := []byte(`{"\u0073ig":"foo"}`)
+	var ut UnicodeTest
+	err := UnmarshalJSON(raw, &ut)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if ut.Sig != "foo" {
+		t.Error("strings 'sig' and '\\u0073ig' should be equal")
+	}
+
+	raw = []byte(`{"si\u0047":"bar"}`)
+	var ut2 UnicodeTest
+	err = UnmarshalJSON(raw, &ut2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if ut2.Sig != "" {
+		t.Error("strings 'sig' and 'si\\u0047' should not be equal")
+	}
+}
+
 func TestCaseSensitiveJSON(t *testing.T) {
 	raw := []byte(`{"test":42}`)
 	var cs CaseSensitive
