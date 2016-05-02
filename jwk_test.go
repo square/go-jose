@@ -523,3 +523,30 @@ func TestJWKSymmetricInvalid(t *testing.T) {
 		t.Error("excepted error on unmarshaling invalid symmetric JWK object")
 	}
 }
+
+func TestJWKValid(t *testing.T) {
+	bigInt := big.NewInt(0)
+	eccPub := ecdsa.PublicKey{elliptic.P256(), bigInt, bigInt}
+	rsaPub := rsa.PublicKey{bigInt, 1}
+	cases := []struct {
+		key              interface{}
+		expectedValidity bool
+	}{
+		{nil, false},
+		{&ecdsa.PublicKey{}, false},
+		{&eccPub, true},
+		{&ecdsa.PrivateKey{}, false},
+		{&ecdsa.PrivateKey{eccPub, bigInt}, true},
+		{&rsa.PublicKey{}, false},
+		{&rsaPub, true},
+		{&rsa.PrivateKey{}, false},
+		{&rsa.PrivateKey{rsaPub, bigInt, []*big.Int{bigInt, bigInt}, rsa.PrecomputedValues{}}, true},
+	}
+
+	for _, tc := range cases {
+		k := &JsonWebKey{Key: tc.key}
+		if valid := k.Valid(); valid != tc.expectedValidity {
+			t.Errorf("expected Valid to return %t, got %t", tc.expectedValidity, valid)
+		}
+	}
+}
