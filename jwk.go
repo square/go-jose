@@ -192,6 +192,34 @@ func (k *JsonWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
+// Valid checks that the key contains the expected parameters
+func (k *JsonWebKey) Valid() bool {
+	if k.Key == nil {
+		return false
+	}
+	switch key := k.Key.(type) {
+	case *ecdsa.PublicKey:
+		if key.Curve == nil || key.X == nil || key.Y == nil {
+			return false
+		}
+	case *ecdsa.PrivateKey:
+		if key.Curve == nil || key.X == nil || key.Y == nil || key.D == nil {
+			return false
+		}
+	case *rsa.PublicKey:
+		if key.N == nil || key.E == 0 {
+			return false
+		}
+	case *rsa.PrivateKey:
+		if key.N == nil || key.E == 0 || key.D == nil || len(key.Primes) < 2 {
+			return false
+		}
+	default:
+		return false
+	}
+	return true
+}
+
 func (key rawJsonWebKey) rsaPublicKey() (*rsa.PublicKey, error) {
 	if key.N == nil || key.E == nil {
 		return nil, fmt.Errorf("square/go-jose: invalid RSA key, missing n/e values")
