@@ -193,7 +193,7 @@ func (k *JSONWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
 }
 
 // Valid checks that the key contains the expected parameters
-func (k *JsonWebKey) Valid() bool {
+func (k *JSONWebKey) Valid() bool {
 	if k.Key == nil {
 		return false
 	}
