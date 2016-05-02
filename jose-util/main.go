@@ -21,246 +21,130 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/codegangsta/cli"
 	"github.com/square/go-jose"
+	"gopkg.in/alecthomas/kingpin.v2"
+)
+
+var (
+	app = kingpin.New("jose-util", "A command-line utility for dealing with JOSE objects.")
+
+	keyFile = app.Flag("key", "Path to key file (PEM or DER-encoded)").Required().ExistingFile()
+	inFile  = app.Flag("in", "Path to input file (stdin if missing)").ExistingFile()
+	outFile = app.Flag("out", "Path to output file (stdout if missing)").ExistingFile()
+
+	encryptCommand = app.Command("encrypt", "Encrypt a plaintext, output ciphertext.")
+	algFlag        = encryptCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
+	encFlag        = encryptCommand.Flag("enc", "Content encryption algorithm (e.g. A128GCM)").Required().String()
+
+	decryptCommand = app.Command("decrypt", "Decrypt a ciphertext, output plaintext.")
+
+	signCommand = app.Command("sign", "Sign a payload, output signed message.")
+	sigAlgFlag  = signCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
+
+	verifyCommand = app.Command("verify", "Verify a signed message, output payload.")
+
+	expandCommand = app.Command("expand", "Expand JOSE object to full serialization format.")
+	formatFlag    = expandCommand.Flag("format", "Type of message to expand (JWS or JWE, defaults to JWE)").String()
+
+	full = app.Flag("full", "Use full serialization format (instead of compact)").Bool()
 )
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "jose-util"
-	app.Usage = "command-line utility to deal with JOSE objects"
-	app.Version = "0.0.2"
-	app.Author = ""
-	app.Email = ""
+	app.Version("master")
 
-	app.Commands = []cli.Command{
-		{
-			Name:  "encrypt",
-			Usage: "encrypt a plaintext",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "key, k",
-					Usage: "Path to key file (PEM/DER)",
-				},
-				cli.StringFlag{
-					Name:  "input, in",
-					Usage: "Path to input file (stdin if missing)",
-				},
-				cli.StringFlag{
-					Name:  "output, out",
-					Usage: "Path to output file (stdout if missing)",
-				},
-				cli.StringFlag{
-					Name:  "algorithm, alg",
-					Usage: "Key management algorithm (e.g. RSA-OAEP)",
-				},
-				cli.StringFlag{
-					Name:  "encryption, enc",
-					Usage: "Content encryption algorithm (e.g. A128GCM)",
-				},
-				cli.BoolFlag{
-					Name:  "full, f",
-					Usage: "Use full serialization format (instead of compact)",
-				},
-			},
-			Action: func(c *cli.Context) {
-				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
-				exitOnError(err, "unable to read key file")
+	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
-				pub, err := jose.LoadPublicKey(keyBytes)
-				exitOnError(err, "unable to read public key")
+	keyBytes, err := ioutil.ReadFile(*keyFile)
+	exitOnError(err, "unable to read key file")
 
-				alg := jose.KeyAlgorithm(requiredFlag(c, "alg"))
-				enc := jose.ContentEncryption(requiredFlag(c, "enc"))
+	switch command {
+	case "encrypt":
+		pub, err := jose.LoadPublicKey(keyBytes)
+		exitOnError(err, "unable to read public key")
 
-				crypter, err := jose.NewEncrypter(alg, enc, pub)
-				exitOnError(err, "unable to instantiate encrypter")
+		alg := jose.KeyAlgorithm(*algFlag)
+		enc := jose.ContentEncryption(*encFlag)
 
-				obj, err := crypter.Encrypt(readInput(c.String("input")))
-				exitOnError(err, "unable to encrypt")
+		crypter, err := jose.NewEncrypter(alg, enc, pub)
+		exitOnError(err, "unable to instantiate encrypter")
 
-				var msg string
-				if c.Bool("full") {
-					msg = obj.FullSerialize()
-				} else {
-					msg, err = obj.CompactSerialize()
-					exitOnError(err, "unable to serialize message")
-				}
+		obj, err := crypter.Encrypt(readInput(*inFile))
+		exitOnError(err, "unable to encrypt")
 
-				writeOutput(c.String("output"), []byte(msg))
-			},
-		},
-		{
-			Name:  "decrypt",
-			Usage: "decrypt a ciphertext",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "key, k",
-					Usage: "Path to key file (PEM/DER)",
-				},
-				cli.StringFlag{
-					Name:  "input, in",
-					Usage: "Path to input file (stdin if missing)",
-				},
-				cli.StringFlag{
-					Name:  "output, out",
-					Usage: "Path to output file (stdout if missing)",
-				},
-			},
-			Action: func(c *cli.Context) {
-				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
-				exitOnError(err, "unable to read private key")
+		var msg string
+		if *full {
+			msg = obj.FullSerialize()
+		} else {
+			msg, err = obj.CompactSerialize()
+			exitOnError(err, "unable to serialize message")
+		}
 
-				priv, err := jose.LoadPrivateKey(keyBytes)
-				exitOnError(err, "unable to read private key")
+		writeOutput(*outFile, []byte(msg))
+	case "decrypt":
+		priv, err := jose.LoadPrivateKey(keyBytes)
+		exitOnError(err, "unable to read private key")
 
-				obj, err := jose.ParseEncrypted(string(readInput(c.String("input"))))
-				exitOnError(err, "unable to parse message")
+		obj, err := jose.ParseEncrypted(string(readInput(*inFile)))
+		exitOnError(err, "unable to parse message")
 
-				plaintext, err := obj.Decrypt(priv)
-				exitOnError(err, "unable to decrypt message")
+		plaintext, err := obj.Decrypt(priv)
+		exitOnError(err, "unable to decrypt message")
 
-				writeOutput(c.String("output"), plaintext)
-			},
-		},
-		{
-			Name:  "sign",
-			Usage: "sign a plaintext",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "algorithm, alg",
-					Usage: "Signing algorithm (e.g. PS256)",
-				},
-				cli.StringFlag{
-					Name:  "key, k",
-					Usage: "Path to key file (PEM/DER)",
-				},
-				cli.StringFlag{
-					Name:  "input, in",
-					Usage: "Path to input file (stdin if missing)",
-				},
-				cli.StringFlag{
-					Name:  "output, out",
-					Usage: "Path to output file (stdout if missing)",
-				},
-				cli.BoolFlag{
-					Name:  "full, f",
-					Usage: "Use full serialization format (instead of compact)",
-				},
-			},
-			Action: func(c *cli.Context) {
-				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
-				exitOnError(err, "unable to read key file")
+		writeOutput(*outFile, plaintext)
+	case "sign":
+		signingKey, err := jose.LoadPrivateKey(keyBytes)
+		exitOnError(err, "unable to read private key")
 
-				signingKey, err := jose.LoadPrivateKey(keyBytes)
-				exitOnError(err, "unable to read private key")
+		alg := jose.SignatureAlgorithm(*sigAlgFlag)
+		signer, err := jose.NewSigner(alg, signingKey)
+		exitOnError(err, "unable to make signer")
 
-				alg := jose.SignatureAlgorithm(requiredFlag(c, "algorithm"))
-				signer, err := jose.NewSigner(alg, signingKey)
-				exitOnError(err, "unable to make signer")
+		obj, err := signer.Sign(readInput(*inFile))
+		exitOnError(err, "unable to sign")
 
-				obj, err := signer.Sign(readInput(c.String("input")))
-				exitOnError(err, "unable to sign")
+		var msg string
+		if *full {
+			msg = obj.FullSerialize()
+		} else {
+			msg, err = obj.CompactSerialize()
+			exitOnError(err, "unable to serialize message")
+		}
 
-				var msg string
-				if c.Bool("full") {
-					msg = obj.FullSerialize()
-				} else {
-					msg, err = obj.CompactSerialize()
-					exitOnError(err, "unable to serialize message")
-				}
+		writeOutput(*outFile, []byte(msg))
+	case "verify":
+		verificationKey, err := jose.LoadPublicKey(keyBytes)
+		exitOnError(err, "unable to read private key")
 
-				writeOutput(c.String("output"), []byte(msg))
-			},
-		},
-		{
-			Name:  "verify",
-			Usage: "verify a signature",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "key, k",
-					Usage: "Path to key file (PEM/DER)",
-				},
-				cli.StringFlag{
-					Name:  "input, in",
-					Usage: "Path to input file (stdin if missing)",
-				},
-				cli.StringFlag{
-					Name:  "output, out",
-					Usage: "Path to output file (stdout if missing)",
-				},
-			},
-			Action: func(c *cli.Context) {
-				keyBytes, err := ioutil.ReadFile(requiredFlag(c, "key"))
-				exitOnError(err, "unable to read key file")
+		obj, err := jose.ParseSigned(string(readInput(*inFile)))
+		exitOnError(err, "unable to parse message")
 
-				verificationKey, err := jose.LoadPublicKey(keyBytes)
-				exitOnError(err, "unable to read private key")
+		plaintext, err := obj.Verify(verificationKey)
+		exitOnError(err, "invalid signature")
 
-				obj, err := jose.ParseSigned(string(readInput(c.String("input"))))
-				exitOnError(err, "unable to parse message")
+		writeOutput(*outFile, plaintext)
+	case "expand":
+		input := string(readInput(*inFile))
 
-				plaintext, err := obj.Verify(verificationKey)
-				exitOnError(err, "invalid signature")
+		var serialized string
+		var err error
+		switch *formatFlag {
+		case "", "JWE":
+			var jwe *jose.JsonWebEncryption
+			jwe, err = jose.ParseEncrypted(input)
+			if err == nil {
+				serialized = jwe.FullSerialize()
+			}
+		case "JWS":
+			var jws *jose.JsonWebSignature
+			jws, err = jose.ParseSigned(input)
+			if err == nil {
+				serialized = jws.FullSerialize()
+			}
+		}
 
-				writeOutput(c.String("output"), plaintext)
-			},
-		},
-		{
-			Name:  "expand",
-			Usage: "expand compact message to full format",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "input, in",
-					Usage: "Path to input file (stdin if missing)",
-				},
-				cli.StringFlag{
-					Name:  "output, out",
-					Usage: "Path to output file (stdout if missing)",
-				},
-				cli.StringFlag{
-					Name:  "format, f",
-					Usage: "Message format (JWE/JWS, defaults to JWE)",
-				},
-			},
-			Action: func(c *cli.Context) {
-				input := string(readInput(c.String("input")))
-
-				var serialized string
-				var err error
-				switch c.String("format") {
-				case "", "JWE":
-					var jwe *jose.JsonWebEncryption
-					jwe, err = jose.ParseEncrypted(input)
-					if err == nil {
-						serialized = jwe.FullSerialize()
-					}
-				case "JWS":
-					var jws *jose.JsonWebSignature
-					jws, err = jose.ParseSigned(input)
-					if err == nil {
-						serialized = jws.FullSerialize()
-					}
-				}
-
-				exitOnError(err, "unable to expand message")
-				writeOutput(c.String("output"), []byte(serialized))
-			},
-		},
+		exitOnError(err, "unable to expand message")
+		writeOutput(*outFile, []byte(serialized))
 	}
-
-	err := app.Run(os.Args)
-	exitOnError(err, "unable to run application")
-}
-
-// Retrieve value of a required flag
-func requiredFlag(c *cli.Context, flag string) string {
-	value := c.String(flag)
-	if value == "" {
-		fmt.Fprintf(os.Stderr, "missing required flag --%s\n", flag)
-		os.Exit(1)
-	}
-	return value
 }
 
 // Exit and print error message if we encountered a problem
