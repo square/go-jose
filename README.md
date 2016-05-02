@@ -95,14 +95,14 @@ has a list of constants.
 See below for a table of supported key types. These are understood by the
 library, and can be passed to corresponding functions such as `NewEncrypter` or
 `NewSigner`. Note that if you are creating a new encrypter or signer with a
-JsonWebKey, the key id of the JsonWebKey (if present) will be added to any
+JSONWebKey, the key id of the JSONWebKey (if present) will be added to any
 resulting messages.
 
  Algorithm(s)               | Corresponding types
  :------------------------- | -------------------------------
- RSA                        | *[rsa.PublicKey](http://golang.org/pkg/crypto/rsa/#PublicKey), *[rsa.PrivateKey](http://golang.org/pkg/crypto/rsa/#PrivateKey), *[jose.JsonWebKey](https://godoc.org/github.com/square/go-jose#JsonWebKey)
- ECDH, ECDSA                | *[ecdsa.PublicKey](http://golang.org/pkg/crypto/ecdsa/#PublicKey), *[ecdsa.PrivateKey](http://golang.org/pkg/crypto/ecdsa/#PrivateKey), *[jose.JsonWebKey](https://godoc.org/github.com/square/go-jose#JsonWebKey)
- AES, HMAC                  | []byte, *[jose.JsonWebKey](https://godoc.org/github.com/square/go-jose#JsonWebKey)
+ RSA                        | *[rsa.PublicKey](http://golang.org/pkg/crypto/rsa/#PublicKey), *[rsa.PrivateKey](http://golang.org/pkg/crypto/rsa/#PrivateKey), *[jose.JSONWebKey](https://godoc.org/gopkg.in/square/go-jose.v2#JSONWebKey)
+ ECDH, ECDSA                | *[ecdsa.PublicKey](http://golang.org/pkg/crypto/ecdsa/#PublicKey), *[ecdsa.PrivateKey](http://golang.org/pkg/crypto/ecdsa/#PrivateKey), *[jose.JSONWebKey](https://godoc.org/gopkg.in/square/go-jose.v2#JSONWebKey)
+ AES, HMAC                  | []byte, *[jose.JSONWebKey](https://godoc.org/gopkg.in/square/go-jose.v2#JSONWebKey)
 
 ## Examples
 
