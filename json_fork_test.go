@@ -20,6 +20,8 @@ package jose
 
 import (
 	"testing"
+
+	"github.com/square/go-jose/json"
 )
 
 type CaseSensitive struct {
@@ -36,7 +38,7 @@ func TestUnicodeComparison(t *testing.T) {
 	// Some tests from RFC 7515, Section 10.13
 	raw := []byte(`{"\u0073ig":"foo"}`)
 	var ut UnicodeTest
-	err := UnmarshalJSON(raw, &ut)
+	err := json.Unmarshal(raw, &ut)
 	if err != nil {
 		t.Error(err)
 	}
@@ -47,7 +49,7 @@ func TestUnicodeComparison(t *testing.T) {
 
 	raw = []byte(`{"si\u0047":"bar"}`)
 	var ut2 UnicodeTest
-	err = UnmarshalJSON(raw, &ut2)
+	err = json.Unmarshal(raw, &ut2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -60,7 +62,7 @@ func TestUnicodeComparison(t *testing.T) {
 func TestCaseSensitiveJSON(t *testing.T) {
 	raw := []byte(`{"test":42}`)
 	var cs CaseSensitive
-	err := UnmarshalJSON(raw, &cs)
+	err := json.Unmarshal(raw, &cs)
 	if err != nil {
 		t.Error(err)
 	}
@@ -70,10 +72,19 @@ func TestCaseSensitiveJSON(t *testing.T) {
 	}
 }
 
+func TestErrorOnTrailingCharacters(t *testing.T) {
+	raw := []byte(`{"test":42}asdf`)
+	var m map[string]interface{}
+	err := json.Unmarshal(raw, &m)
+	if err == nil {
+		t.Error("json.Unmarshal should fail if string has trailing chars")
+	}
+}
+
 func TestRejectDuplicateKeysObject(t *testing.T) {
 	raw := []byte(`{"test":42,"test":43}`)
 	var cs CaseSensitive
-	err := UnmarshalJSON(raw, &cs)
+	err := json.Unmarshal(raw, &cs)
 	if err == nil {
 		t.Error("should reject JSON with duplicate keys, but didn't")
 	}
@@ -82,7 +93,7 @@ func TestRejectDuplicateKeysObject(t *testing.T) {
 func TestRejectDuplicateKeysInterface(t *testing.T) {
 	raw := []byte(`{"test":42,"test":43}`)
 	var m interface{}
-	err := UnmarshalJSON(raw, &m)
+	err := json.Unmarshal(raw, &m)
 	if err == nil {
 		t.Error("should reject JSON with duplicate keys, but didn't")
 	}
