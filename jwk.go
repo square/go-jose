@@ -26,7 +26,6 @@ import (
 	"reflect"
 	"strings"
 	"crypto/x509"
-	"github.com/openshift/origin/Godeps/_workspace/src/github.com/coreos/go-oidc/key"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
