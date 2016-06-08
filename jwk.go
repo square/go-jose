@@ -51,12 +51,13 @@ type rawJsonWebKey struct {
 	Dq *byteBuffer `json:"dq,omitempty"`
 	Qi *byteBuffer `json:"qi,omitempty"`
 	// Certificates
-	X5c *byteBuffer `json:"x5c,omitempty"`
+	X5c [][]byte `json:"x5c,omitempty"`
 }
 
 // JsonWebKey represents a public or private key in JWK format.
 type JsonWebKey struct {
 	Key       interface{}
+	Certificates []x509.Certificate
 	KeyID     string
 	Algorithm string
 	Use       string
@@ -76,8 +77,6 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 		raw, err = fromEcPrivateKey(key)
 	case *rsa.PrivateKey:
 		raw, err = fromRsaPrivateKey(key)
-	case *x509.Certificate:
-		raw, err = fromX509Certificate(key)
 	case []byte:
 		raw, err = fromSymmetricKey(key)
 	default:
@@ -91,6 +90,15 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 	raw.Kid = k.KeyID
 	raw.Alg = k.Algorithm
 	raw.Use = k.Use
+
+	if len(k.Certificates) == 0 {
+		return MarshalJSON(raw)
+	}
+
+	raw.X5c = make([][]byte, len(k.Certificates))
+	for i, cert := range k.Certificates {
+		raw.X5c[i] = []byte(base64URLEncode(cert.Raw))
+	}
 
 	return MarshalJSON(raw)
 }
@@ -340,21 +348,6 @@ func (key rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
 
 	err := rv.Validate()
 	return rv, err
-}
-
-func fromX509Certificate(cert *x509.Certificate) (*rawJsonWebKey, error) {
-	var raw *rawJsonWebKey
-	var err error
-
-	switch key := cert.PublicKey.(type) {
-	case *ecdsa.PublicKey:
-		raw, err = fromEcPublicKey(key)
-	case *rsa.PublicKey:
-		raw = fromRsaPublicKey(key)
-	}
-
-	raw.X5c = []byte(base64URLEncode(cert.Raw))
-	return raw, err
 }
 
 func fromRsaPrivateKey(rsa *rsa.PrivateKey) (*rawJsonWebKey, error) {
