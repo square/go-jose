@@ -25,6 +25,8 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+	"crypto/x509"
+	"github.com/openshift/origin/Godeps/_workspace/src/github.com/coreos/go-oidc/key"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
@@ -49,6 +51,8 @@ type rawJsonWebKey struct {
 	Dp *byteBuffer `json:"dp,omitempty"`
 	Dq *byteBuffer `json:"dq,omitempty"`
 	Qi *byteBuffer `json:"qi,omitempty"`
+	// Certificates
+	X5c *byteBuffer `json:"x5c,omitempty"`
 }
 
 // JsonWebKey represents a public or private key in JWK format.
@@ -73,6 +77,8 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 		raw, err = fromEcPrivateKey(key)
 	case *rsa.PrivateKey:
 		raw, err = fromRsaPrivateKey(key)
+	case *x509.Certificate:
+		raw, err = fromX509Certificate(key)
 	case []byte:
 		raw, err = fromSymmetricKey(key)
 	default:
@@ -335,6 +341,21 @@ func (key rawJsonWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
 
 	err := rv.Validate()
 	return rv, err
+}
+
+func fromX509Certificate(cert *x509.Certificate) (*rawJsonWebKey, error) {
+	var raw *rawJsonWebKey
+	var err error
+
+	switch key := cert.PublicKey.(type) {
+	case *ecdsa.PublicKey:
+		raw, err = fromEcPublicKey(key)
+	case *rsa.PublicKey:
+		raw = fromRsaPublicKey(key)
+	}
+
+	raw.X5c = []byte(base64URLEncode(cert.Raw))
+	return raw, err
 }
 
 func fromRsaPrivateKey(rsa *rsa.PrivateKey) (*rawJsonWebKey, error) {
