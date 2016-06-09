@@ -21,11 +21,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
-	"crypto/x509"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
@@ -56,11 +57,11 @@ type rawJsonWebKey struct {
 
 // JsonWebKey represents a public or private key in JWK format.
 type JsonWebKey struct {
-	Key       interface{}
-	Certificates []x509.Certificate
-	KeyID     string
-	Algorithm string
-	Use       string
+	Key          interface{}
+	Certificates []*x509.Certificate
+	KeyID        string
+	Algorithm    string
+	Use          string
 }
 
 // MarshalJSON serializes the given key to its JSON representation.
@@ -97,7 +98,7 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 
 	raw.X5c = make([][]byte, len(k.Certificates))
 	for i, cert := range k.Certificates {
-		raw.X5c[i] = []byte(base64URLEncode(cert.Raw))
+		base64.StdEncoding.Encode(cert.Raw, raw.X5c[i])
 	}
 
 	return MarshalJSON(raw)
@@ -134,6 +135,16 @@ func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	if err == nil {
 		*k = JsonWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
 	}
+
+	k.Certificates = make([]*x509.Certificate, len(raw.X5c))
+	for i, cert := range raw.X5c {
+		// encoding/json detects and decodes base64 encoding
+		k.Certificates[i], err = x509.ParseCertificate(cert)
+		if err != nil {
+			return err
+		}
+	}
+
 	return
 }
 
