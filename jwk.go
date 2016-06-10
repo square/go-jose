@@ -96,9 +96,11 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 		return MarshalJSON(raw)
 	}
 
+	enc := base64.StdEncoding
 	raw.X5c = make([][]byte, len(k.Certificates))
 	for i, cert := range k.Certificates {
-		base64.StdEncoding.Encode(cert.Raw, raw.X5c[i])
+		raw.X5c[i] = make([]byte, enc.EncodedLen(len(cert.Raw)))
+		enc.Encode(raw.X5c[i], cert.Raw)
 	}
 
 	return MarshalJSON(raw)

@@ -27,6 +27,7 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+	"crypto/x509"
 )
 
 func TestCurveSize(t *testing.T) {
@@ -153,6 +154,40 @@ func TestRoundtripEcPrivate(t *testing.T) {
 		if ec2.D.Cmp(ecTestKey.D) != 0 {
 			t.Error("ECDSA D mismatch", i)
 		}
+	}
+}
+
+func TestMarshalUnmarshalX5C(t *testing.T) {
+	jwk := JsonWebKey{
+		Key: rsaTestKey,
+		KeyID: "bar",
+		Algorithm: "foo",
+		Certificates: []*x509.Certificate{x509TestCertificate},
+	}
+
+	jsonbar, err := jwk.MarshalJSON()
+	if err != nil {
+		t.Error("problem marshaling", err)
+	}
+
+	t.Logf("JsonBAR: %s", jsonbar)
+
+	var jwk2 JsonWebKey
+	err = jwk2.UnmarshalJSON(jsonbar)
+	if err != nil {
+		t.Error("problem unmarshalling", err)
+	}
+
+	if !reflect.DeepEqual(jwk.Certificates, jwk2.Certificates) {
+		t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
+	}
+
+	jsonbar2, err := jwk2.MarshalJSON()
+	if err != nil {
+		t.Error("problem marshaling", err)
+	}
+	if !bytes.Equal(jsonbar, jsonbar2) {
+		t.Error("roundtrip should not lose information")
 	}
 }
 
