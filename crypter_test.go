@@ -25,6 +25,10 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"crypto/x509/pkix"
+	"time"
+	"crypto/x509"
+	"math/big"
 )
 
 // We generate only a single RSA and EC key for testing, speeds up tests.
@@ -33,6 +37,26 @@ var rsaTestKey, _ = rsa.GenerateKey(rand.Reader, 2048)
 var ecTestKey256, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 var ecTestKey384, _ = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 var ecTestKey521, _ = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+var x509TestCertificate = func() *x509.Certificate {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, _ := rand.Int(rand.Reader, serialNumberLimit)
+	t := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now().Round(time.Second),
+		NotAfter: time.Now().Add(time.Hour).Round(time.Second),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	t.IsCA = true
+	t.KeyUsage |= x509.KeyUsageCertSign
+	der, _ := x509.CreateCertificate(rand.Reader, &t, &t, &rsaTestKey.PublicKey, rsaTestKey)
+	c, _ := x509.ParseCertificate(der)
+	return c
+}()
 
 func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
 	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)

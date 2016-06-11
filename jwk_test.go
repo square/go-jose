@@ -27,6 +27,7 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+	"crypto/x509"
 )
 
 func TestCurveSize(t *testing.T) {
@@ -153,6 +154,40 @@ func TestRoundtripEcPrivate(t *testing.T) {
 		if ec2.D.Cmp(ecTestKey.D) != 0 {
 			t.Error("ECDSA D mismatch", i)
 		}
+	}
+}
+
+func TestMarshalUnmarshalX5C(t *testing.T) {
+	jwk := JsonWebKey{
+		Key: rsaTestKey,
+		KeyID: "bar",
+		Algorithm: "foo",
+		Certificates: []*x509.Certificate{x509TestCertificate},
+	}
+
+	jsonbar, err := jwk.MarshalJSON()
+	if err != nil {
+		t.Error("problem marshaling", err)
+	}
+
+	t.Logf("JsonBAR: %s", jsonbar)
+
+	var jwk2 JsonWebKey
+	err = jwk2.UnmarshalJSON(jsonbar)
+	if err != nil {
+		t.Error("problem unmarshalling", err)
+	}
+
+	if !reflect.DeepEqual(jwk.Certificates, jwk2.Certificates) {
+		t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
+	}
+
+	jsonbar2, err := jwk2.MarshalJSON()
+	if err != nil {
+		t.Error("problem marshaling", err)
+	}
+	if !bytes.Equal(jsonbar, jsonbar2) {
+		t.Error("roundtrip should not lose information")
 	}
 }
 
@@ -383,6 +418,38 @@ var cookbookJWKs = []string{
       "qi":"lSQi-w9CpyUReMErP1RsBLk7wNtOvs5EQpPqmuMvqW57NBUczScEoPwmUqq
            abu9V0-Py4dQ57_bapoKRu1R90bvuFnU63SHWEFglZQvJDMeAvmj4sm-Fp0o
            Yu_neotgQ0hzbI5gry7ajdYy9-2lNx_76aBZoOUu9HCJ-UsfSOI8"}`),
+
+	// X.509 Certificate Chain
+	stripWhitespace(`{"kty":"RSA",
+      "use":"sig",
+      "kid":"1b94c",
+      "n":"vrjOfz9Ccdgx5nQudyhdoR17V-IubWMeOZCwX_jj0hgAsz2J_pqYW08
+           PLbK_PdiVGKPrqzmDIsLI7sA25VEnHU1uCLNwBuUiCO11_-7dYbsr4iJmG0Q
+           u2j8DsVyT1azpJC_NG84Ty5KKthuCaPod7iI7w0LK9orSMhBEwwZDCxTWq4a
+           YWAchc8t-emd9qOvWtVMDC2BXksRngh6X5bUYLy6AyHKvj-nUy1wgzjYQDwH
+           MTplCoLtU-o-8SNnZ1tmRoGE9uJkBLdh5gFENabWnU5m1ZqZPdwS-qo-meMv
+           VfJb6jJVWRpl2SUtCnYG2C32qvbWbjZ_jBPD5eunqsIo1vQ",
+      "e":"AQAB",
+      "x5c":
+           ["MIIDQjCCAiqgAwIBAgIGATz/FuLiMA0GCSqGSIb3DQEBBQUAMGIxCzAJB
+           gNVBAYTAlVTMQswCQYDVQQIEwJDTzEPMA0GA1UEBxMGRGVudmVyMRwwGgYD
+           VQQKExNQaW5nIElkZW50aXR5IENvcnAuMRcwFQYDVQQDEw5CcmlhbiBDYW1
+           wYmVsbDAeFw0xMzAyMjEyMzI5MTVaFw0xODA4MTQyMjI5MTVaMGIxCzAJBg
+           NVBAYTAlVTMQswCQYDVQQIEwJDTzEPMA0GA1UEBxMGRGVudmVyMRwwGgYDV
+           QQKExNQaW5nIElkZW50aXR5IENvcnAuMRcwFQYDVQQDEw5CcmlhbiBDYW1w
+           YmVsbDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAL64zn8/QnH
+           YMeZ0LncoXaEde1fiLm1jHjmQsF/449IYALM9if6amFtPDy2yvz3YlRij66
+           s5gyLCyO7ANuVRJx1NbgizcAblIgjtdf/u3WG7K+IiZhtELto/A7Fck9Ws6
+           SQvzRvOE8uSirYbgmj6He4iO8NCyvaK0jIQRMMGQwsU1quGmFgHIXPLfnpn
+           fajr1rVTAwtgV5LEZ4Iel+W1GC8ugMhyr4/p1MtcIM42EA8BzE6ZQqC7VPq
+           PvEjZ2dbZkaBhPbiZAS3YeYBRDWm1p1OZtWamT3cEvqqPpnjL1XyW+oyVVk
+           aZdklLQp2Btgt9qr21m42f4wTw+Xrp6rCKNb0CAwEAATANBgkqhkiG9w0BA
+           QUFAAOCAQEAh8zGlfSlcI0o3rYDPBB07aXNswb4ECNIKG0CETTUxmXl9KUL
+           +9gGlqCz5iWLOgWsnrcKcY0vXPG9J1r9AqBNTqNgHq2G03X09266X5CpOe1
+           zFo+Owb1zxtp3PehFdfQJ610CDLEaS9V9Rqp17hCyybEpOGVwe8fnk+fbEL
+           2Bo3UPGrpsHzUoaGpDftmWssZkhpBJKVMJyf/RuP2SmmaIzmnw9JiSlYhzo
+           4tpzd5rFXhjRbg4zW9C+2qok+2+qDM1iJ684gPHMIY8aLWrdgQTxkumGmTq
+           gawR+N5MDtdPTEQ0XfIBc2cJEUyMTY5MPvACWpkA6SdS4xSvdXK3IVfOWA=="]}`),
 }
 
 // SHA-256 thumbprints of the above keys, hex-encoded
@@ -391,6 +458,7 @@ var cookbookJWKThumbprints = []string{
 	"747ae2dd2003664aeeb21e4753fe7402846170a16bc8df8f23a8cf06d3cbe793",
 	"f63838e96077ad1fc01c3f8405774dedc0641f558ebb4b40dccf5f9b6d66a932",
 	"0fc478f8579325fcee0d4cbc6d9d1ce21730a6e97e435d6008fb379b0ebe47d4",
+	"0ddb05bfedbec2070fa037324ba397396561d3425d6d69245570c261dc49dee3",
 }
 
 func TestWebKeyVectorsValid(t *testing.T) {
