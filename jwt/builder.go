@@ -22,8 +22,9 @@ import "gopkg.in/square/go-jose.v2"
 // Builder is a utility for making JSON Web Tokens. Calls can be chained, and
 // errors are accumulated until the final call to CompactSerialize/FullSerialize.
 type Builder struct {
-	transform  func([]byte) (serializer, payload, error)
+	transform  func([]byte) (serializer, payload, []jose.Header, error)
 	payload    payload
+	headers    []jose.Header
 	serializer serializer
 	err        error
 }
@@ -38,12 +39,16 @@ type serializer interface {
 // Signed creates builder for signed tokens.
 func Signed(sig jose.Signer) *Builder {
 	return &Builder{
-		transform: func(b []byte) (serializer, payload, error) {
+		transform: func(b []byte) (serializer, payload, []jose.Header, error) {
 			s, err := sig.Sign(b)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			return s, s.Verify, nil
+			headers := make([]jose.Header, len(s.Signatures))
+			for i, sig := range s.Signatures {
+				headers[i] = sig.Header
+			}
+			return s, s.Verify, headers, nil
 		},
 	}
 }
@@ -51,12 +56,12 @@ func Signed(sig jose.Signer) *Builder {
 // Encrypted creates builder for encrypted tokens.
 func Encrypted(enc jose.Encrypter) *Builder {
 	return &Builder{
-		transform: func(b []byte) (serializer, payload, error) {
+		transform: func(b []byte) (serializer, payload, []jose.Header, error) {
 			e, err := enc.Encrypt(b)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			return e, e.Decrypt, nil
+			return e, e.Decrypt, []jose.Header{e.Header}, nil
 		},
 	}
 }
@@ -78,9 +83,10 @@ func (b *Builder) Claims(c interface{}) *Builder {
 		}
 	}
 
-	ser, pl, err := b.transform(raw)
+	ser, pl, headers, err := b.transform(raw)
 	return &Builder{
 		transform:  b.transform,
+		headers:    headers,
 		serializer: ser,
 		payload:    pl,
 		err:        err,
@@ -97,7 +103,7 @@ func (b *Builder) Token() (*JSONWebToken, error) {
 		return nil, ErrInvalidClaims
 	}
 
-	return &JSONWebToken{b.payload}, nil
+	return &JSONWebToken{b.payload, b.headers}, nil
 }
 
 // FullSerialize serializes a token using the full serialization format.
