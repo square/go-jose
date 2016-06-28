@@ -22,7 +22,54 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/square/go-jose.v2"
 )
+
+type testClaims struct {
+	Subject string `json:"sub"`
+}
+
+func TestCustomClaimsNonPointer(t *testing.T) {
+	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: testPrivRSAKey1}
+	signer, err := jose.NewSigner(signingKey, nil)
+	if err != nil {
+		t.Fatalf("error generating token: %v", err)
+	}
+	jwt, err := Signed(signer).Claims(testClaims{"foo"}).CompactSerialize()
+	if err != nil {
+		t.Fatalf("error creating jwt: %v", err)
+	}
+	parsed, err := ParseSigned(jwt)
+	if err != nil {
+		t.Fatalf("error parsing jwt: %v", err)
+	}
+
+	out := &testClaims{}
+	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
+		assert.Equal(t, out.Subject, "foo")
+	}
+}
+
+func TestCustomClaimsPointer(t *testing.T) {
+	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: testPrivRSAKey1}
+	signer, err := jose.NewSigner(signingKey, nil)
+	if err != nil {
+		t.Fatalf("error generating token: %v", err)
+	}
+	jwt, err := Signed(signer).Claims(&testClaims{"foo"}).CompactSerialize()
+	if err != nil {
+		t.Fatalf("error creating jwt: %v", err)
+	}
+	parsed, err := ParseSigned(jwt)
+	if err != nil {
+		t.Fatalf("error parsing jwt: %v", err)
+	}
+
+	out := &testClaims{}
+	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
+		assert.Equal(t, out.Subject, "foo")
+	}
+}
 
 func TestEncodeClaims(t *testing.T) {
 	now := time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)
