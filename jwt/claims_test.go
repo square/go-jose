@@ -18,8 +18,6 @@
 package jwt
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"testing"
 	"time"
 
@@ -32,11 +30,7 @@ type testClaims struct {
 }
 
 func TestCustomClaimsNonPointer(t *testing.T) {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("error generating key: %v", err)
-	}
-	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: priv}
+	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: testPrivRSAKey1}
 	signer, err := jose.NewSigner(signingKey, nil)
 	if err != nil {
 		t.Fatalf("error generating token: %v", err)
@@ -51,17 +45,13 @@ func TestCustomClaimsNonPointer(t *testing.T) {
 	}
 
 	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(out, &priv.PublicKey)) {
+	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
 		assert.Equal(t, out.Subject, "foo")
 	}
 }
 
 func TestCustomClaimsPointer(t *testing.T) {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("error generating key: %v", err)
-	}
-	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: priv}
+	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: testPrivRSAKey1}
 	signer, err := jose.NewSigner(signingKey, nil)
 	if err != nil {
 		t.Fatalf("error generating token: %v", err)
@@ -76,7 +66,7 @@ func TestCustomClaimsPointer(t *testing.T) {
 	}
 
 	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(out, &priv.PublicKey)) {
+	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
 		assert.Equal(t, out.Subject, "foo")
 	}
 }
