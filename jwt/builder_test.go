@@ -86,7 +86,7 @@ func TestBuilderHeadersSigner(t *testing.T) {
 		}
 		jws, err := jose.ParseSigned(token)
 		if err != nil {
-			t.Errorf("case %d: parse signed: %v", err)
+			t.Errorf("case %d: parse signed: %v", i, err)
 			continue
 		}
 		gotKeyIDs := make([]string, len(jws.Signatures))
@@ -96,7 +96,7 @@ func TestBuilderHeadersSigner(t *testing.T) {
 		sort.Strings(wantKeyIDs)
 		sort.Strings(gotKeyIDs)
 		if !reflect.DeepEqual(wantKeyIDs, gotKeyIDs) {
-			t.Errorf("case %d: wanted=%q got=%q", wantKeyIDs, gotKeyIDs)
+			t.Errorf("case %d: wanted=%q got=%q", i, wantKeyIDs, gotKeyIDs)
 		}
 	}
 }

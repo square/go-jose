@@ -99,12 +99,11 @@ func (s *audience) UnmarshalJSON(b []byte) error {
 var claimsType = reflect.TypeOf((*Claims)(nil)).Elem()
 
 func publicClaims(cl interface{}) (*Claims, error) {
-	v := reflect.ValueOf(cl)
-	if v.IsNil() || v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
+	v := reflect.Indirect(reflect.ValueOf(cl))
+	if v.Kind() != reflect.Struct {
 		return nil, ErrInvalidClaims
 	}
 
-	v = v.Elem()
 	f := v.FieldByName("Claims")
 	if !f.IsValid() || f.Type() != claimsType {
 		return nil, nil
