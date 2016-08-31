@@ -67,6 +67,23 @@ func TestVectorECDHES(t *testing.T) {
 	}
 }
 
+func TestInvalidECPublicKey(t *testing.T) {
+	defer func() { recover() }()
+
+	// Invalid key
+	invalid := &ecdsa.PrivateKey{
+		PublicKey: ecdsa.PublicKey{
+			Curve: elliptic.P256(),
+			X:     fromBase64Int("MTEx"),
+			Y:     fromBase64Int("MTEx"),
+		},
+		D: fromBase64Int("0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo="),
+	}
+
+	DeriveECDHES("A128GCM", []byte{}, []byte{}, bobKey, &invalid.PublicKey, 16)
+	t.Fatal("should panic if public key was invalid")
+}
+
 func BenchmarkECDHES_128(b *testing.B) {
 	apuData := []byte("APU")
 	apvData := []byte("APV")

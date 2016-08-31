@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -277,13 +278,20 @@ func (key rawJsonWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 	}
 
 	if key.X == nil || key.Y == nil {
-		return nil, fmt.Errorf("square/go-jose: invalid EC key, missing x/y values")
+		return nil, errors.New("square/go-jose: invalid EC key, missing x/y values")
+	}
+
+	x := key.X.bigInt()
+	y := key.Y.bigInt()
+
+	if !curve.IsOnCurve(x, y) {
+		return nil, errors.New("square/go-jose: invalid EC key, X/Y are not on declared curve")
 	}
 
 	return &ecdsa.PublicKey{
 		Curve: curve,
-		X:     key.X.bigInt(),
-		Y:     key.Y.bigInt(),
+		X:     x,
+		Y:     y,
 	}, nil
 }
 
