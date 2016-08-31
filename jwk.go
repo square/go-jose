@@ -27,6 +27,8 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+
+	"github.com/square/go-jose/json"
 )
 
 // rawJsonWebKey represents a public or private key in JWK format, used for parsing/serializing.
@@ -96,13 +98,13 @@ func (k JsonWebKey) MarshalJSON() ([]byte, error) {
 		raw.X5c = append(raw.X5c, base64.StdEncoding.EncodeToString(cert.Raw))
 	}
 
-	return MarshalJSON(raw)
+	return json.Marshal(raw)
 }
 
 // UnmarshalJSON reads a key from its JSON representation.
 func (k *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
 	var raw rawJsonWebKey
-	err = UnmarshalJSON(data, &raw)
+	err = json.Unmarshal(data, &raw)
 	if err != nil {
 		return err
 	}

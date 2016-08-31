@@ -28,6 +28,8 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/square/go-jose/json"
 )
 
 // Test chain of two X.509 certificates
@@ -286,7 +288,7 @@ func TestMarshalNonPointer(t *testing.T) {
 		"n": "vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw"
 	}`)
 	var parsedKey JsonWebKey
-	err := UnmarshalJSON(keyJson, &parsedKey)
+	err := json.Unmarshal(keyJson, &parsedKey)
 	if err != nil {
 		t.Error(fmt.Sprintf("Error unmarshalling key: %v", err))
 		return
@@ -294,7 +296,7 @@ func TestMarshalNonPointer(t *testing.T) {
 	ek := EmbedsKey{
 		Key: parsedKey,
 	}
-	out, err := MarshalJSON(ek)
+	out, err := json.Marshal(ek)
 	if err != nil {
 		t.Error(fmt.Sprintf("Error marshalling JSON: %v", err))
 		return
@@ -538,16 +540,16 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	set.Keys = append(set.Keys, jwk1)
 	set.Keys = append(set.Keys, jwk2)
 
-	jsonbar, err := MarshalJSON(&set)
+	jsonbar, err := json.Marshal(&set)
 	if err != nil {
 		t.Error("problem marshalling set", err)
 	}
 	var set2 JsonWebKeySet
-	err = UnmarshalJSON(jsonbar, &set2)
+	err = json.Unmarshal(jsonbar, &set2)
 	if err != nil {
 		t.Error("problem unmarshalling set", err)
 	}
-	jsonbar2, err := MarshalJSON(&set2)
+	jsonbar2, err := json.Marshal(&set2)
 	if err != nil {
 		t.Error("problem marshalling set", err)
 	}
@@ -576,7 +578,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 	sample2 := `{"kty":"oct","k":"AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow","kid":"HMAC key used in JWS spec Appendix A.1 example"}`
 
 	var jwk1 JsonWebKey
-	UnmarshalJSON([]byte(sample1), &jwk1)
+	json.Unmarshal([]byte(sample1), &jwk1)
 
 	if jwk1.Algorithm != "A128KW" {
 		t.Errorf("expected Algorithm to be A128KW, but was '%s'", jwk1.Algorithm)
@@ -587,7 +589,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 	}
 
 	var jwk2 JsonWebKey
-	UnmarshalJSON([]byte(sample2), &jwk2)
+	json.Unmarshal([]byte(sample2), &jwk2)
 
 	if jwk2.KeyID != "HMAC key used in JWS spec Appendix A.1 example" {
 		t.Errorf("expected KeyID to be 'HMAC key used in JWS spec Appendix A.1 example', but was '%s'", jwk2.KeyID)

@@ -33,7 +33,6 @@ before_install:
 
 script:
 - go test . -v -covermode=count -coverprofile=profile.cov
-- go test . -tags std_json -v -covermode=count -coverprofile=profile-std-json.cov
 - go test ./cipher -v -covermode=count -coverprofile=cipher/profile.cov
 - go test ./json -v # no coverage for forked encoding/json package
 - cd jose-util && go build && PATH=$PWD:$PATH cram -v jose-util.t
