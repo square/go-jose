@@ -67,6 +67,10 @@ func newRSARecipient(keyAlg KeyAlgorithm, publicKey *rsa.PublicKey) (recipientKe
 		return recipientKeyInfo{}, ErrUnsupportedAlgorithm
 	}
 
+	if publicKey == nil {
+		return recipientKeyInfo{}, errors.New("invalid public key")
+	}
+
 	return recipientKeyInfo{
 		keyAlg: keyAlg,
 		keyEncrypter: &rsaEncrypterVerifier{
@@ -82,6 +86,10 @@ func newRSASigner(sigAlg SignatureAlgorithm, privateKey *rsa.PrivateKey) (recipi
 	case RS256, RS384, RS512, PS256, PS384, PS512:
 	default:
 		return recipientSigInfo{}, ErrUnsupportedAlgorithm
+	}
+
+	if privateKey == nil {
+		return recipientSigInfo{}, errors.New("invalid private key")
 	}
 
 	return recipientSigInfo{
@@ -104,6 +112,10 @@ func newECDHRecipient(keyAlg KeyAlgorithm, publicKey *ecdsa.PublicKey) (recipien
 		return recipientKeyInfo{}, ErrUnsupportedAlgorithm
 	}
 
+	if publicKey == nil || !publicKey.Curve.IsOnCurve(publicKey.X, publicKey.Y) {
+		return recipientKeyInfo{}, errors.New("invalid public key")
+	}
+
 	return recipientKeyInfo{
 		keyAlg: keyAlg,
 		keyEncrypter: &ecEncrypterVerifier{
@@ -119,6 +131,10 @@ func newECDSASigner(sigAlg SignatureAlgorithm, privateKey *ecdsa.PrivateKey) (re
 	case ES256, ES384, ES512:
 	default:
 		return recipientSigInfo{}, ErrUnsupportedAlgorithm
+	}
+
+	if privateKey == nil {
+		return recipientSigInfo{}, errors.New("invalid private key")
 	}
 
 	return recipientSigInfo{
