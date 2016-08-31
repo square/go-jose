@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"time"
 
-	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // NumericDate represents date and time as the number of seconds since the
@@ -72,7 +72,7 @@ type audience []string
 
 func (s *audience) UnmarshalJSON(b []byte) error {
 	var v interface{}
-	if err := jose.UnmarshalJSON(b, &v); err != nil {
+	if err := json.Unmarshal(b, &v); err != nil {
 		return err
 	}
 
@@ -118,7 +118,7 @@ func marshalClaims(cl interface{}) ([]byte, error) {
 	case *Claims:
 		return cl.marshalJSON()
 	case map[string]interface{}:
-		return jose.MarshalJSON(cl)
+		return json.Marshal(cl)
 	}
 
 	public, err := publicClaims(cl)
@@ -127,7 +127,7 @@ func marshalClaims(cl interface{}) ([]byte, error) {
 	}
 	// i doesn't contain nested jwt.Claims
 	if public == nil {
-		return jose.MarshalJSON(cl)
+		return json.Marshal(cl)
 	}
 
 	// marshal jwt.Claims
@@ -137,7 +137,7 @@ func marshalClaims(cl interface{}) ([]byte, error) {
 	}
 
 	// marshal private claims
-	b2, err := jose.MarshalJSON(cl)
+	b2, err := json.Marshal(cl)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +156,10 @@ func unmarshalClaims(b []byte, cl interface{}) error {
 	case *Claims:
 		return cl.unmarshalJSON(b)
 	case map[string]interface{}:
-		return jose.UnmarshalJSON(b, cl)
+		return json.Unmarshal(b, cl)
 	}
 
-	if err := jose.UnmarshalJSON(b, cl); err != nil {
+	if err := json.Unmarshal(b, cl); err != nil {
 		return err
 	}
 

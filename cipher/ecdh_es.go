@@ -23,6 +23,8 @@ import (
 )
 
 // DeriveECDHES derives a shared encryption key using ECDH/ConcatKDF as described in JWE/JWA.
+// It is an error to call this function with a private/public key that are not on the same
+// curve. Callers must ensure that the keys are valid before calling this function.
 func DeriveECDHES(alg string, apuData, apvData []byte, priv *ecdsa.PrivateKey, pub *ecdsa.PublicKey, size int) []byte {
 	// algId, partyUInfo, partyVInfo inputs must be prefixed with the length
 	algID := lengthPrefixed([]byte(alg))
@@ -32,6 +34,10 @@ func DeriveECDHES(alg string, apuData, apvData []byte, priv *ecdsa.PrivateKey, p
 	// suppPubInfo is the encoded length of the output size in bits
 	supPubInfo := make([]byte, 4)
 	binary.BigEndian.PutUint32(supPubInfo, uint32(size)*8)
+
+	if !priv.PublicKey.Curve.IsOnCurve(pub.X, pub.Y) {
+		panic("public key not on same curve as private key")
+	}
 
 	z, _ := priv.PublicKey.Curve.ScalarMult(pub.X, pub.Y, priv.D.Bytes())
 	reader := NewConcatKDF(crypto.SHA256, z.Bytes(), algID, ptyUInfo, ptyVInfo, supPubInfo, []byte{})

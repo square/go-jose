@@ -20,7 +20,7 @@ package jwt
 import (
 	"time"
 
-	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // Claims represents public claim values (as specified in RFC 7519).
@@ -55,7 +55,7 @@ func (c *Claims) marshalJSON() ([]byte, error) {
 		Jti: c.ID,
 	}
 
-	b, err := jose.MarshalJSON(t)
+	b, err := json.Marshal(t)
 
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (c *Claims) marshalJSON() ([]byte, error) {
 func (c *Claims) unmarshalJSON(b []byte) error {
 	t := rawClaims{}
 
-	if err := jose.UnmarshalJSON(b, &t); err != nil {
+	if err := json.Unmarshal(b, &t); err != nil {
 		return err
 	}
 
