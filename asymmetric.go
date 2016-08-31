@@ -478,6 +478,8 @@ func (ctx ecEncrypterVerifier) verifyPayload(payload []byte, signature []byte, a
 	case ES512:
 		keySize = 66
 		hash = crypto.SHA512
+	default:
+		return ErrUnsupportedAlgorithm
 	}
 
 	if len(signature) != 2*keySize {

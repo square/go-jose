@@ -459,3 +459,10 @@ func TestInvalidECPublicKey(t *testing.T) {
 		t.Fatal("decrypter accepted JWS with invalid ECDH public key")
 	}
 }
+
+func TestInvalidAlgorithmEC(t *testing.T) {
+	err := ecEncrypterVerifier{publicKey: &ecTestKey256.PublicKey}.verifyPayload([]byte{}, []byte{}, "XYZ")
+	if err != ErrUnsupportedAlgorithm {
+		t.Fatal("should not accept invalid/unsupported algorithm")
+	}
+}
