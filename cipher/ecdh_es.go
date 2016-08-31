@@ -33,6 +33,10 @@ func DeriveECDHES(alg string, apuData, apvData []byte, priv *ecdsa.PrivateKey, p
 	supPubInfo := make([]byte, 4)
 	binary.BigEndian.PutUint32(supPubInfo, uint32(size)*8)
 
+	if !priv.PublicKey.Curve.IsOnCurve(pub.X, pub.Y) {
+		panic("public key not on same curve as private key")
+	}
+
 	z, _ := priv.PublicKey.Curve.ScalarMult(pub.X, pub.Y, priv.D.Bytes())
 	reader := NewConcatKDF(crypto.SHA256, z.Bytes(), algID, ptyUInfo, ptyVInfo, supPubInfo, []byte{})
 

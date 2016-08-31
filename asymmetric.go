@@ -370,6 +370,10 @@ func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientI
 		return nil, errors.New("square/go-jose: invalid epk header")
 	}
 
+	if !ctx.privateKey.Curve.IsOnCurve(publicKey.X, publicKey.Y) {
+		return nil, errors.New("square/go-jose: invalid public key in epk header")
+	}
+
 	apuData := headers.Apu.bytes()
 	apvData := headers.Apv.bytes()
 
