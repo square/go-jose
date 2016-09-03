@@ -24,8 +24,13 @@ import (
 
 // DeriveECDHES derives a shared encryption key using ECDH/ConcatKDF as described in JWE/JWA.
 // It is an error to call this function with a private/public key that are not on the same
-// curve. Callers must ensure that the keys are valid before calling this function.
+// curve. Callers must ensure that the keys are valid before calling this function. Output
+// size may be at most 1<<16 bytes (64 KiB).
 func DeriveECDHES(alg string, apuData, apvData []byte, priv *ecdsa.PrivateKey, pub *ecdsa.PublicKey, size int) []byte {
+	if size > 1<<16 {
+		panic("ECDH-ES output size too large, must be less than 1<<16")
+	}
+
 	// algId, partyUInfo, partyVInfo inputs must be prefixed with the length
 	algID := lengthPrefixed([]byte(alg))
 	ptyUInfo := lengthPrefixed(apuData)
