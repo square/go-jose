@@ -25,7 +25,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/square/go-jose/json"
+	"gopkg.in/square/go-jose.v1/json"
 )
 
 type staticNonceSource string

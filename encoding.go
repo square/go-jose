@@ -26,7 +26,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/square/go-jose/json"
+	"gopkg.in/square/go-jose.v1/json"
 )
 
 var stripWhitespaceRegex = regexp.MustCompile("\\s")

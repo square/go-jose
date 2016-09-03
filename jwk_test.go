@@ -29,7 +29,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/square/go-jose/json"
+	"gopkg.in/square/go-jose.v1/json"
 )
 
 // Test chain of two X.509 certificates

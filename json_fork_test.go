@@ -21,7 +21,7 @@ package jose
 import (
 	"testing"
 
-	"github.com/square/go-jose/json"
+	"gopkg.in/square/go-jose.v1/json"
 )
 
 type CaseSensitive struct {

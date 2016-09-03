@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/square/go-jose/json"
+	"gopkg.in/square/go-jose.v1/json"
 )
 
 // rawJsonWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
