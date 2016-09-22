@@ -17,6 +17,7 @@
 package jose
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -129,6 +130,7 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 			}
 		}
 
+		// Check that there is not a nonce in the unprotected header
 		if parsed.Header != nil && parsed.Header.Nonce != "" {
 			return nil, ErrUnprotectedNonce
 		}
@@ -151,6 +153,13 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 		}
 
 		signature.Header = signature.mergedHeaders().sanitized()
+
+		// As per RFC 7515 Section 4.1.3, only public keys are allowed to be embedded.
+		jwk := signature.Header.JsonWebKey
+		if jwk != nil && (!jwk.Valid() || !jwk.IsPublic()) {
+			return nil, errors.New("square/go-jose: invalid embedded jwk, must be public key")
+		}
+
 		obj.Signatures = append(obj.Signatures, signature)
 	}
 
@@ -168,14 +177,20 @@ func (parsed *rawJsonWebSignature) sanitized() (*JsonWebSignature, error) {
 			return nil, ErrUnprotectedNonce
 		}
 
+		obj.Signatures[i].Header = obj.Signatures[i].mergedHeaders().sanitized()
 		obj.Signatures[i].Signature = sig.Signature.bytes()
+
+		// As per RFC 7515 Section 4.1.3, only public keys are allowed to be embedded.
+		jwk := obj.Signatures[i].Header.JsonWebKey
+		if jwk != nil && (!jwk.Valid() || !jwk.IsPublic()) {
+			return nil, errors.New("square/go-jose: invalid embedded jwk, must be public key")
+		}
 
 		// Copy value of sig
 		original := sig
 
 		obj.Signatures[i].header = sig.Header
 		obj.Signatures[i].original = &original
-		obj.Signatures[i].Header = obj.Signatures[i].mergedHeaders().sanitized()
 	}
 
 	return obj, nil
