@@ -41,7 +41,10 @@ type rawSignatureInfo struct {
 
 // JsonWebSignature represents a signed JWS object after parsing.
 type JsonWebSignature struct {
-	payload    []byte
+	payload []byte
+	// Signatures attached to this object (may be more than one for multi-sig).
+	// Be careful about accessing these directly, prefer to use Verify() or
+	// VerifyMulti() to ensure that the data you're getting is verified.
 	Signatures []Signature
 }
 
