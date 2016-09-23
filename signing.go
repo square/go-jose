@@ -187,15 +187,21 @@ func (ctx *genericSigner) SetNonceSource(source NonceSource) {
 	ctx.nonceSource = source
 }
 
-// SetEmbedJwk specifies if the signing key should be embedded in the protected header,
-// if any. It defaults to 'true'.
+// SetEmbedJwk specifies if the signing key should be embedded in the protected
+// header, if any. It defaults to 'true', though that may change in the future.
+// Note that the use of embedded JWKs in the signature header can be dangerous,
+// as you cannot assume that the key received in a payload is trusted.
 func (ctx *genericSigner) SetEmbedJwk(embed bool) {
 	ctx.embedJwk = embed
 }
 
 // Verify validates the signature on the object and returns the payload.
-// Note that this function does not support multi-signature, if you desire
-// multi-sig verification use VerifyMulti instead.
+// This function does not support multi-signature, if you desire multi-sig
+// verification use VerifyMulti instead.
+//
+// Be careful when verifying signatures based on embedded JWKs inside the
+// payload header. You cannot assume that the key received in a payload is
+// trusted.
 func (obj JsonWebSignature) Verify(verificationKey interface{}) ([]byte, error) {
 	verifier, err := newVerifier(verificationKey)
 	if err != nil {
