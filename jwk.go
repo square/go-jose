@@ -217,7 +217,17 @@ func (k *JSONWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-// Valid checks that the key contains the expected parameters
+// IsPublic returns true if the JWK represents a public key (not symmetric, not private).
+func (k *JSONWebKey) IsPublic() bool {
+	switch k.Key.(type) {
+	case *ecdsa.PublicKey, *rsa.PublicKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Valid checks that the key contains the expected parameters.
 func (k *JSONWebKey) Valid() bool {
 	if k.Key == nil {
 		return false

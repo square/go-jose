@@ -18,6 +18,7 @@ package jose
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,7 +43,10 @@ type rawSignatureInfo struct {
 
 // JSONWebSignature represents a signed JWS object after parsing.
 type JSONWebSignature struct {
-	payload    []byte
+	payload []byte
+	// Signatures attached to this object (may be more than one for multi-sig).
+	// Be careful about accessing these directly, prefer to use Verify() or
+	// VerifyMulti() to ensure that the data you're getting is verified.
 	Signatures []Signature
 }
 
@@ -127,6 +131,7 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 			}
 		}
 
+		// Check that there is not a nonce in the unprotected header
 		if parsed.Header != nil && parsed.Header.Nonce != "" {
 			return nil, ErrUnprotectedNonce
 		}
@@ -149,6 +154,13 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 		}
 
 		signature.Header = signature.mergedHeaders().sanitized()
+
+		// As per RFC 7515 Section 4.1.3, only public keys are allowed to be embedded.
+		jwk := signature.Header.JSONWebKey
+		if jwk != nil && (!jwk.Valid() || !jwk.IsPublic()) {
+			return nil, errors.New("square/go-jose: invalid embedded jwk, must be public key")
+		}
+
 		obj.Signatures = append(obj.Signatures, signature)
 	}
 
@@ -166,14 +178,20 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 			return nil, ErrUnprotectedNonce
 		}
 
+		obj.Signatures[i].Header = obj.Signatures[i].mergedHeaders().sanitized()
 		obj.Signatures[i].Signature = sig.Signature.bytes()
+
+		// As per RFC 7515 Section 4.1.3, only public keys are allowed to be embedded.
+		jwk := obj.Signatures[i].Header.JSONWebKey
+		if jwk != nil && (!jwk.Valid() || !jwk.IsPublic()) {
+			return nil, errors.New("square/go-jose: invalid embedded jwk, must be public key")
+		}
 
 		// Copy value of sig
 		original := sig
 
 		obj.Signatures[i].header = sig.Header
 		obj.Signatures[i].original = &original
-		obj.Signatures[i].Header = obj.Signatures[i].mergedHeaders().sanitized()
 	}
 
 	return obj, nil

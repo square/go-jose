@@ -225,43 +225,45 @@ func TestMultiRecipientJWS(t *testing.T) {
 	input := []byte("Lorem ipsum dolor sit amet")
 	obj, err := signer.Sign(input)
 	if err != nil {
-		t.Error("error on sign: ", err)
-		return
+		t.Fatal("error on sign: ", err)
 	}
 
 	_, err = obj.CompactSerialize()
 	if err == nil {
-		t.Error("message with multiple recipient was compact serialized")
+		t.Fatal("message with multiple recipient was compact serialized")
 	}
 
 	msg := obj.FullSerialize()
 
 	obj, err = ParseSigned(msg)
 	if err != nil {
-		t.Error("error on parse: ", err)
-		return
+		t.Fatal("error on parse: ", err)
 	}
 
-	output, err := obj.Verify(&rsaTestKey.PublicKey)
+	i, _, output, err := obj.VerifyMulti(&rsaTestKey.PublicKey)
 	if err != nil {
-		t.Error("error on verify: ", err)
-		return
+		t.Fatal("error on verify: ", err)
+	}
+
+	if i != 0 {
+		t.Fatal("signature index should be 0 for RSA key")
 	}
 
 	if bytes.Compare(output, input) != 0 {
-		t.Error("input/output do not match", output, input)
-		return
+		t.Fatal("input/output do not match", output, input)
 	}
 
-	output, err = obj.Verify(sharedKey)
+	i, _, output, err = obj.VerifyMulti(sharedKey)
 	if err != nil {
-		t.Error("error on verify: ", err)
-		return
+		t.Fatal("error on verify: ", err)
+	}
+
+	if i != 1 {
+		t.Fatal("signature index should be 1 for EC key")
 	}
 
 	if bytes.Compare(output, input) != 0 {
-		t.Error("input/output do not match", output, input)
-		return
+		t.Fatal("input/output do not match", output, input)
 	}
 }
 
