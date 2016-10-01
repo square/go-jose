@@ -17,7 +17,10 @@
 
 package jwt
 
-import "gopkg.in/square/go-jose.v2"
+import (
+	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/json"
+)
 
 // JSONWebToken represents a JSON Web Token (as specified in RFC7519).
 type JSONWebToken struct {
@@ -31,7 +34,7 @@ func (t *JSONWebToken) Claims(dest interface{}, key interface{}) error {
 	if err != nil {
 		return err
 	}
-	return unmarshalClaims(b, dest)
+	return json.Unmarshal(b, &dest)
 }
 
 // ParseSigned parses token from JWS form.

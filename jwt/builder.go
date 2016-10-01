@@ -18,18 +18,17 @@
 package jwt
 
 import (
-	"encoding/json"
 	"reflect"
 
-	"github.com/fatih/structs"
+	"gopkg.in/square/go-jose.v2/json"
+
 	"gopkg.in/square/go-jose.v2"
 )
 
 // Builder is a utility for making JSON Web Tokens. Calls can be chained, and
 // errors are accumulated until the final call to CompactSerialize/FullSerialize.
 type Builder interface {
-	PublicClaims(c Claims) Builder
-	PrivateClaims(i interface{}) Builder
+	Claims(i interface{}) Builder
 	// Token builds a JSONWebToken from provided data.
 	Token() (*JSONWebToken, error)
 	// FullSerialize serializes a token using the full serialization format.
@@ -67,30 +66,33 @@ func Encrypted(enc jose.Encrypter) Builder {
 	}
 }
 
-func (b builder) PublicClaims(c Claims) builder {
-	return b.merge(structs.Map(c))
-}
-
-func (b builder) PrivateClaims(i interface{}) builder {
+func (b builder) Claims(i interface{}) builder {
 	if b.err != nil {
 		return b
 	}
 
-	if v, ok := i.(map[string]interface{}); ok {
-		return b.merge(v)
-	}
-
-	if v := reflect.Indirect(reflect.ValueOf(i)); v.Kind() != reflect.Struct {
+	k := reflect.Indirect(reflect.ValueOf(i)).Kind()
+	if k != reflect.Struct && k != reflect.Map {
 		return builder{
 			err: ErrInvalidClaims,
 		}
 	}
 
-	return b.merge(structs.Map(i))
-}
+	raw, err := json.Marshal(i)
+	if err != nil {
+		return builder{
+			err: err,
+		}
+	}
 
-func (b *builder) merge(m map[string]interface{}) builder {
-	var p map[string]interface{}
+	m := make(map[string]interface{})
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return builder{
+			err: err,
+		}
+	}
+
+	p := make(map[string]interface{})
 	for k, v := range b.payload {
 		p[k] = v
 	}
@@ -110,16 +112,9 @@ func (b *builder) Token(p func(interface{}) ([]byte, error), h []jose.Header) (*
 	}, nil
 }
 
-func (b *signedBuilder) PublicClaims(c Claims) Builder {
+func (b *signedBuilder) Claims(i interface{}) Builder {
 	return &signedBuilder{
-		builder: b.builder.PublicClaims(c),
-		sig:     b.sig,
-	}
-}
-
-func (b *signedBuilder) PrivateClaims(i interface{}) Builder {
-	return &signedBuilder{
-		builder: b.builder.PrivateClaims(i),
+		builder: b.builder.Claims(i),
 		sig:     b.sig,
 	}
 }
@@ -169,16 +164,9 @@ func (b *signedBuilder) sign() (*jose.JSONWebSignature, error) {
 	return b.sig.Sign(p)
 }
 
-func (b *encryptedBuilder) PublicClaims(c Claims) Builder {
+func (b *encryptedBuilder) Claims(i interface{}) Builder {
 	return &encryptedBuilder{
-		builder: b.builder.PublicClaims(c),
-		enc:     b.enc,
-	}
-}
-
-func (b *encryptedBuilder) PrivateClaims(i interface{}) Builder {
-	return &encryptedBuilder{
-		builder: b.builder.PrivateClaims(i),
+		builder: b.builder.Claims(i),
 		enc:     b.enc,
 	}
 }

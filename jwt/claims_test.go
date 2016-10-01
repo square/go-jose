@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/square/go-jose.v2/json"
+
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/square/go-jose.v2"
 )
@@ -46,7 +48,7 @@ func TestCustomClaimsNonPointer(t *testing.T) {
 
 	out := &testClaims{}
 	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
-		assert.Equal(t, out.Subject, "foo")
+		assert.Equal(t, "foo", out.Subject)
 	}
 }
 
@@ -67,7 +69,7 @@ func TestCustomClaimsPointer(t *testing.T) {
 
 	out := &testClaims{}
 	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
-		assert.Equal(t, out.Subject, "foo")
+		assert.Equal(t, "foo", out.Subject)
 	}
 }
 
@@ -77,12 +79,12 @@ func TestEncodeClaims(t *testing.T) {
 	c := Claims{
 		Issuer:   "issuer",
 		Subject:  "subject",
-		Audience: []string{"a1", "a2"},
-		IssuedAt: now,
-		Expiry:   now.Add(1 * time.Hour),
+		Audience: Audience{"a1", "a2"},
+		IssuedAt: TimeToNumericDate(now),
+		Expiry:   TimeToNumericDate(now.Add(1 * time.Hour)),
 	}
 
-	b, err := c.marshalJSON()
+	b, err := json.Marshal(c)
 	assert.NoError(t, err)
 
 	expected := `{"iss":"issuer","sub":"subject","aud":["a1","a2"],"exp":1451610000,"iat":1451606400}`
@@ -94,12 +96,12 @@ func TestDecodeClaims(t *testing.T) {
 	now := time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	c := Claims{}
-	err := c.unmarshalJSON(s)
+	err := json.Unmarshal(s, &c)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "issuer", c.Issuer)
 	assert.Equal(t, "subject", c.Subject)
-	assert.Equal(t, []string{"a1", "a2"}, c.Audience)
-	assert.True(t, now.Equal(c.IssuedAt))
-	assert.True(t, now.Add(1*time.Hour).Equal(c.Expiry))
+	assert.Equal(t, Audience{"a1", "a2"}, c.Audience)
+	assert.True(t, now.Equal(c.IssuedAt.Time()))
+	assert.True(t, now.Add(1*time.Hour).Equal(c.Expiry.Time()))
 }

@@ -29,7 +29,6 @@ var encryptionKey = []byte("secret")
 var rawToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0.Y6_PfQHrzRJ_Vlxij5VI07-pgDIuJNN3Z_g5sSaGQ0c`
 
 type customClaims struct {
-	Claims
 	Scopes []string `json:"scopes,omitempty"`
 }
 
@@ -44,8 +43,6 @@ func TestDecodeToken(t *testing.T) {
 
 	c2 := &customClaims{}
 	if assert.NoError(t, tok.Claims(c2, encryptionKey)) {
-		assert.Equal(t, c2.Subject, "subject")
-		assert.Equal(t, c2.Issuer, "issuer")
 		assert.Equal(t, c2.Scopes, []string{"s1", "s2"})
 	}
 }
@@ -54,24 +51,28 @@ func TestEncodeToken(t *testing.T) {
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: encryptionKey}, &jose.SignerOptions{})
 	require.NoError(t, err)
 
-	c := &customClaims{
-		Claims: Claims{
-			Subject: "subject",
-			Issuer:  "issuer",
-		},
+	c := &Claims{
+		Subject: "subject",
+		Issuer:  "issuer",
+	}
+	c2 := &customClaims{
 		Scopes: []string{"s1", "s2"},
 	}
 
-	raw, err := Signed(signer).Claims(c).CompactSerialize()
+	raw, err := Signed(signer).Claims(c).Claims(c2).CompactSerialize()
 	require.NoError(t, err)
 
 	tok, err := ParseSigned(raw)
 	require.NoError(t, err)
 
-	c2 := &customClaims{}
-	if assert.NoError(t, tok.Claims(c2, encryptionKey)) {
-		assert.Equal(t, c2.Subject, "subject")
-		assert.Equal(t, c2.Issuer, "issuer")
-		assert.Equal(t, c2.Scopes, []string{"s1", "s2"})
+	c3 := &Claims{}
+	c4 := &customClaims{}
+	if assert.NoError(t, tok.Claims(c3, encryptionKey)) {
+		assert.Equal(t, "subject", c3.Subject)
+		assert.Equal(t, "issuer", c3.Issuer)
+	}
+
+	if assert.NoError(t, tok.Claims(c4, encryptionKey)) {
+		assert.Equal(t, []string{"s1", "s2"}, c4.Scopes)
 	}
 }
