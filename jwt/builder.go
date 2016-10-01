@@ -17,117 +17,208 @@
 
 package jwt
 
-import "gopkg.in/square/go-jose.v2"
+import (
+	"encoding/json"
+	"reflect"
+
+	"github.com/fatih/structs"
+	"gopkg.in/square/go-jose.v2"
+)
 
 // Builder is a utility for making JSON Web Tokens. Calls can be chained, and
 // errors are accumulated until the final call to CompactSerialize/FullSerialize.
-type Builder struct {
-	transform  func([]byte) (serializer, payload, []jose.Header, error)
-	payload    payload
-	headers    []jose.Header
-	serializer serializer
-	err        error
-}
-
-type payload func(interface{}) ([]byte, error)
-
-type serializer interface {
-	FullSerialize() string
+type Builder interface {
+	PublicClaims(c Claims) Builder
+	PrivateClaims(i interface{}) Builder
+	// Token builds a JSONWebToken from provided data.
+	Token() (*JSONWebToken, error)
+	// FullSerialize serializes a token using the full serialization format.
+	FullSerialize() (string, error)
+	// CompactSerialize serializes a token using the compact serialization format.
 	CompactSerialize() (string, error)
 }
 
+type builder struct {
+	payload map[string]interface{}
+	err     error
+}
+
+type signedBuilder struct {
+	builder
+	sig jose.Signer
+}
+
+type encryptedBuilder struct {
+	builder
+	enc jose.Encrypter
+}
+
 // Signed creates builder for signed tokens.
-func Signed(sig jose.Signer) *Builder {
-	return &Builder{
-		transform: func(b []byte) (serializer, payload, []jose.Header, error) {
-			s, err := sig.Sign(b)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			headers := make([]jose.Header, len(s.Signatures))
-			for i, sig := range s.Signatures {
-				headers[i] = sig.Header
-			}
-			return s, s.Verify, headers, nil
-		},
+func Signed(sig jose.Signer) Builder {
+	return &signedBuilder{
+		sig: sig,
 	}
 }
 
 // Encrypted creates builder for encrypted tokens.
-func Encrypted(enc jose.Encrypter) *Builder {
-	return &Builder{
-		transform: func(b []byte) (serializer, payload, []jose.Header, error) {
-			e, err := enc.Encrypt(b)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			return e, e.Decrypt, []jose.Header{e.Header}, nil
-		},
+func Encrypted(enc jose.Encrypter) Builder {
+	return &encryptedBuilder{
+		enc: enc,
 	}
 }
 
-// Claims encodes claims into the builder.
-func (b *Builder) Claims(c interface{}) *Builder {
-	if b.transform == nil {
-		panic("Signer/Encrypter not set")
+func (b builder) PublicClaims(c Claims) builder {
+	return b.merge(structs.Map(c))
+}
+
+func (b builder) PrivateClaims(i interface{}) builder {
+	if b.err != nil {
+		return b
 	}
 
-	if b.payload != nil {
-		panic("Claims already set")
+	if v, ok := i.(map[string]interface{}); ok {
+		return b.merge(v)
 	}
 
-	raw, err := marshalClaims(c)
-	if err != nil {
-		return &Builder{
-			err: err,
+	if v := reflect.Indirect(reflect.ValueOf(i)); v.Kind() != reflect.Struct {
+		return builder{
+			err: ErrInvalidClaims,
 		}
 	}
 
-	ser, pl, headers, err := b.transform(raw)
-	return &Builder{
-		transform:  b.transform,
-		headers:    headers,
-		serializer: ser,
-		payload:    pl,
-		err:        err,
+	return b.merge(structs.Map(i))
+}
+
+func (b *builder) merge(m map[string]interface{}) builder {
+	var p map[string]interface{}
+	for k, v := range b.payload {
+		p[k] = v
+	}
+	for k, v := range m {
+		p[k] = v
+	}
+
+	return builder{
+		payload: p,
 	}
 }
 
-// Token builds a JSONWebToken from provided data.
-func (b *Builder) Token() (*JSONWebToken, error) {
+func (b *builder) Token(p func(interface{}) ([]byte, error), h []jose.Header) (*JSONWebToken, error) {
+	return &JSONWebToken{
+		payload: p,
+		Headers: h,
+	}, nil
+}
+
+func (b *signedBuilder) PublicClaims(c Claims) Builder {
+	return &signedBuilder{
+		builder: b.builder.PublicClaims(c),
+		sig:     b.sig,
+	}
+}
+
+func (b *signedBuilder) PrivateClaims(i interface{}) Builder {
+	return &signedBuilder{
+		builder: b.builder.PrivateClaims(i),
+		sig:     b.sig,
+	}
+}
+
+func (b *signedBuilder) Token() (*JSONWebToken, error) {
+	sig, err := b.sign()
+	if err != nil {
+		return nil, err
+	}
+
+	h := make([]jose.Header, len(sig.Signatures))
+	for i, v := range sig.Signatures {
+		h[i] = v.Header
+	}
+
+	return b.builder.Token(sig.Verify, h)
+}
+
+func (b *signedBuilder) CompactSerialize() (string, error) {
+	sig, err := b.sign()
+	if err != nil {
+		return "", err
+	}
+
+	return sig.CompactSerialize()
+}
+
+func (b *signedBuilder) FullSerialize() (string, error) {
+	sig, err := b.sign()
+	if err != nil {
+		return "", err
+	}
+
+	return sig.FullSerialize(), nil
+}
+
+func (b *signedBuilder) sign() (*jose.JSONWebSignature, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
 
-	if b.payload == nil {
-		return nil, ErrInvalidClaims
+	p, err := json.Marshal(b.payload)
+	if err != nil {
+		return nil, err
 	}
 
-	return &JSONWebToken{b.payload, b.headers}, nil
+	return b.sig.Sign(p)
 }
 
-// FullSerialize serializes a token using the full serialization format.
-func (b *Builder) FullSerialize() (string, error) {
-	if b.err != nil {
-		return "", b.err
+func (b *encryptedBuilder) PublicClaims(c Claims) Builder {
+	return &encryptedBuilder{
+		builder: b.builder.PublicClaims(c),
+		enc:     b.enc,
 	}
-
-	if b.serializer == nil {
-		return "", ErrInvalidClaims
-	}
-
-	return b.serializer.FullSerialize(), nil
 }
 
-// CompactSerialize serializes a token using the compact serialization format.
-func (b *Builder) CompactSerialize() (string, error) {
+func (b *encryptedBuilder) PrivateClaims(i interface{}) Builder {
+	return &encryptedBuilder{
+		builder: b.builder.PrivateClaims(i),
+		enc:     b.enc,
+	}
+}
+
+func (b *encryptedBuilder) CompactSerialize() (string, error) {
+	enc, err := b.encrypt()
+	if err != nil {
+		return "", err
+	}
+
+	return enc.CompactSerialize()
+}
+
+func (b *encryptedBuilder) FullSerialize() (string, error) {
+	enc, err := b.encrypt()
+	if err != nil {
+		return "", err
+	}
+
+	return enc.FullSerialize(), nil
+}
+
+func (b *encryptedBuilder) Token() (*JSONWebToken, error) {
+	enc, err := b.encrypt()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.builder.Token(enc.Decrypt, []jose.Header{enc.Header})
+}
+
+func (b *encryptedBuilder) encrypt() (*jose.JSONWebEncryption, error) {
 	if b.err != nil {
-		return "", b.err
+		return nil, b.err
 	}
 
-	if b.serializer == nil {
-		return "", ErrInvalidClaims
+	p, err := json.Marshal(b.payload)
+	if err != nil {
+		return nil, err
 	}
 
-	return b.serializer.CompactSerialize()
+	return b.enc.Encrypt(p)
 }

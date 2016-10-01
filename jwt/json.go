@@ -18,8 +18,6 @@
 package jwt
 
 import (
-	"math"
-	"reflect"
 	"strconv"
 	"time"
 
@@ -64,13 +62,14 @@ func (n *NumericDate) UnmarshalJSON(b []byte) error {
 
 // Time returns time.Time representation of NumericDate.
 func (n NumericDate) Time() time.Time {
-	i, f := math.Modf(float64(n))
-	return time.Unix(int64(i), int64(f*float64(time.Second)))
+	return time.Unix(int64(n), 0)
 }
 
-type audience []string
+// Audience represents the recipents that the token is intended for.
+type Audience []string
 
-func (s *audience) UnmarshalJSON(b []byte) error {
+// UnmarshalJSON reads an audience from its JSON representation.
+func (s *Audience) UnmarshalJSON(b []byte) error {
 	var v interface{}
 	if err := json.Unmarshal(b, &v); err != nil {
 		return err
@@ -91,87 +90,6 @@ func (s *audience) UnmarshalJSON(b []byte) error {
 		*s = a
 	default:
 		return ErrUnmarshalAudience
-	}
-
-	return nil
-}
-
-var claimsType = reflect.TypeOf((*Claims)(nil)).Elem()
-
-func publicClaims(cl interface{}) (*Claims, error) {
-	v := reflect.Indirect(reflect.ValueOf(cl))
-	if v.Kind() != reflect.Struct {
-		return nil, ErrInvalidClaims
-	}
-
-	f := v.FieldByName("Claims")
-	if !f.IsValid() || f.Type() != claimsType {
-		return nil, nil
-	}
-
-	c := f.Addr().Interface().(*Claims)
-	return c, nil
-}
-
-func marshalClaims(cl interface{}) ([]byte, error) {
-	switch cl := cl.(type) {
-	case *Claims:
-		return cl.marshalJSON()
-	case map[string]interface{}:
-		return json.Marshal(cl)
-	}
-
-	public, err := publicClaims(cl)
-	if err != nil {
-		return nil, err
-	}
-	// i doesn't contain nested jwt.Claims
-	if public == nil {
-		return json.Marshal(cl)
-	}
-
-	// marshal jwt.Claims
-	b1, err := public.marshalJSON()
-	if err != nil {
-		return nil, err
-	}
-
-	// marshal private claims
-	b2, err := json.Marshal(cl)
-	if err != nil {
-		return nil, err
-	}
-
-	// merge claims
-	r := make([]byte, len(b1)+len(b2)-1)
-	copy(r, b1)
-	r[len(b1)-1] = ','
-	copy(r[len(b1):], b2[1:])
-
-	return r, nil
-}
-
-func unmarshalClaims(b []byte, cl interface{}) error {
-	switch cl := cl.(type) {
-	case *Claims:
-		return cl.unmarshalJSON(b)
-	case map[string]interface{}:
-		return json.Unmarshal(b, cl)
-	}
-
-	if err := json.Unmarshal(b, cl); err != nil {
-		return err
-	}
-
-	public, err := publicClaims(cl)
-	if err != nil {
-		return err
-	}
-	// unmarshal jwt.Claims
-	if public != nil {
-		if err := public.unmarshalJSON(b); err != nil {
-			return err
-		}
 	}
 
 	return nil

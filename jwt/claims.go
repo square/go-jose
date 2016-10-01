@@ -17,67 +17,13 @@
 
 package jwt
 
-import (
-	"time"
-
-	"gopkg.in/square/go-jose.v2/json"
-)
-
 // Claims represents public claim values (as specified in RFC 7519).
 type Claims struct {
-	Issuer    string    `json:"-"`
-	Subject   string    `json:"-"`
-	Audience  []string  `json:"-"`
-	Expiry    time.Time `json:"-"`
-	NotBefore time.Time `json:"-"`
-	IssuedAt  time.Time `json:"-"`
-	ID        string    `json:"-"`
-}
-
-type rawClaims struct {
-	Iss string      `json:"iss,omitempty"`
-	Sub string      `json:"sub,omitempty"`
-	Aud audience    `json:"aud,omitempty"`
-	Exp NumericDate `json:"exp,omitempty"`
-	Nbf NumericDate `json:"nbf,omitempty"`
-	Iat NumericDate `json:"iat,omitempty"`
-	Jti string      `json:"jti,omitempty"`
-}
-
-func (c *Claims) marshalJSON() ([]byte, error) {
-	t := rawClaims{
-		Iss: c.Issuer,
-		Sub: c.Subject,
-		Aud: audience(c.Audience),
-		Exp: TimeToNumericDate(c.Expiry),
-		Nbf: TimeToNumericDate(c.NotBefore),
-		Iat: TimeToNumericDate(c.IssuedAt),
-		Jti: c.ID,
-	}
-
-	b, err := json.Marshal(t)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return b, err
-}
-
-func (c *Claims) unmarshalJSON(b []byte) error {
-	t := rawClaims{}
-
-	if err := json.Unmarshal(b, &t); err != nil {
-		return err
-	}
-
-	c.Issuer = t.Iss
-	c.Subject = t.Sub
-	c.Audience = []string(t.Aud)
-	c.Expiry = t.Exp.Time()
-	c.NotBefore = t.Nbf.Time()
-	c.IssuedAt = t.Iat.Time()
-	c.ID = t.Jti
-
-	return nil
+	Issuer    string      `json:"iss,omitempty"`
+	Subject   string      `json:"sub,omitempty"`
+	Audience  Audience    `json:"aud,omitempty"`
+	Expiry    NumericDate `json:"exp,omitempty"`
+	NotBefore NumericDate `json:"nbf,omitempty"`
+	IssuedAt  NumericDate `json:"iat,omitempty"`
+	ID        string      `json:"jti,omitempty"`
 }
