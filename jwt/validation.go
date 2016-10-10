@@ -75,11 +75,11 @@ func (c Claims) ValidateWithLeeway(e Expected, leeway time.Duration) error {
 		}
 	}
 
-	if !e.Time.IsZero() && e.Time.Add(leeway).Before(c.NotBefore) {
+	if !e.Time.IsZero() && e.Time.Add(leeway).Before(c.NotBefore.Time()) {
 		return ErrNotValidYet
 	}
 
-	if !e.Time.IsZero() && e.Time.Add(-leeway).After(c.Expiry) {
+	if !e.Time.IsZero() && e.Time.Add(-leeway).After(c.Expiry.Time()) {
 		return ErrExpired
 	}
 
