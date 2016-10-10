@@ -47,7 +47,7 @@ func TestCustomClaimsNonPointer(t *testing.T) {
 	}
 
 	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
+	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out)) {
 		assert.Equal(t, "foo", out.Subject)
 	}
 }
@@ -68,7 +68,7 @@ func TestCustomClaimsPointer(t *testing.T) {
 	}
 
 	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(out, &testPrivRSAKey1.PublicKey)) {
+	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out)) {
 		assert.Equal(t, "foo", out.Subject)
 	}
 }
@@ -80,8 +80,8 @@ func TestEncodeClaims(t *testing.T) {
 		Issuer:   "issuer",
 		Subject:  "subject",
 		Audience: Audience{"a1", "a2"},
-		IssuedAt: TimeToNumericDate(now),
-		Expiry:   TimeToNumericDate(now.Add(1 * time.Hour)),
+		IssuedAt: NewNumericDate(now),
+		Expiry:   NewNumericDate(now.Add(1 * time.Hour)),
 	}
 
 	b, err := json.Marshal(c)
@@ -96,12 +96,17 @@ func TestDecodeClaims(t *testing.T) {
 	now := time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	c := Claims{}
-	err := json.Unmarshal(s, &c)
-	assert.NoError(t, err)
+	if err := json.Unmarshal(s, &c); assert.NoError(t, err) {
+		assert.Equal(t, "issuer", c.Issuer)
+		assert.Equal(t, "subject", c.Subject)
+		assert.Equal(t, Audience{"a1", "a2"}, c.Audience)
+		assert.True(t, now.Equal(c.IssuedAt.Time()))
+		assert.True(t, now.Add(1*time.Hour).Equal(c.Expiry.Time()))
+	}
 
-	assert.Equal(t, "issuer", c.Issuer)
-	assert.Equal(t, "subject", c.Subject)
-	assert.Equal(t, Audience{"a1", "a2"}, c.Audience)
-	assert.True(t, now.Equal(c.IssuedAt.Time()))
-	assert.True(t, now.Add(1*time.Hour).Equal(c.Expiry.Time()))
+	s2 := []byte(`{"aud": "a1"}`)
+	c2 := Claims{}
+	if err := json.Unmarshal(s2, &c2); assert.NoError(t, err) {
+		assert.Equal(t, Audience{"a1"}, c2.Audience)
+	}
 }

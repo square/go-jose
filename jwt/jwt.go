@@ -29,12 +29,19 @@ type JSONWebToken struct {
 }
 
 // Claims deserializes a JSONWebToken into dest using the provided key.
-func (t *JSONWebToken) Claims(dest interface{}, key interface{}) error {
+func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
 	b, err := t.payload(key)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, &dest)
+
+	for _, d := range dest {
+		if err := json.Unmarshal(b, d); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ParseSigned parses token from JWS form.

@@ -36,13 +36,10 @@ func TestDecodeToken(t *testing.T) {
 	tok, err := ParseSigned(rawToken)
 	assert.NoError(t, err)
 	c := &Claims{}
-	if assert.NoError(t, tok.Claims(c, encryptionKey)) {
+	c2 := &customClaims{}
+	if assert.NoError(t, tok.Claims(encryptionKey, c, c2)) {
 		assert.Equal(t, c.Subject, "subject")
 		assert.Equal(t, c.Issuer, "issuer")
-	}
-
-	c2 := &customClaims{}
-	if assert.NoError(t, tok.Claims(c2, encryptionKey)) {
 		assert.Equal(t, c2.Scopes, []string{"s1", "s2"})
 	}
 }
@@ -67,12 +64,9 @@ func TestEncodeToken(t *testing.T) {
 
 	c3 := &Claims{}
 	c4 := &customClaims{}
-	if assert.NoError(t, tok.Claims(c3, encryptionKey)) {
+	if assert.NoError(t, tok.Claims(encryptionKey, c3, c4)) {
 		assert.Equal(t, "subject", c3.Subject)
 		assert.Equal(t, "issuer", c3.Issuer)
-	}
-
-	if assert.NoError(t, tok.Claims(c4, encryptionKey)) {
 		assert.Equal(t, []string{"s1", "s2"}, c4.Scopes)
 	}
 }

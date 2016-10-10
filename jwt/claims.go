@@ -39,8 +39,8 @@ type Claims struct {
 // in the serialized format, but we round to the nearest second.
 type NumericDate int64
 
-// TimeToNumericDate converts time.Time value into NumericDate.
-func TimeToNumericDate(t time.Time) NumericDate {
+// NewNumericDate constructs NumericDate from time.Time value.
+func NewNumericDate(t time.Time) NumericDate {
 	if t.IsZero() {
 		return NumericDate(0)
 	}
@@ -87,7 +87,7 @@ func (s *Audience) UnmarshalJSON(b []byte) error {
 
 	switch v := v.(type) {
 	case string:
-		*s = append(*s, v)
+		*s = []string{v}
 	case []interface{}:
 		a := make([]string, len(v))
 		for i, e := range v {

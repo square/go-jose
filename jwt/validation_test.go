@@ -62,9 +62,9 @@ func TestExpiryAndNotBefore(t *testing.T) {
 	twelveHoursAgo := now.Add(-12 * time.Hour)
 
 	c := Claims{
-		IssuedAt:  TimeToNumericDate(twelveHoursAgo),
-		NotBefore: TimeToNumericDate(twelveHoursAgo),
-		Expiry:    TimeToNumericDate(now),
+		IssuedAt:  NewNumericDate(twelveHoursAgo),
+		NotBefore: NewNumericDate(twelveHoursAgo),
+		Expiry:    NewNumericDate(now),
 	}
 
 	// expired - default leeway (1 minute)

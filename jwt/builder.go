@@ -28,6 +28,8 @@ import (
 // Builder is a utility for making JSON Web Tokens. Calls can be chained, and
 // errors are accumulated until the final call to CompactSerialize/FullSerialize.
 type Builder interface {
+	// Claims encodes claims into JWE/JWS form. Multiple calls will merge claims
+	// into single JSON object.
 	Claims(i interface{}) Builder
 	// Token builds a JSONWebToken from provided data.
 	Token() (*JSONWebToken, error)
@@ -66,32 +68,45 @@ func Encrypted(enc jose.Encrypter) Builder {
 	}
 }
 
-func (b builder) Claims(i interface{}) builder {
+func (b builder) claims(i interface{}) builder {
 	if b.err != nil {
 		return b
 	}
 
-	k := reflect.Indirect(reflect.ValueOf(i)).Kind()
-	if k != reflect.Struct && k != reflect.Map {
+	m, ok := i.(map[string]interface{})
+	switch {
+	case ok:
+		return b.merge(m)
+	case reflect.Indirect(reflect.ValueOf(i)).Kind() == reflect.Struct:
+		m, err := normalize(i)
+		if err != nil {
+			return builder{
+				err: err,
+			}
+		}
+		return b.merge(m)
+	default:
 		return builder{
 			err: ErrInvalidClaims,
 		}
 	}
+}
+
+func normalize(i interface{}) (map[string]interface{}, error) {
+	m := make(map[string]interface{})
 
 	raw, err := json.Marshal(i)
 	if err != nil {
-		return builder{
-			err: err,
-		}
+		return nil, err
 	}
-
-	m := make(map[string]interface{})
 	if err := json.Unmarshal(raw, &m); err != nil {
-		return builder{
-			err: err,
-		}
+		return nil, err
 	}
 
+	return m, nil
+}
+
+func (b *builder) merge(m map[string]interface{}) builder {
 	p := make(map[string]interface{})
 	for k, v := range b.payload {
 		p[k] = v
@@ -105,7 +120,7 @@ func (b builder) Claims(i interface{}) builder {
 	}
 }
 
-func (b *builder) Token(p func(interface{}) ([]byte, error), h []jose.Header) (*JSONWebToken, error) {
+func (b *builder) token(p func(interface{}) ([]byte, error), h []jose.Header) (*JSONWebToken, error) {
 	return &JSONWebToken{
 		payload: p,
 		Headers: h,
@@ -114,7 +129,7 @@ func (b *builder) Token(p func(interface{}) ([]byte, error), h []jose.Header) (*
 
 func (b *signedBuilder) Claims(i interface{}) Builder {
 	return &signedBuilder{
-		builder: b.builder.Claims(i),
+		builder: b.builder.claims(i),
 		sig:     b.sig,
 	}
 }
@@ -130,7 +145,7 @@ func (b *signedBuilder) Token() (*JSONWebToken, error) {
 		h[i] = v.Header
 	}
 
-	return b.builder.Token(sig.Verify, h)
+	return b.builder.token(sig.Verify, h)
 }
 
 func (b *signedBuilder) CompactSerialize() (string, error) {
@@ -166,7 +181,7 @@ func (b *signedBuilder) sign() (*jose.JSONWebSignature, error) {
 
 func (b *encryptedBuilder) Claims(i interface{}) Builder {
 	return &encryptedBuilder{
-		builder: b.builder.Claims(i),
+		builder: b.builder.claims(i),
 		enc:     b.enc,
 	}
 }
@@ -195,7 +210,7 @@ func (b *encryptedBuilder) Token() (*JSONWebToken, error) {
 		return nil, err
 	}
 
-	return b.builder.Token(enc.Decrypt, []jose.Header{enc.Header})
+	return b.builder.token(enc.Decrypt, []jose.Header{enc.Header})
 }
 
 func (b *encryptedBuilder) encrypt() (*jose.JSONWebEncryption, error) {
