@@ -70,3 +70,11 @@ func TestEncodeToken(t *testing.T) {
 		assert.Equal(t, []string{"s1", "s2"}, c4.Scopes)
 	}
 }
+
+func TestInvalidSignedTokens(t *testing.T) {
+
+}
+
+func TestInvalidEncryptedTokens(t *testing.T) {
+
+}

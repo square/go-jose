@@ -24,64 +24,18 @@ import (
 	"gopkg.in/square/go-jose.v2/json"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/square/go-jose.v2"
 )
-
-type testClaims struct {
-	Subject string `json:"sub"`
-}
-
-func TestCustomClaimsNonPointer(t *testing.T) {
-	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: testPrivRSAKey1}
-	signer, err := jose.NewSigner(signingKey, nil)
-	if err != nil {
-		t.Fatalf("error generating token: %v", err)
-	}
-	jwt, err := Signed(signer).Claims(testClaims{"foo"}).CompactSerialize()
-	if err != nil {
-		t.Fatalf("error creating jwt: %v", err)
-	}
-	parsed, err := ParseSigned(jwt)
-	if err != nil {
-		t.Fatalf("error parsing jwt: %v", err)
-	}
-
-	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out)) {
-		assert.Equal(t, "foo", out.Subject)
-	}
-}
-
-func TestCustomClaimsPointer(t *testing.T) {
-	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: testPrivRSAKey1}
-	signer, err := jose.NewSigner(signingKey, nil)
-	if err != nil {
-		t.Fatalf("error generating token: %v", err)
-	}
-	jwt, err := Signed(signer).Claims(&testClaims{"foo"}).CompactSerialize()
-	if err != nil {
-		t.Fatalf("error creating jwt: %v", err)
-	}
-	parsed, err := ParseSigned(jwt)
-	if err != nil {
-		t.Fatalf("error parsing jwt: %v", err)
-	}
-
-	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out)) {
-		assert.Equal(t, "foo", out.Subject)
-	}
-}
 
 func TestEncodeClaims(t *testing.T) {
 	now := time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	c := Claims{
-		Issuer:   "issuer",
-		Subject:  "subject",
-		Audience: Audience{"a1", "a2"},
-		IssuedAt: NewNumericDate(now),
-		Expiry:   NewNumericDate(now.Add(1 * time.Hour)),
+		Issuer:    "issuer",
+		Subject:   "subject",
+		Audience:  Audience{"a1", "a2"},
+		NotBefore: NewNumericDate(time.Time{}),
+		IssuedAt:  NewNumericDate(now),
+		Expiry:    NewNumericDate(now.Add(1 * time.Hour)),
 	}
 
 	b, err := json.Marshal(c)
@@ -108,5 +62,19 @@ func TestDecodeClaims(t *testing.T) {
 	c2 := Claims{}
 	if err := json.Unmarshal(s2, &c2); assert.NoError(t, err) {
 		assert.Equal(t, Audience{"a1"}, c2.Audience)
+	}
+
+	invalid := []struct {
+		Raw string
+		Err error
+	}{
+		{`{"aud": 5}`, ErrUnmarshalAudience},
+		{`{"aud": ["foo", 5, "bar"]}`, ErrUnmarshalAudience},
+		{`{"exp": "invalid"}`, ErrUnmarshalNumericDate},
+	}
+
+	for _, v := range invalid {
+		c := Claims{}
+		assert.Equal(t, v.Err, json.Unmarshal([]byte(v.Raw), &c))
 	}
 }
