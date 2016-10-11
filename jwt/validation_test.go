@@ -32,28 +32,30 @@ func TestFieldsMatch(t *testing.T) {
 		ID:       "42",
 	}
 
-	assert.NoError(t, c.Validate(Expected{Issuer: "issuer"}))
-	err := c.Validate(Expected{Issuer: "invalid-issuer"})
-	if assert.Error(t, err) {
-		assert.Equal(t, err, ErrInvalidIssuer)
+	valid := []Expected{
+		{Issuer: "issuer"},
+		{Subject: "subject"},
+		{Audience: Audience{"a1", "a2"}},
+		{ID: "42"},
 	}
 
-	assert.NoError(t, c.Validate(Expected{Subject: "subject"}))
-	err = c.Validate(Expected{Subject: "invalid-subject"})
-	if assert.Error(t, err) {
-		assert.Equal(t, err, ErrInvalidSubject)
+	for _, v := range valid {
+		assert.NoError(t, c.Validate(v))
 	}
 
-	assert.NoError(t, c.Validate(Expected{Audience: []string{"a1", "a2"}}))
-	err = c.Validate(Expected{Audience: []string{"invalid-audience"}})
-	if assert.Error(t, err) {
-		assert.Equal(t, err, ErrInvalidAudience)
+	invalid := []struct {
+		Expected Expected
+		Error    error
+	}{
+		{Expected{Issuer: "invalid-issuer"}, ErrInvalidIssuer},
+		{Expected{Subject: "invalid-subject"}, ErrInvalidSubject},
+		{Expected{Audience: Audience{"a1", "invalid-audience"}}, ErrInvalidAudience},
+		{Expected{Audience: Audience{"invalid-audience"}}, ErrInvalidAudience},
+		{Expected{ID: "invalid-id"}, ErrInvalidID},
 	}
 
-	assert.NoError(t, c.Validate(Expected{ID: "42"}))
-	err = c.Validate(Expected{ID: "invalid-id"})
-	if assert.Error(t, err) {
-		assert.Equal(t, err, ErrInvalidID)
+	for _, v := range invalid {
+		assert.Equal(t, v.Error, c.Validate(v.Expected))
 	}
 }
 
