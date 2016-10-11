@@ -26,7 +26,11 @@ import (
 )
 
 var encryptionKey = []byte("secret")
-var rawToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0.Y6_PfQHrzRJ_Vlxij5VI07-pgDIuJNN3Z_g5sSaGQ0c`
+var (
+	rawToken                  = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0.Y6_PfQHrzRJ_Vlxij5VI07-pgDIuJNN3Z_g5sSaGQ0c`
+	invalidPayloadSignedToken = `eyJhbGciOiJIUzI1NiJ9.aW52YWxpZC1wYXlsb2Fk.ScBKKm18jcaMLGYDNRUqB5gVMRZl4DM6dh3ShcxeNgY`
+	invalidPartsSignedToken   = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0`
+)
 
 type customClaims struct {
 	Scopes []string `json:"scopes,omitempty"`
@@ -42,6 +46,17 @@ func TestDecodeToken(t *testing.T) {
 		assert.Equal(t, c.Issuer, "issuer")
 		assert.Equal(t, c2.Scopes, []string{"s1", "s2"})
 	}
+
+	assert.EqualError(t, tok.Claims([]byte("invalid-secret")), "square/go-jose: error in cryptographic primitive")
+
+	tok2, err := ParseSigned(invalidPayloadSignedToken)
+	if assert.NoError(t, err, "Error parsing token.") {
+		out := make(map[string]interface{})
+		assert.Error(t, tok2.Claims(encryptionKey, &out), "Expected unmarshaling claims to fail.")
+	}
+
+	_, err = ParseSigned(invalidPartsSignedToken)
+	assert.EqualError(t, err, "square/go-jose: compact JWS format must have three parts")
 }
 
 func TestEncodeToken(t *testing.T) {
@@ -69,12 +84,4 @@ func TestEncodeToken(t *testing.T) {
 		assert.Equal(t, "issuer", c3.Issuer)
 		assert.Equal(t, []string{"s1", "s2"}, c4.Scopes)
 	}
-}
-
-func TestInvalidSignedTokens(t *testing.T) {
-
-}
-
-func TestInvalidEncryptedTokens(t *testing.T) {
-
 }

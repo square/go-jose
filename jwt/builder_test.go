@@ -24,6 +24,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"sort"
@@ -60,7 +61,7 @@ func TestBuilderCustomClaimsNonPointer(t *testing.T) {
 	require.NoError(t, err, "Error parsing JWT.")
 
 	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out)) {
+	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out), "Error unmarshaling claims.") {
 		assert.Equal(t, "foo", out.Subject)
 	}
 }
@@ -77,7 +78,7 @@ func TestBuilderCustomClaimsPointer(t *testing.T) {
 	require.NoError(t, err, "Error parsing JWT.")
 
 	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out)) {
+	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, out), "Error unmarshaling claims.") {
 		assert.Equal(t, "foo", out.Subject)
 	}
 }
@@ -101,7 +102,7 @@ func TestBuilderMergeClaims(t *testing.T) {
 	require.NoError(t, err, "Error parsing JWT.")
 
 	out := make(map[string]interface{})
-	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, &out)) {
+	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, &out), "Error unmarshaling claims.") {
 		assert.Equal(t, map[string]interface{}{
 			"sub":    "42",
 			"Scopes": []interface{}{"read:users"},
@@ -120,6 +121,9 @@ func TestSignedFullSerializeAndToken(t *testing.T) {
 	signer, err := jose.NewSigner(signingKey, nil)
 	require.NoError(t, err, "Error creating signer.")
 
+	huj, err := signer.Sign([]byte("invalid-payload"))
+	fmt.Println(huj.CompactSerialize())
+
 	b := Signed(signer).Claims(&testClaims{"foo"})
 
 	jwt, err := b.FullSerialize()
@@ -127,7 +131,7 @@ func TestSignedFullSerializeAndToken(t *testing.T) {
 	parsed, err := ParseSigned(jwt)
 	require.NoError(t, err, "Error parsing JWT.")
 	out := &testClaims{}
-	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, &out)) {
+	if assert.NoError(t, parsed.Claims(&testPrivRSAKey1.PublicKey, &out), "Error unmarshaling claims.") {
 		assert.Equal(t, &testClaims{
 			Subject: "foo",
 		}, out)
@@ -136,7 +140,7 @@ func TestSignedFullSerializeAndToken(t *testing.T) {
 	jwt2, err := b.Token()
 	require.NoError(t, err, "Error creating JWT.")
 	out2 := &testClaims{}
-	if assert.NoError(t, jwt2.Claims(&testPrivRSAKey1.PublicKey, &out2)) {
+	if assert.NoError(t, jwt2.Claims(&testPrivRSAKey1.PublicKey, &out2), "Error unmarshaling claims.") {
 		assert.Equal(t, &testClaims{
 			Subject: "foo",
 		}, out2)
