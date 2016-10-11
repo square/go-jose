@@ -21,8 +21,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/square/go-jose.v2"
 )
 
 var (
@@ -79,31 +77,4 @@ func TestDecodeToken(t *testing.T) {
 
 	_, err = ParseEncrypted(invalidPartsEncryptedToken)
 	assert.EqualError(t, err, "square/go-jose: compact JWE format must have five parts")
-}
-
-func TestEncodeToken(t *testing.T) {
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: sharedKey}, &jose.SignerOptions{})
-	require.NoError(t, err)
-
-	c := &Claims{
-		Subject: "subject",
-		Issuer:  "issuer",
-	}
-	c2 := &customClaims{
-		Scopes: []string{"s1", "s2"},
-	}
-
-	raw, err := Signed(signer).Claims(c).Claims(c2).CompactSerialize()
-	require.NoError(t, err)
-
-	tok, err := ParseSigned(raw)
-	require.NoError(t, err)
-
-	c3 := &Claims{}
-	c4 := &customClaims{}
-	if assert.NoError(t, tok.Claims(sharedKey, c3, c4)) {
-		assert.Equal(t, "subject", c3.Subject)
-		assert.Equal(t, "issuer", c3.Issuer)
-		assert.Equal(t, []string{"s1", "s2"}, c4.Scopes)
-	}
 }
