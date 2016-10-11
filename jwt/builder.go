@@ -18,7 +18,6 @@
 package jwt
 
 import (
-	"fmt"
 	"reflect"
 
 	"gopkg.in/square/go-jose.v2/json"
@@ -115,8 +114,6 @@ func (b *builder) merge(m map[string]interface{}) builder {
 	for k, v := range m {
 		p[k] = v
 	}
-
-	fmt.Println(p)
 
 	return builder{
 		payload: p,

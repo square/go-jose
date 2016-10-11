@@ -25,11 +25,15 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-var encryptionKey = []byte("secret")
 var (
-	rawToken                  = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0.Y6_PfQHrzRJ_Vlxij5VI07-pgDIuJNN3Z_g5sSaGQ0c`
-	invalidPayloadSignedToken = `eyJhbGciOiJIUzI1NiJ9.aW52YWxpZC1wYXlsb2Fk.ScBKKm18jcaMLGYDNRUqB5gVMRZl4DM6dh3ShcxeNgY`
-	invalidPartsSignedToken   = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0`
+	sharedKey                    = []byte("secret")
+	sharedEncryptionKey          = []byte("itsa16bytesecret")
+	signedToken                  = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0.Y6_PfQHrzRJ_Vlxij5VI07-pgDIuJNN3Z_g5sSaGQ0c`
+	invalidPayloadSignedToken    = `eyJhbGciOiJIUzI1NiJ9.aW52YWxpZC1wYXlsb2Fk.ScBKKm18jcaMLGYDNRUqB5gVMRZl4DM6dh3ShcxeNgY`
+	invalidPartsSignedToken      = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdWJqZWN0IiwiaXNzIjoiaXNzdWVyIiwic2NvcGVzIjpbInMxIiwiczIiXX0`
+	encryptedToken               = `eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4R0NNIn0..NZrU98U4QNO0y-u6.HSq5CvlmkUT1BPqLGZ4.1-zuiZ4RbHrTTUoA8Dvfhg`
+	invalidPayloadEncryptedToken = `eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4R0NNIn0..T4jCS4Yyw1GCH0aW.y4gFaMITdBs_QZM8RKrL.6MPyk1cMVaOJFoNGlEuaRQ`
+	invalidPartsEncryptedToken   = `eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4R0NNIn0..NZrU98U4QNO0y-u6.HSq5CvlmkUT1BPqLGZ4`
 )
 
 type customClaims struct {
@@ -37,30 +41,48 @@ type customClaims struct {
 }
 
 func TestDecodeToken(t *testing.T) {
-	tok, err := ParseSigned(rawToken)
-	assert.NoError(t, err)
-	c := &Claims{}
-	c2 := &customClaims{}
-	if assert.NoError(t, tok.Claims(encryptionKey, c, c2)) {
-		assert.Equal(t, c.Subject, "subject")
-		assert.Equal(t, c.Issuer, "issuer")
-		assert.Equal(t, c2.Scopes, []string{"s1", "s2"})
+	tok, err := ParseSigned(signedToken)
+	if assert.NoError(t, err, "Error parsing signed token.") {
+		c := &Claims{}
+		c2 := &customClaims{}
+		if assert.NoError(t, tok.Claims(sharedKey, c, c2)) {
+			assert.Equal(t, "subject", c.Subject)
+			assert.Equal(t, "issuer", c.Issuer)
+			assert.Equal(t, []string{"s1", "s2"}, c2.Scopes)
+		}
 	}
 
 	assert.EqualError(t, tok.Claims([]byte("invalid-secret")), "square/go-jose: error in cryptographic primitive")
 
 	tok2, err := ParseSigned(invalidPayloadSignedToken)
-	if assert.NoError(t, err, "Error parsing token.") {
-		out := make(map[string]interface{})
-		assert.Error(t, tok2.Claims(encryptionKey, &out), "Expected unmarshaling claims to fail.")
+	if assert.NoError(t, err, "Error parsing signed token.") {
+		assert.Error(t, tok2.Claims(sharedKey, &Claims{}), "Expected unmarshaling claims to fail.")
 	}
 
 	_, err = ParseSigned(invalidPartsSignedToken)
 	assert.EqualError(t, err, "square/go-jose: compact JWS format must have three parts")
+
+	tok3, err := ParseEncrypted(encryptedToken)
+	if assert.NoError(t, err, "Error parsing encrypted token.") {
+		c := &Claims{}
+		if assert.NoError(t, tok3.Claims(sharedEncryptionKey, c)) {
+			assert.Equal(t, "foo", c.Subject)
+		}
+	}
+
+	assert.EqualError(t, tok3.Claims([]byte("invalid-secret-key")), "square/go-jose: error in cryptographic primitive")
+
+	tok4, err := ParseEncrypted(invalidPayloadEncryptedToken)
+	if assert.NoError(t, err, "Error parsing encrypted token.") {
+		assert.Error(t, tok4.Claims(sharedEncryptionKey, &Claims{}))
+	}
+
+	_, err = ParseEncrypted(invalidPartsEncryptedToken)
+	assert.EqualError(t, err, "square/go-jose: compact JWE format must have five parts")
 }
 
 func TestEncodeToken(t *testing.T) {
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: encryptionKey}, &jose.SignerOptions{})
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: sharedKey}, &jose.SignerOptions{})
 	require.NoError(t, err)
 
 	c := &Claims{
@@ -79,7 +101,7 @@ func TestEncodeToken(t *testing.T) {
 
 	c3 := &Claims{}
 	c4 := &customClaims{}
-	if assert.NoError(t, tok.Claims(encryptionKey, c3, c4)) {
+	if assert.NoError(t, tok.Claims(sharedKey, c3, c4)) {
 		assert.Equal(t, "subject", c3.Subject)
 		assert.Equal(t, "issuer", c3.Issuer)
 		assert.Equal(t, []string{"s1", "s2"}, c4.Scopes)

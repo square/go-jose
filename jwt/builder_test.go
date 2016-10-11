@@ -24,7 +24,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
 	"sort"
@@ -120,9 +119,6 @@ func TestSignedFullSerializeAndToken(t *testing.T) {
 	signingKey := jose.SigningKey{Algorithm: jose.RS256, Key: testPrivRSAKey1}
 	signer, err := jose.NewSigner(signingKey, nil)
 	require.NoError(t, err, "Error creating signer.")
-
-	huj, err := signer.Sign([]byte("invalid-payload"))
-	fmt.Println(huj.CompactSerialize())
 
 	b := Signed(signer).Claims(&testClaims{"foo"})
 
