@@ -104,3 +104,12 @@ func (s *Audience) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
+
+func (s Audience) Contains(v string) bool {
+	for _, a := range s {
+		if a == v {
+			return true
+		}
+	}
+	return false
+}
