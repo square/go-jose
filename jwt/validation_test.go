@@ -36,6 +36,7 @@ func TestFieldsMatch(t *testing.T) {
 		{Issuer: "issuer"},
 		{Subject: "subject"},
 		{Audience: Audience{"a1", "a2"}},
+		{Audience: Audience{"a2", "a1"}},
 		{ID: "42"},
 	}
 
@@ -49,6 +50,7 @@ func TestFieldsMatch(t *testing.T) {
 	}{
 		{Expected{Issuer: "invalid-issuer"}, ErrInvalidIssuer},
 		{Expected{Subject: "invalid-subject"}, ErrInvalidSubject},
+		{Expected{Audience: Audience{"a1"}}, ErrInvalidAudience},
 		{Expected{Audience: Audience{"a1", "invalid-audience"}}, ErrInvalidAudience},
 		{Expected{Audience: Audience{"invalid-audience"}}, ErrInvalidAudience},
 		{Expected{ID: "invalid-id"}, ErrInvalidID},
