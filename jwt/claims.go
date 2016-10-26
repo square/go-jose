@@ -32,6 +32,7 @@ type Claims struct {
 	NotBefore NumericDate `json:"nbf,omitempty"`
 	IssuedAt  NumericDate `json:"iat,omitempty"`
 	ID        string      `json:"jti,omitempty"`
+	Confirm   interface{} `json:"cnf,omitempty"`
 }
 
 // NumericDate represents date and time as the number of seconds since the
