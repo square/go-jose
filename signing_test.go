@@ -366,7 +366,7 @@ func TestSignerKid(t *testing.T) {
 
 	signer, err := NewSigner(SigningKey{ES256, &jwk}, nil)
 	if err != nil {
-		t.Error("problem creating signer", err)
+		t.Error("problem creating signer with *JSONWebKey", err)
 	}
 	signed, err := signer.Sign(payload)
 
@@ -379,6 +379,11 @@ func TestSignerKid(t *testing.T) {
 
 	if parsed.Signatures[0].Header.KeyID != kid {
 		t.Error("KeyID did not survive trip")
+	}
+
+	signer, err = NewSigner(SigningKey{ES256, jwk}, nil)
+	if err != nil {
+		t.Error("problem creating signer with JSONWebKey", err)
 	}
 }
 
