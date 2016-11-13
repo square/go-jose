@@ -81,7 +81,6 @@ func ParseSigned(s string) (*JSONWebToken, error) {
 	}
 
 	return &JSONWebToken{
-		err:     nil,
 		payload: sig.Verify,
 		Headers: headers,
 	}, nil
@@ -95,7 +94,6 @@ func ParseEncrypted(s string) (*JSONWebToken, error) {
 	}
 
 	return &JSONWebToken{
-		err:     nil,
 		payload: enc.Decrypt,
 		Headers: []jose.Header{enc.Header},
 	}, nil
