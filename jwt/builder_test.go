@@ -179,6 +179,54 @@ func TestEncryptedFullSerializeAndToken(t *testing.T) {
 	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
 }
 
+func TestBuilderSignedAndEncrypted(t *testing.T) {
+	recipient := jose.Recipient{
+		Algorithm: jose.RSA1_5,
+		Key:       testPrivRSAKey1.Public(),
+	}
+	encrypter, err := jose.NewEncrypter(jose.A128CBC_HS256, recipient, &jose.EncrypterOptions{
+		ContentType: "JWT",
+	})
+	require.NoError(t, err, "Error creating encrypter.")
+
+	jwt, err := SignedAndEncrypted(rsaSigner, encrypter).Claims(&testClaims{"foo"}).Token()
+	require.NoError(t, err, "Error marshaling signed-then-encrypted token.")
+	out := &testClaims{}
+	if assert.NoError(t, jwt.Decrypt(testPrivRSAKey1).Claims(&testPrivRSAKey1.PublicKey, out)) {
+		assert.Equal(t, &testClaims{"foo"}, out)
+	}
+
+	b := SignedAndEncrypted(rsaSigner, encrypter).Claims(&testClaims{"foo"})
+	tok1, err := b.CompactSerialize()
+	if assert.NoError(t, err) {
+		out := &testClaims{}
+		jwt, err := ParseSignedAndEncrypted(tok1)
+		if assert.NoError(t, err) && assert.NoError(t, jwt.Decrypt(testPrivRSAKey1).Claims(&testPrivRSAKey1.PublicKey, out)) {
+			assert.Equal(t, &testClaims{"foo"}, out)
+		}
+	}
+
+	tok2, err := b.FullSerialize()
+	if assert.NoError(t, err) {
+		out := &testClaims{}
+		jwt, err := ParseSignedAndEncrypted(tok2)
+		if assert.NoError(t, err) && assert.NoError(t, jwt.Decrypt(testPrivRSAKey1).Claims(&testPrivRSAKey1.PublicKey, out)) {
+			assert.Equal(t, &testClaims{"foo"}, out)
+		}
+	}
+
+	b2 := SignedAndEncrypted(rsaSigner, encrypter).Claims(&invalidMarshalClaims{})
+	_, err = b2.CompactSerialize()
+	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	_, err = b2.FullSerialize()
+	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+
+	encrypter2, err := jose.NewEncrypter(jose.A128CBC_HS256, recipient, nil)
+	require.NoError(t, err, "Error creating encrypter.")
+	_, err = SignedAndEncrypted(rsaSigner, encrypter2).CompactSerialize()
+	assert.EqualError(t, err, "square/go-jose/jwt: expected content type to be JWT (cty header)")
+}
+
 func TestBuilderHeadersSigner(t *testing.T) {
 	tests := []struct {
 		Keys   []*rsa.PrivateKey
