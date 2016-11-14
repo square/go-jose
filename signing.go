@@ -105,6 +105,8 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 		return &symmetricMac{
 			key: verificationKey,
 		}, nil
+	case JSONWebKey:
+		return newVerifier(verificationKey.key)
 	case *JSONWebKey:
 		return newVerifier(verificationKey.Key)
 	default:
