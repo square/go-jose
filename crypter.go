@@ -28,7 +28,7 @@ import (
 type Encrypter interface {
 	Encrypt(plaintext []byte) (*JSONWebEncryption, error)
 	EncryptWithAuthData(plaintext []byte, aad []byte) (*JSONWebEncryption, error)
-	Options() *EncrypterOptions
+	Options() EncrypterOptions
 }
 
 // A generic content cipher
@@ -314,8 +314,8 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 	return obj, nil
 }
 
-func (ctx *genericEncrypter) Options() *EncrypterOptions {
-	return &EncrypterOptions{
+func (ctx *genericEncrypter) Options() EncrypterOptions {
+	return EncrypterOptions{
 		Compression: ctx.compressionAlg,
 		ContentType: ctx.contentType,
 	}
