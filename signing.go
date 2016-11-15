@@ -106,7 +106,7 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 			key: verificationKey,
 		}, nil
 	case JSONWebKey:
-		return newVerifier(verificationKey.key)
+		return newVerifier(verificationKey.Key)
 	case *JSONWebKey:
 		return newVerifier(verificationKey.Key)
 	default:
