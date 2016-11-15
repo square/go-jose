@@ -71,8 +71,13 @@ func ExampleParseSignedAndEncrypted() {
 		panic(err)
 	}
 
+	nested, err := tok.Decrypt(sharedEncryptionKey)
+	if err != nil {
+		panic(err)
+	}
+
 	out := jwt.Claims{}
-	if err := tok.Decrypt(sharedEncryptionKey).Claims(&rsaPrivKey.PublicKey, &out); err != nil {
+	if err := nested.Claims(&rsaPrivKey.PublicKey, &out); err != nil {
 		panic(err)
 	}
 

@@ -25,7 +25,6 @@ import (
 
 // JSONWebToken represents a JSON Web Token (as specified in RFC7519).
 type JSONWebToken struct {
-	err     error
 	payload func(k interface{}) ([]byte, error)
 	Headers []jose.Header
 }
@@ -37,10 +36,6 @@ type NestedJSONWebToken struct {
 
 // Claims deserializes a JSONWebToken into dest using the provided key.
 func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
-	if t.err != nil {
-		return t.err
-	}
-
 	b, err := t.payload(key)
 	if err != nil {
 		return err
@@ -55,18 +50,18 @@ func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
 	return nil
 }
 
-func (t *NestedJSONWebToken) Decrypt(decryptionKey interface{}) *JSONWebToken {
+func (t *NestedJSONWebToken) Decrypt(decryptionKey interface{}) (*JSONWebToken, error) {
 	b, err := t.enc.Decrypt(decryptionKey)
 	if err != nil {
-		return &JSONWebToken{err: err}
+		return nil, err
 	}
 
 	sig, err := ParseSigned(string(b))
 	if err != nil {
-		return &JSONWebToken{err: err}
+		return nil, err
 	}
 
-	return sig
+	return sig, nil
 }
 
 // ParseSigned parses token from JWS form.

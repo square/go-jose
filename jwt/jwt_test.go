@@ -107,16 +107,18 @@ func TestDecodeToken(t *testing.T) {
 	tok7, err := ParseSignedAndEncrypted(signedAndEncryptedToken)
 	if assert.NoError(t, err, "Error parsing signed-then-encrypted token.") {
 		c := make(map[string]interface{})
-		if assert.NoError(t, tok7.Decrypt(testPrivRSAKey1).Claims(testPrivRSAKey1.Public(), &c)) {
+		if nested, err := tok7.Decrypt(testPrivRSAKey1); assert.NoError(t, err) {
+			assert.NoError(t, nested.Claims(testPrivRSAKey1.Public(), &c))
 			assert.Equal(t, map[string]interface{}{
 				"sub":    "subject",
 				"iss":    "issuer",
 				"scopes": []interface{}{"s1", "s2"},
 			}, c)
+			assert.EqualError(t, nested.Claims(testPrivRSAKey2.Public()), "square/go-jose: error in cryptographic primitive")
 		}
 	}
-	assert.EqualError(t, tok7.Decrypt(testPrivRSAKey1).Claims(testPrivRSAKey2.Public()), "square/go-jose: error in cryptographic primitive")
-	assert.EqualError(t, tok7.Decrypt(testPrivRSAKey2).Claims(testPrivRSAKey1.Public()), "square/go-jose: error in cryptographic primitive")
+	_, err = tok7.Decrypt(testPrivRSAKey2)
+	assert.EqualError(t, err, "square/go-jose: error in cryptographic primitive")
 
 	_, err = ParseSignedAndEncrypted(invalidSignedAndEncryptedToken)
 	assert.EqualError(t, err, "square/go-jose/jwt: expected content type to be JWT (cty header)")

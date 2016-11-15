@@ -189,29 +189,36 @@ func TestBuilderSignedAndEncrypted(t *testing.T) {
 	})
 	require.NoError(t, err, "Error creating encrypter.")
 
-	jwt, err := SignedAndEncrypted(rsaSigner, encrypter).Claims(&testClaims{"foo"}).Token()
+	jwt1, err := SignedAndEncrypted(rsaSigner, encrypter).Claims(&testClaims{"foo"}).Token()
 	require.NoError(t, err, "Error marshaling signed-then-encrypted token.")
-	out := &testClaims{}
-	if assert.NoError(t, jwt.Decrypt(testPrivRSAKey1).Claims(&testPrivRSAKey1.PublicKey, out)) {
+	if nested, err := jwt1.Decrypt(testPrivRSAKey1); assert.NoError(t, err, "Error decrypting signed-then-encrypted token.") {
+		out := &testClaims{}
+		assert.NoError(t, nested.Claims(&testPrivRSAKey1.PublicKey, out))
 		assert.Equal(t, &testClaims{"foo"}, out)
 	}
 
 	b := SignedAndEncrypted(rsaSigner, encrypter).Claims(&testClaims{"foo"})
 	tok1, err := b.CompactSerialize()
 	if assert.NoError(t, err) {
-		out := &testClaims{}
 		jwt, err := ParseSignedAndEncrypted(tok1)
-		if assert.NoError(t, err) && assert.NoError(t, jwt.Decrypt(testPrivRSAKey1).Claims(&testPrivRSAKey1.PublicKey, out)) {
-			assert.Equal(t, &testClaims{"foo"}, out)
+		if assert.NoError(t, err, "Error parsing signed-then-encrypted compact token.") {
+			if nested, err := jwt.Decrypt(testPrivRSAKey1); assert.NoError(t, err) {
+				out := &testClaims{}
+				assert.NoError(t, nested.Claims(&testPrivRSAKey1.PublicKey, out))
+				assert.Equal(t, &testClaims{"foo"}, out)
+			}
 		}
 	}
 
 	tok2, err := b.FullSerialize()
 	if assert.NoError(t, err) {
-		out := &testClaims{}
 		jwt, err := ParseSignedAndEncrypted(tok2)
-		if assert.NoError(t, err) && assert.NoError(t, jwt.Decrypt(testPrivRSAKey1).Claims(&testPrivRSAKey1.PublicKey, out)) {
-			assert.Equal(t, &testClaims{"foo"}, out)
+		if assert.NoError(t, err, "Error parsing signed-then-encrypted full token.") {
+			if nested, err := jwt.Decrypt(testPrivRSAKey1); assert.NoError(t, err) {
+				out := &testClaims{}
+				assert.NoError(t, nested.Claims(&testPrivRSAKey1.PublicKey, out))
+				assert.Equal(t, &testClaims{"foo"}, out)
+			}
 		}
 	}
 
