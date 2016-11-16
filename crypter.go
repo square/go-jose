@@ -98,9 +98,10 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 	var keyID string
 	var rawKey interface{}
 	switch encryptionKey := rcpt.Key.(type) {
+	case JSONWebKey:
+		keyID, rawKey = encryptionKey.KeyID, encryptionKey.Key
 	case *JSONWebKey:
-		keyID = encryptionKey.KeyID
-		rawKey = encryptionKey.Key
+		keyID, rawKey = encryptionKey.KeyID, encryptionKey.Key
 	default:
 		rawKey = encryptionKey
 	}
@@ -234,6 +235,8 @@ func newDecrypter(decryptionKey interface{}) (keyDecrypter, error) {
 		return &symmetricKeyCipher{
 			key: decryptionKey,
 		}, nil
+	case JSONWebKey:
+		return newDecrypter(decryptionKey.Key)
 	case *JSONWebKey:
 		return newDecrypter(decryptionKey.Key)
 	default:

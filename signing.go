@@ -105,6 +105,8 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 		return &symmetricMac{
 			key: verificationKey,
 		}, nil
+	case JSONWebKey:
+		return newVerifier(verificationKey.Key)
 	case *JSONWebKey:
 		return newVerifier(verificationKey.Key)
 	default:
@@ -130,16 +132,22 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipient
 		return newECDSASigner(alg, signingKey)
 	case []byte:
 		return newSymmetricSigner(alg, signingKey)
+	case JSONWebKey:
+		return newJWKSigner(alg, signingKey)
 	case *JSONWebKey:
-		recipient, err := makeJWSRecipient(alg, signingKey.Key)
-		if err != nil {
-			return recipientSigInfo{}, err
-		}
-		recipient.publicKey.KeyID = signingKey.KeyID
-		return recipient, nil
+		return newJWKSigner(alg, *signingKey)
 	default:
 		return recipientSigInfo{}, ErrUnsupportedKeyType
 	}
+}
+
+func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey) (recipientSigInfo, error) {
+	recipient, err := makeJWSRecipient(alg, signingKey.Key)
+	if err != nil {
+		return recipientSigInfo{}, err
+	}
+	recipient.publicKey.KeyID = signingKey.KeyID
+	return recipient, nil
 }
 
 func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
