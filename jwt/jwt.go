@@ -20,11 +20,17 @@ package jwt
 import (
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/json"
+	"strings"
 )
 
 // JSONWebToken represents a JSON Web Token (as specified in RFC7519).
 type JSONWebToken struct {
 	payload func(k interface{}) ([]byte, error)
+	Headers []jose.Header
+}
+
+type NestedJSONWebToken struct {
+	enc     *jose.JSONWebEncryption
 	Headers []jose.Header
 }
 
@@ -44,6 +50,20 @@ func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
 	return nil
 }
 
+func (t *NestedJSONWebToken) Decrypt(decryptionKey interface{}) (*JSONWebToken, error) {
+	b, err := t.enc.Decrypt(decryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := ParseSigned(string(b))
+	if err != nil {
+		return nil, err
+	}
+
+	return sig, nil
+}
+
 // ParseSigned parses token from JWS form.
 func ParseSigned(s string) (*JSONWebToken, error) {
 	sig, err := jose.ParseSigned(s)
@@ -55,7 +75,10 @@ func ParseSigned(s string) (*JSONWebToken, error) {
 		headers[i] = signature.Header
 	}
 
-	return &JSONWebToken{sig.Verify, headers}, nil
+	return &JSONWebToken{
+		payload: sig.Verify,
+		Headers: headers,
+	}, nil
 }
 
 // ParseEncrypted parses token from JWE form.
@@ -65,5 +88,25 @@ func ParseEncrypted(s string) (*JSONWebToken, error) {
 		return nil, err
 	}
 
-	return &JSONWebToken{enc.Decrypt, []jose.Header{enc.Header}}, nil
+	return &JSONWebToken{
+		payload: enc.Decrypt,
+		Headers: []jose.Header{enc.Header},
+	}, nil
+}
+
+// ParseSignedAndEncrypted parses signed-then-encrypted token from JWE form.
+func ParseSignedAndEncrypted(s string) (*NestedJSONWebToken, error) {
+	enc, err := jose.ParseEncrypted(s)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.ToUpper(enc.Header.ContentType) != "JWT" {
+		return nil, ErrInvalidContentType
+	}
+
+	return &NestedJSONWebToken{
+		enc:     enc,
+		Headers: []jose.Header{enc.Header},
+	}, nil
 }

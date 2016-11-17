@@ -34,6 +34,9 @@ type ContentEncryption string
 // CompressionAlgorithm represents an algorithm used for plaintext compression.
 type CompressionAlgorithm string
 
+// ContentType represents type of the contained data.
+type ContentType string
+
 var (
 	// ErrCryptoFailure represents an error in cryptographic primitive. This
 	// occurs when, for example, a message had an invalid authentication tag or
@@ -128,23 +131,26 @@ type rawHeader struct {
 	Jwk   *JSONWebKey          `json:"jwk,omitempty"`
 	Kid   string               `json:"kid,omitempty"`
 	Nonce string               `json:"nonce,omitempty"`
+	Cty   string               `json:"cty,omitempty"`
 }
 
 // Header represents the read-only JOSE header for JWE/JWS objects.
 type Header struct {
-	KeyID      string
-	JSONWebKey *JSONWebKey
-	Algorithm  string
-	Nonce      string
+	KeyID       string
+	JSONWebKey  *JSONWebKey
+	Algorithm   string
+	Nonce       string
+	ContentType string
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
 func (parsed rawHeader) sanitized() Header {
 	return Header{
-		KeyID:      parsed.Kid,
-		JSONWebKey: parsed.Jwk,
-		Algorithm:  parsed.Alg,
-		Nonce:      parsed.Nonce,
+		KeyID:       parsed.Kid,
+		JSONWebKey:  parsed.Jwk,
+		Algorithm:   parsed.Alg,
+		Nonce:       parsed.Nonce,
+		ContentType: parsed.Cty,
 	}
 }
 
@@ -192,6 +198,9 @@ func (dst *rawHeader) merge(src *rawHeader) {
 	}
 	if dst.Nonce == "" {
 		dst.Nonce = src.Nonce
+	}
+	if dst.Cty == "" {
+		dst.Cty = src.Cty
 	}
 }
 

@@ -39,6 +39,21 @@ type Builder interface {
 	CompactSerialize() (string, error)
 }
 
+// NestedBuilder is a utility for making Signed-Then-Encrypted JSON Web Tokens.
+// Calls can be chained, and errors are accumulated until final call to
+// CompactSerialize/FullSerialize.
+type NestedBuilder interface {
+	// Claims encodes claims into JWE/JWS form. Multiple calls will merge claims
+	// into single JSON object.
+	Claims(i interface{}) NestedBuilder
+	// Token builds a NestedJSONWebToken from provided data.
+	Token() (*NestedJSONWebToken, error)
+	// FullSerialize serializes a token using the full serialization format.
+	FullSerialize() (string, error)
+	// CompactSerialize serializes a token using the compact serialization format.
+	CompactSerialize() (string, error)
+}
+
 type builder struct {
 	payload map[string]interface{}
 	err     error
@@ -54,6 +69,12 @@ type encryptedBuilder struct {
 	enc jose.Encrypter
 }
 
+type nestedBuilder struct {
+	builder
+	sig jose.Signer
+	enc jose.Encrypter
+}
+
 // Signed creates builder for signed tokens.
 func Signed(sig jose.Signer) Builder {
 	return &signedBuilder{
@@ -64,6 +85,22 @@ func Signed(sig jose.Signer) Builder {
 // Encrypted creates builder for encrypted tokens.
 func Encrypted(enc jose.Encrypter) Builder {
 	return &encryptedBuilder{
+		enc: enc,
+	}
+}
+
+// SignedAndEncrypted creates builder for signed-then-encrypted tokens.
+// ErrInvalidContentType will be returned if encrypter doesn't have JWT content type.
+func SignedAndEncrypted(sig jose.Signer, enc jose.Encrypter) NestedBuilder {
+	if enc.Options().ContentType != "JWT" {
+		return &nestedBuilder{
+			builder: builder{
+				err: ErrInvalidContentType,
+			},
+		}
+	}
+	return &nestedBuilder{
+		sig: sig,
 		enc: enc,
 	}
 }
@@ -224,4 +261,65 @@ func (b *encryptedBuilder) encrypt() (*jose.JSONWebEncryption, error) {
 	}
 
 	return b.enc.Encrypt(p)
+}
+
+func (b *nestedBuilder) Claims(i interface{}) NestedBuilder {
+	return &nestedBuilder{
+		builder: b.builder.claims(i),
+		sig:     b.sig,
+		enc:     b.enc,
+	}
+}
+
+func (b *nestedBuilder) Token() (*NestedJSONWebToken, error) {
+	enc, err := b.signAndEncrypt()
+	if err != nil {
+		return nil, err
+	}
+
+	return &NestedJSONWebToken{
+		enc:     enc,
+		Headers: []jose.Header{enc.Header},
+	}, nil
+}
+
+func (b *nestedBuilder) CompactSerialize() (string, error) {
+	enc, err := b.signAndEncrypt()
+	if err != nil {
+		return "", err
+	}
+
+	return enc.CompactSerialize()
+}
+
+func (b *nestedBuilder) FullSerialize() (string, error) {
+	enc, err := b.signAndEncrypt()
+	if err != nil {
+		return "", err
+	}
+
+	return enc.FullSerialize(), nil
+}
+
+func (b *nestedBuilder) signAndEncrypt() (*jose.JSONWebEncryption, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
+
+	p, err := json.Marshal(b.payload)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := b.sig.Sign(p)
+	if err != nil {
+		return nil, err
+	}
+
+	p2, err := sig.CompactSerialize()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.enc.Encrypt([]byte(p2))
 }

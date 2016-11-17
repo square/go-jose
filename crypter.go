@@ -28,6 +28,7 @@ import (
 type Encrypter interface {
 	Encrypt(plaintext []byte) (*JSONWebEncryption, error)
 	EncryptWithAuthData(plaintext []byte, aad []byte) (*JSONWebEncryption, error)
+	Options() EncrypterOptions
 }
 
 // A generic content cipher
@@ -57,6 +58,7 @@ type keyDecrypter interface {
 type genericEncrypter struct {
 	contentAlg     ContentEncryption
 	compressionAlg CompressionAlgorithm
+	contentType    ContentType
 	cipher         contentCipher
 	recipients     []recipientKeyInfo
 	keyGenerator   keyGenerator
@@ -71,6 +73,7 @@ type recipientKeyInfo struct {
 // EncrypterOptions represents options that can be set on new encrypters.
 type EncrypterOptions struct {
 	Compression CompressionAlgorithm
+	ContentType ContentType
 }
 
 // Recipient represents an algorithm/key to encrypt messages to.
@@ -89,6 +92,7 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 	}
 	if opts != nil {
 		encrypter.compressionAlg = opts.Compression
+		encrypter.contentType = opts.ContentType
 	}
 
 	if encrypter.cipher == nil {
@@ -256,6 +260,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 
 	obj.protected = &rawHeader{
 		Enc: ctx.contentAlg,
+		Cty: string(ctx.contentType),
 	}
 	obj.recipients = make([]recipientInfo, len(ctx.recipients))
 
@@ -310,6 +315,13 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 	obj.tag = parts.tag
 
 	return obj, nil
+}
+
+func (ctx *genericEncrypter) Options() EncrypterOptions {
+	return EncrypterOptions{
+		Compression: ctx.compressionAlg,
+		ContentType: ctx.contentType,
+	}
 }
 
 // Decrypt and validate the object and return the plaintext. Note that this
