@@ -32,6 +32,7 @@ type NonceSource interface {
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
 	Sign(payload []byte) (*JSONWebSignature, error)
+	Options() SignerOptions
 }
 
 // SigningKey represents an algorithm/key used to sign a message.
@@ -44,6 +45,8 @@ type SigningKey struct {
 type SignerOptions struct {
 	NonceSource NonceSource
 	EmbedJWK    bool
+	Type        ContentType
+	ContentType ContentType
 }
 
 type payloadSigner interface {
@@ -58,6 +61,8 @@ type genericSigner struct {
 	recipients  []recipientSigInfo
 	nonceSource NonceSource
 	embedJWK    bool
+	typ         ContentType
+	contentType ContentType
 }
 
 type recipientSigInfo struct {
@@ -78,6 +83,8 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 	if opts != nil {
 		signer.nonceSource = opts.NonceSource
 		signer.embedJWK = opts.EmbedJWK
+		signer.typ = opts.Type
+		signer.contentType = opts.ContentType
 	}
 
 	for _, sig := range sigs {
@@ -158,6 +165,8 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 	for i, recipient := range ctx.recipients {
 		protected := &rawHeader{
 			Alg: string(recipient.sigAlg),
+			Typ: string(ctx.typ),
+			Cty: string(ctx.contentType),
 		}
 
 		if recipient.publicKey != nil {
@@ -191,6 +200,15 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 	}
 
 	return obj, nil
+}
+
+func (ctx *genericSigner) Options() SignerOptions {
+	return SignerOptions{
+		NonceSource: ctx.nonceSource,
+		EmbedJWK:    ctx.embedJWK,
+		Type:        ctx.typ,
+		ContentType: ctx.contentType,
+	}
 }
 
 // Verify validates the signature on the object and returns the payload.

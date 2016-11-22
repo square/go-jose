@@ -430,3 +430,20 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("JWK is set in protected header")
 	}
 }
+
+func TestSignerOptions(t *testing.T) {
+	key, _ := GenerateSigningTestKey(HS256)
+	opts := &SignerOptions{
+		EmbedJWK:    true,
+		Type:        "JWT",
+		ContentType: "JWT",
+	}
+	sig, err := NewSigner(SigningKey{HS256, key}, opts)
+	if err != nil {
+		t.Error("Failed to create signer")
+	}
+
+	if *opts != sig.Options() {
+		t.Error("Signer options do not match")
+	}
+}

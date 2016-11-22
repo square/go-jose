@@ -131,6 +131,7 @@ type rawHeader struct {
 	Jwk   *JSONWebKey          `json:"jwk,omitempty"`
 	Kid   string               `json:"kid,omitempty"`
 	Nonce string               `json:"nonce,omitempty"`
+	Typ   string               `json:"typ,omitempty"`
 	Cty   string               `json:"cty,omitempty"`
 }
 
@@ -140,6 +141,7 @@ type Header struct {
 	JSONWebKey  *JSONWebKey
 	Algorithm   string
 	Nonce       string
+	Type        string
 	ContentType string
 }
 
@@ -150,6 +152,7 @@ func (parsed rawHeader) sanitized() Header {
 		JSONWebKey:  parsed.Jwk,
 		Algorithm:   parsed.Alg,
 		Nonce:       parsed.Nonce,
+		Type:        parsed.Typ,
 		ContentType: parsed.Cty,
 	}
 }
@@ -198,6 +201,9 @@ func (dst *rawHeader) merge(src *rawHeader) {
 	}
 	if dst.Nonce == "" {
 		dst.Nonce = src.Nonce
+	}
+	if dst.Typ == "" {
+		dst.Typ = src.Typ
 	}
 	if dst.Cty == "" {
 		dst.Cty = src.Cty

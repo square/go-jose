@@ -132,7 +132,7 @@ func ExampleClaims_Validate_withParse() {
 
 func ExampleSigned() {
 	key := []byte("secret")
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, &jose.SignerOptions{})
+	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, &jose.SignerOptions{Type: "JWT"})
 	if err != nil {
 		panic(err)
 	}
@@ -149,11 +149,15 @@ func ExampleSigned() {
 	}
 
 	fmt.Println(raw)
-	// Output: eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiaXNzIjoiaXNzdWVyIiwibmJmIjoxLjQ1MTYwNjRlKzA5LCJzdWIiOiJzdWJqZWN0In0.uazfxZNgnlLdNDK7JkuYj3LlT4jSyEDG8EWISBPUuME
+	// Output: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiaXNzIjoiaXNzdWVyIiwibmJmIjoxLjQ1MTYwNjRlKzA5LCJzdWIiOiJzdWJqZWN0In0.mI6U-xUdttpOPIDUAI2uyg9lFgoqaAb-hwmz8L6L3fo
 }
 
 func ExampleEncrypted() {
-	enc, err := jose.NewEncrypter(jose.A128GCM, jose.Recipient{Algorithm: jose.DIRECT, Key: sharedEncryptionKey}, nil)
+	enc, err := jose.NewEncrypter(
+		jose.A128GCM,
+		jose.Recipient{Algorithm: jose.DIRECT, Key: sharedEncryptionKey},
+		&jose.EncrypterOptions{Type: "JWT"},
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -178,6 +182,7 @@ func ExampleSignedAndEncrypted() {
 			Key:       sharedEncryptionKey,
 		},
 		&jose.EncrypterOptions{
+			Type:        "JWT",
 			ContentType: "JWT",
 		})
 	if err != nil {
