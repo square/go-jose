@@ -28,7 +28,7 @@ before_install:
 - go get github.com/mattn/goveralls
 - go get golang.org/x/tools/cmd/cover || true
 - go get code.google.com/p/go.tools/cmd/cover || true
-- pip install cram --user `whoami`
+- pip install cram --user
 
 script:
 - go test . -v -covermode=count -coverprofile=profile.cov
