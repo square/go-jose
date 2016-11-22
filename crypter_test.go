@@ -323,6 +323,28 @@ func TestMultiRecipientErrors(t *testing.T) {
 	}
 }
 
+func TestEncrypterOptions(t *testing.T) {
+	sharedKey := []byte{
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	}
+
+	opts := &EncrypterOptions{
+		Compression: DEFLATE,
+		Type:        "JWT",
+		ContentType: "JWT",
+	}
+	enc, err := NewEncrypter(A256GCM, Recipient{Algorithm: A256GCMKW, Key: sharedKey}, opts)
+	if err != nil {
+		fmt.Println(err)
+		t.Error("Failed to create encrypter")
+	}
+
+	if *opts != enc.Options() {
+		t.Error("Encrypter options do not match")
+	}
+}
+
 type testKey struct {
 	enc, dec interface{}
 }

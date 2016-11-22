@@ -131,6 +131,7 @@ type rawHeader struct {
 	Jwk   *JSONWebKey          `json:"jwk,omitempty"`
 	Kid   string               `json:"kid,omitempty"`
 	Nonce string               `json:"nonce,omitempty"`
+	Tpe   string               `json:"tpe,omitempty"`
 	Cty   string               `json:"cty,omitempty"`
 }
 
@@ -140,6 +141,7 @@ type Header struct {
 	JSONWebKey  *JSONWebKey
 	Algorithm   string
 	Nonce       string
+	Type        string
 	ContentType string
 }
 

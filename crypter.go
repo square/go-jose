@@ -59,6 +59,7 @@ type genericEncrypter struct {
 	contentAlg     ContentEncryption
 	compressionAlg CompressionAlgorithm
 	contentType    ContentType
+	tpe            ContentType
 	cipher         contentCipher
 	recipients     []recipientKeyInfo
 	keyGenerator   keyGenerator
@@ -73,6 +74,7 @@ type recipientKeyInfo struct {
 // EncrypterOptions represents options that can be set on new encrypters.
 type EncrypterOptions struct {
 	Compression CompressionAlgorithm
+	Type        ContentType
 	ContentType ContentType
 }
 
@@ -93,6 +95,7 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 	if opts != nil {
 		encrypter.compressionAlg = opts.Compression
 		encrypter.contentType = opts.ContentType
+		encrypter.tpe = opts.Type
 	}
 
 	if encrypter.cipher == nil {
@@ -260,6 +263,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 
 	obj.protected = &rawHeader{
 		Enc: ctx.contentAlg,
+		Tpe: string(ctx.tpe),
 		Cty: string(ctx.contentType),
 	}
 	obj.recipients = make([]recipientInfo, len(ctx.recipients))
@@ -320,6 +324,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 func (ctx *genericEncrypter) Options() EncrypterOptions {
 	return EncrypterOptions{
 		Compression: ctx.compressionAlg,
+		Type:        ctx.tpe,
 		ContentType: ctx.contentType,
 	}
 }
