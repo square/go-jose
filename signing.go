@@ -61,7 +61,7 @@ type genericSigner struct {
 	recipients  []recipientSigInfo
 	nonceSource NonceSource
 	embedJWK    bool
-	tpe         ContentType
+	typ         ContentType
 	contentType ContentType
 }
 
@@ -83,7 +83,7 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 	if opts != nil {
 		signer.nonceSource = opts.NonceSource
 		signer.embedJWK = opts.EmbedJWK
-		signer.tpe = opts.Type
+		signer.typ = opts.Type
 		signer.contentType = opts.ContentType
 	}
 
@@ -165,7 +165,7 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 	for i, recipient := range ctx.recipients {
 		protected := &rawHeader{
 			Alg: string(recipient.sigAlg),
-			Tpe: string(ctx.tpe),
+			Typ: string(ctx.typ),
 			Cty: string(ctx.contentType),
 		}
 
@@ -206,7 +206,7 @@ func (ctx *genericSigner) Options() SignerOptions {
 	return SignerOptions{
 		NonceSource: ctx.nonceSource,
 		EmbedJWK:    ctx.embedJWK,
-		Type:        ctx.tpe,
+		Type:        ctx.typ,
 		ContentType: ctx.contentType,
 	}
 }

@@ -149,7 +149,7 @@ func ExampleSigned() {
 	}
 
 	fmt.Println(raw)
-	// Output: eyJhbGciOiJIUzI1NiIsInRwZSI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiaXNzIjoiaXNzdWVyIiwibmJmIjoxLjQ1MTYwNjRlKzA5LCJzdWIiOiJzdWJqZWN0In0.nQbPUuxIkUiFAacajCEVIbxyBb47I7eEMonIBl0PDEs
+	// Output: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiaXNzIjoiaXNzdWVyIiwibmJmIjoxLjQ1MTYwNjRlKzA5LCJzdWIiOiJzdWJqZWN0In0.mI6U-xUdttpOPIDUAI2uyg9lFgoqaAb-hwmz8L6L3fo
 }
 
 func ExampleEncrypted() {
