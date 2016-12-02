@@ -154,6 +154,9 @@ func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey) (recipientSigIn
 		return recipientSigInfo{}, err
 	}
 	recipient.publicKey.KeyID = signingKey.KeyID
+	recipient.publicKey.X509URL = signingKey.X509URL
+	recipient.publicKey.X509Thumb = signingKey.X509Thumb
+	recipient.publicKey.X509ThumbSHA256 = signingKey.X509ThumbSHA256
 	return recipient, nil
 }
 
@@ -174,6 +177,9 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 				protected.Jwk = recipient.publicKey
 			}
 			protected.Kid = recipient.publicKey.KeyID
+			protected.X5u = recipient.publicKey.X509URL
+			protected.X5t = recipient.publicKey.X509Thumb
+			protected.X5tSHA256 = recipient.publicKey.X509ThumbSHA256
 		}
 
 		if ctx.nonceSource != nil {

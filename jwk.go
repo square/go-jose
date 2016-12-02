@@ -29,6 +29,7 @@ import (
 	"reflect"
 	"strings"
 
+	"crypto/sha1"
 	"gopkg.in/square/go-jose.v2/json"
 )
 
@@ -55,16 +56,22 @@ type rawJSONWebKey struct {
 	Dq *byteBuffer `json:"dq,omitempty"`
 	Qi *byteBuffer `json:"qi,omitempty"`
 	// Certificates
-	X5c []string `json:"x5c,omitempty"`
+	X5u       string   `json:"x5u,omitempty"`
+	X5c       []string `json:"x5c,omitempty"`
+	X5t       string   `json:"x5t,omitempty"`
+	X5tSHA256 string   `json:"x5t#256,omitempty"`
 }
 
 // JSONWebKey represents a public or private key in JWK format.
 type JSONWebKey struct {
-	Key          interface{}
-	Certificates []*x509.Certificate
-	KeyID        string
-	Algorithm    string
-	Use          string
+	Key             interface{}
+	Certificates    []*x509.Certificate
+	KeyID           string
+	Algorithm       string
+	Use             string
+	X509URL         string
+	X509Thumb       string
+	X509ThumbSHA256 string
 }
 
 // MarshalJSON serializes the given key to its JSON representation.
@@ -99,6 +106,10 @@ func (k JSONWebKey) MarshalJSON() ([]byte, error) {
 		raw.X5c = append(raw.X5c, base64.StdEncoding.EncodeToString(cert.Raw))
 	}
 
+	raw.X5t = k.X509Thumb
+	raw.X5tSHA256 = k.X509ThumbSHA256
+	raw.X5u = k.X509URL
+
 	return json.Marshal(raw)
 }
 
@@ -131,7 +142,15 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if err == nil {
-		*k = JSONWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
+		*k = JSONWebKey{
+			Key:             key,
+			KeyID:           raw.Kid,
+			Algorithm:       raw.Alg,
+			Use:             raw.Use,
+			X509URL:         raw.X5u,
+			X509Thumb:       raw.X5t,
+			X509ThumbSHA256: raw.X5tSHA256,
+		}
 	}
 
 	k.Certificates = make([]*x509.Certificate, len(raw.X5c))
@@ -167,6 +186,18 @@ func (s *JSONWebKeySet) Key(kid string) []JSONWebKey {
 	}
 
 	return keys
+}
+
+// Calculate X509 SHA-1 certificate thumbprint for use with x5t claim.
+func X509Thumbprint(cert *x509.Certificate) string {
+	t := sha1.Sum(cert.Raw)
+	return base64.RawStdEncoding.EncodeToString(t[:])
+}
+
+// Calculate X509 SHA-256 certificate thumbprint for use with x5t#256
+func X509ThumbprintSHA256(cert *x509.Certificate) string {
+	t := sha1.Sum(cert.Raw)
+	return base64.RawStdEncoding.EncodeToString(t[:])
 }
 
 const rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`

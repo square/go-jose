@@ -119,41 +119,51 @@ const (
 
 // rawHeader represents the JOSE header for JWE/JWS objects (used for parsing).
 type rawHeader struct {
-	Alg   string               `json:"alg,omitempty"`
-	Enc   ContentEncryption    `json:"enc,omitempty"`
-	Zip   CompressionAlgorithm `json:"zip,omitempty"`
-	Crit  []string             `json:"crit,omitempty"`
-	Apu   *byteBuffer          `json:"apu,omitempty"`
-	Apv   *byteBuffer          `json:"apv,omitempty"`
-	Epk   *JSONWebKey          `json:"epk,omitempty"`
-	Iv    *byteBuffer          `json:"iv,omitempty"`
-	Tag   *byteBuffer          `json:"tag,omitempty"`
-	Jwk   *JSONWebKey          `json:"jwk,omitempty"`
-	Kid   string               `json:"kid,omitempty"`
-	Nonce string               `json:"nonce,omitempty"`
-	Typ   string               `json:"typ,omitempty"`
-	Cty   string               `json:"cty,omitempty"`
+	Alg       string               `json:"alg,omitempty"`
+	Enc       ContentEncryption    `json:"enc,omitempty"`
+	Zip       CompressionAlgorithm `json:"zip,omitempty"`
+	Crit      []string             `json:"crit,omitempty"`
+	Apu       *byteBuffer          `json:"apu,omitempty"`
+	Apv       *byteBuffer          `json:"apv,omitempty"`
+	Epk       *JSONWebKey          `json:"epk,omitempty"`
+	Iv        *byteBuffer          `json:"iv,omitempty"`
+	Tag       *byteBuffer          `json:"tag,omitempty"`
+	Jwk       *JSONWebKey          `json:"jwk,omitempty"`
+	Kid       string               `json:"kid,omitempty"`
+	X5u       string               `json:"x5u,omitempty"`
+	X5c       []string             `json:"x5c,omitempty"`
+	X5t       string               `json:"x5t,omitempty"`
+	X5tSHA256 string               `json:"x5t#256,omitempty"`
+	Nonce     string               `json:"nonce,omitempty"`
+	Typ       string               `json:"typ,omitempty"`
+	Cty       string               `json:"cty,omitempty"`
 }
 
 // Header represents the read-only JOSE header for JWE/JWS objects.
 type Header struct {
-	KeyID       string
-	JSONWebKey  *JSONWebKey
-	Algorithm   string
-	Nonce       string
-	Type        string
-	ContentType string
+	KeyID                string
+	JSONWebKey           *JSONWebKey
+	Algorithm            string
+	Nonce                string
+	Type                 string
+	ContentType          string
+	X509URL              string
+	X509Thumbprint       string
+	X509ThumbprintSHA256 string
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
 func (parsed rawHeader) sanitized() Header {
 	return Header{
-		KeyID:       parsed.Kid,
-		JSONWebKey:  parsed.Jwk,
-		Algorithm:   parsed.Alg,
-		Nonce:       parsed.Nonce,
-		Type:        parsed.Typ,
-		ContentType: parsed.Cty,
+		KeyID:                parsed.Kid,
+		JSONWebKey:           parsed.Jwk,
+		Algorithm:            parsed.Alg,
+		Nonce:                parsed.Nonce,
+		Type:                 parsed.Typ,
+		ContentType:          parsed.Cty,
+		X509URL:              parsed.X5u,
+		X509Thumbprint:       parsed.X5t,
+		X509ThumbprintSHA256: parsed.X5tSHA256,
 	}
 }
 
@@ -207,6 +217,15 @@ func (dst *rawHeader) merge(src *rawHeader) {
 	}
 	if dst.Cty == "" {
 		dst.Cty = src.Cty
+	}
+	if dst.X5u == "" {
+		dst.X5u = src.X5u
+	}
+	if dst.X5t == "" {
+		dst.X5t = src.X5t
+	}
+	if dst.X5tSHA256 == "" {
+		dst.X5tSHA256 = src.X5tSHA256
 	}
 }
 
