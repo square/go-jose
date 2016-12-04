@@ -184,13 +184,13 @@ func (s *JSONWebKeySet) Key(kid string) []JSONWebKey {
 	return keys
 }
 
-// Calculate X509 SHA-1 certificate thumbprint for use with x5t claim.
+// X509Thumbprint calculates SHA-1 certificate hash for use with x5t claim.
 func X509Thumbprint(cert *x509.Certificate) string {
 	t := sha1.Sum(cert.Raw)
 	return base64.RawURLEncoding.EncodeToString(t[:])
 }
 
-// Calculate X509 SHA-256 certificate thumbprint for use with x5t#256
+// X509ThumbprintSHA256 calculates SHA-256 certificate hash for use with x5t#256
 func X509ThumbprintSHA256(cert *x509.Certificate) string {
 	t := sha1.Sum(cert.Raw)
 	return base64.RawURLEncoding.EncodeToString(t[:])

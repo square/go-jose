@@ -156,8 +156,10 @@ type Header struct {
 	X509Certificates     Certificates
 }
 
+// Certificates represent array of X509 certificates
 type Certificates []*x509.Certificate
 
+// MarshalJSON serializes X509 certificates into base64-encoded array
 func (cs Certificates) MarshalJSON() ([]byte, error) {
 	s := make([]string, len(cs))
 	for i, c := range cs {
@@ -167,6 +169,7 @@ func (cs Certificates) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
+// UnmarshalJSON reads X509 certificates from base64-encoded array
 func (cs *Certificates) UnmarshalJSON(b []byte) error {
 	var s []string
 	if err := json.Unmarshal(b, &s); err != nil {
@@ -264,6 +267,9 @@ func (dst *rawHeader) merge(src *rawHeader) {
 	}
 	if dst.X5tSHA256 == "" {
 		dst.X5tSHA256 = src.X5tSHA256
+	}
+	if dst.X5c == nil {
+		dst.X5c = src.X5c
 	}
 }
 
