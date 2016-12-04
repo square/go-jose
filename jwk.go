@@ -56,16 +56,16 @@ type rawJSONWebKey struct {
 	Dq *byteBuffer `json:"dq,omitempty"`
 	Qi *byteBuffer `json:"qi,omitempty"`
 	// Certificates
-	X5u       string   `json:"x5u,omitempty"`
-	X5c       []string `json:"x5c,omitempty"`
-	X5t       string   `json:"x5t,omitempty"`
-	X5tSHA256 string   `json:"x5t#256,omitempty"`
+	X5u       string       `json:"x5u,omitempty"`
+	X5c       Certificates `json:"x5c,omitempty"`
+	X5t       string       `json:"x5t,omitempty"`
+	X5tSHA256 string       `json:"x5t#256,omitempty"`
 }
 
 // JSONWebKey represents a public or private key in JWK format.
 type JSONWebKey struct {
 	Key             interface{}
-	Certificates    []*x509.Certificate
+	Certificates    Certificates
 	KeyID           string
 	Algorithm       string
 	Use             string
@@ -101,14 +101,22 @@ func (k JSONWebKey) MarshalJSON() ([]byte, error) {
 	raw.Kid = k.KeyID
 	raw.Alg = k.Algorithm
 	raw.Use = k.Use
-
-	for _, cert := range k.Certificates {
-		raw.X5c = append(raw.X5c, base64.StdEncoding.EncodeToString(cert.Raw))
-	}
+	raw.X5c = k.Certificates
 
 	raw.X5t = k.X509Thumb
 	raw.X5tSHA256 = k.X509ThumbSHA256
 	raw.X5u = k.X509URL
+	if len(k.Certificates) != 0 {
+		cert := k.Certificates[0]
+
+		if k.X509Thumb == "" {
+			raw.X5t = X509Thumbprint(cert)
+		}
+
+		if k.X509ThumbSHA256 == "" {
+			raw.X5tSHA256 = X509ThumbprintSHA256(cert)
+		}
+	}
 
 	return json.Marshal(raw)
 }
@@ -150,21 +158,9 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 			X509URL:         raw.X5u,
 			X509Thumb:       raw.X5t,
 			X509ThumbSHA256: raw.X5tSHA256,
+			Certificates:    raw.X5c,
 		}
 	}
-
-	k.Certificates = make([]*x509.Certificate, len(raw.X5c))
-	for i, cert := range raw.X5c {
-		raw, err := base64.StdEncoding.DecodeString(cert)
-		if err != nil {
-			return err
-		}
-		k.Certificates[i], err = x509.ParseCertificate(raw)
-		if err != nil {
-			return err
-		}
-	}
-
 	return
 }
 

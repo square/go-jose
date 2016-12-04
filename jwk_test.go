@@ -219,7 +219,7 @@ func TestRoundtripX5C(t *testing.T) {
 		t.Error("problem unmarshalling", err)
 	}
 
-	if !reflect.DeepEqual(testCertificates, jwk2.Certificates) {
+	if !reflect.DeepEqual(Certificates(testCertificates), jwk2.Certificates) {
 		t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
 	}
 

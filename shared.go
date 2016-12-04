@@ -18,8 +18,11 @@ package jose
 
 import (
 	"crypto/elliptic"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // KeyAlgorithm represents a key management algorithm.
@@ -131,7 +134,7 @@ type rawHeader struct {
 	Jwk       *JSONWebKey          `json:"jwk,omitempty"`
 	Kid       string               `json:"kid,omitempty"`
 	X5u       string               `json:"x5u,omitempty"`
-	X5c       []string             `json:"x5c,omitempty"`
+	X5c       Certificates         `json:"x5c,omitempty"`
 	X5t       string               `json:"x5t,omitempty"`
 	X5tSHA256 string               `json:"x5t#256,omitempty"`
 	Nonce     string               `json:"nonce,omitempty"`
@@ -150,6 +153,41 @@ type Header struct {
 	X509URL              string
 	X509Thumbprint       string
 	X509ThumbprintSHA256 string
+	X509Certificates     Certificates
+}
+
+type Certificates []*x509.Certificate
+
+func (cs Certificates) MarshalJSON() ([]byte, error) {
+	s := make([]string, len(cs))
+	for i, c := range cs {
+		s[i] = base64.StdEncoding.EncodeToString(c.Raw)
+	}
+
+	return json.Marshal(s)
+}
+
+func (cs *Certificates) UnmarshalJSON(b []byte) error {
+	var s []string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	res := make(Certificates, len(s))
+	for i, cert := range s {
+		raw, err := base64.StdEncoding.DecodeString(cert)
+		if err != nil {
+			return err
+		}
+
+		res[i], err = x509.ParseCertificate(raw)
+		if err != nil {
+			return err
+		}
+	}
+
+	*cs = Certificates(res)
+	return nil
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
