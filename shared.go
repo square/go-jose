@@ -153,7 +153,7 @@ type Header struct {
 	X509URL              string
 	X509Thumbprint       string
 	X509ThumbprintSHA256 string
-	X509Certificates     []*x509.Certificate
+	Certificates         []*x509.Certificate
 }
 
 // Certificates represent array of X509 certificates
@@ -203,7 +203,7 @@ func (parsed rawHeader) sanitized() Header {
 		X509URL:              parsed.X5u,
 		X509Thumbprint:       parsed.X5t,
 		X509ThumbprintSHA256: parsed.X5tSHA256,
-		X509Certificates:     parsed.X5c,
+		Certificates:         parsed.X5c,
 	}
 }
 

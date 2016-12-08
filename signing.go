@@ -239,6 +239,16 @@ func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) 
 		return nil, ErrCryptoFailure
 	}
 
+	if len(headers.X5c) != 0 {
+		pub := headers.X5c[0]
+		if headers.X5t != "" && X509Thumbprint(pub) != headers.X5t {
+			return nil, ErrCryptoFailure
+		}
+		if headers.X5tSHA256 != "" && X509ThumbprintSHA256(pub) != headers.X5tSHA256 {
+			return nil, ErrCryptoFailure
+		}
+	}
+
 	input := obj.computeAuthData(&signature)
 	alg := SignatureAlgorithm(headers.Alg)
 	err = verifier.verifyPayload(input, signature.Signature, alg)

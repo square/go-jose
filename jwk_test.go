@@ -223,6 +223,14 @@ func TestRoundtripX5C(t *testing.T) {
 		t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
 	}
 
+	pub := testCertificates[0]
+	if X509Thumbprint(pub) != jwk2.X509Thumb {
+		t.Error("Thumbprints not equal", X509Thumbprint(pub), jwk2.X509Thumb)
+	}
+	if X509ThumbprintSHA256(pub) != jwk2.X509ThumbSHA256 {
+		t.Error("Thumbprints not equal", X509ThumbprintSHA256(pub), jwk2.X509ThumbSHA256)
+	}
+
 	jsonbar2, err := jwk2.MarshalJSON()
 	if err != nil {
 		t.Error("problem marshaling", err)
