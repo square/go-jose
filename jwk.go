@@ -55,17 +55,17 @@ type rawJSONWebKey struct {
 	Dp *byteBuffer `json:"dp,omitempty"`
 	Dq *byteBuffer `json:"dq,omitempty"`
 	Qi *byteBuffer `json:"qi,omitempty"`
-	// Certificates
-	X5u       string       `json:"x5u,omitempty"`
-	X5c       Certificates `json:"x5c,omitempty"`
-	X5t       string       `json:"x5t,omitempty"`
-	X5tSHA256 string       `json:"x5t#256,omitempty"`
+	// X509 Certificates
+	X5u       string          `json:"x5u,omitempty"`
+	X5c       rawCertificates `json:"x5c,omitempty"`
+	X5t       string          `json:"x5t,omitempty"`
+	X5tSHA256 string          `json:"x5t#256,omitempty"`
 }
 
 // JSONWebKey represents a public or private key in JWK format.
 type JSONWebKey struct {
 	Key             interface{}
-	Certificates    Certificates
+	Certificates    []*x509.Certificate
 	KeyID           string
 	Algorithm       string
 	Use             string

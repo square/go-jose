@@ -134,9 +134,9 @@ type rawHeader struct {
 	Jwk       *JSONWebKey          `json:"jwk,omitempty"`
 	Kid       string               `json:"kid,omitempty"`
 	X5u       string               `json:"x5u,omitempty"`
-	X5c       Certificates         `json:"x5c,omitempty"`
+	X5c       rawCertificates      `json:"x5c,omitempty"`
 	X5t       string               `json:"x5t,omitempty"`
-	X5tSHA256 string               `json:"x5t#256,omitempty"`
+	X5tSHA256 string               `json:"x5t#S256,omitempty"`
 	Nonce     string               `json:"nonce,omitempty"`
 	Typ       string               `json:"typ,omitempty"`
 	Cty       string               `json:"cty,omitempty"`
@@ -153,14 +153,13 @@ type Header struct {
 	X509URL              string
 	X509Thumbprint       string
 	X509ThumbprintSHA256 string
-	X509Certificates     Certificates
+	X509Certificates     []*x509.Certificate
 }
 
 // Certificates represent array of X509 certificates
-type Certificates []*x509.Certificate
+type rawCertificates []*x509.Certificate
 
-// MarshalJSON serializes X509 certificates into base64-encoded array
-func (cs Certificates) MarshalJSON() ([]byte, error) {
+func (cs rawCertificates) MarshalJSON() ([]byte, error) {
 	s := make([]string, len(cs))
 	for i, c := range cs {
 		s[i] = base64.StdEncoding.EncodeToString(c.Raw)
@@ -169,14 +168,13 @@ func (cs Certificates) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-// UnmarshalJSON reads X509 certificates from base64-encoded array
-func (cs *Certificates) UnmarshalJSON(b []byte) error {
+func (cs *rawCertificates) UnmarshalJSON(b []byte) error {
 	var s []string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
 
-	res := make(Certificates, len(s))
+	res := make(rawCertificates, len(s))
 	for i, cert := range s {
 		raw, err := base64.StdEncoding.DecodeString(cert)
 		if err != nil {
@@ -189,7 +187,7 @@ func (cs *Certificates) UnmarshalJSON(b []byte) error {
 		}
 	}
 
-	*cs = Certificates(res)
+	*cs = res
 	return nil
 }
 
@@ -205,6 +203,7 @@ func (parsed rawHeader) sanitized() Header {
 		X509URL:              parsed.X5u,
 		X509Thumbprint:       parsed.X5t,
 		X509ThumbprintSHA256: parsed.X5tSHA256,
+		X509Certificates:     parsed.X5c,
 	}
 }
 
