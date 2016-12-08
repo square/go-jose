@@ -29,6 +29,7 @@ import (
 	"reflect"
 	"strings"
 
+	"crypto/sha1"
 	"gopkg.in/square/go-jose.v2/json"
 )
 
@@ -54,17 +55,23 @@ type rawJSONWebKey struct {
 	Dp *byteBuffer `json:"dp,omitempty"`
 	Dq *byteBuffer `json:"dq,omitempty"`
 	Qi *byteBuffer `json:"qi,omitempty"`
-	// Certificates
-	X5c []string `json:"x5c,omitempty"`
+	// X509 Certificates
+	X5u       string          `json:"x5u,omitempty"`
+	X5c       rawCertificates `json:"x5c,omitempty"`
+	X5t       string          `json:"x5t,omitempty"`
+	X5tSHA256 string          `json:"x5t#256,omitempty"`
 }
 
 // JSONWebKey represents a public or private key in JWK format.
 type JSONWebKey struct {
-	Key          interface{}
-	Certificates []*x509.Certificate
-	KeyID        string
-	Algorithm    string
-	Use          string
+	Key             interface{}
+	Certificates    []*x509.Certificate
+	KeyID           string
+	Algorithm       string
+	Use             string
+	X509URL         string
+	X509Thumb       string
+	X509ThumbSHA256 string
 }
 
 // MarshalJSON serializes the given key to its JSON representation.
@@ -94,9 +101,21 @@ func (k JSONWebKey) MarshalJSON() ([]byte, error) {
 	raw.Kid = k.KeyID
 	raw.Alg = k.Algorithm
 	raw.Use = k.Use
+	raw.X5c = k.Certificates
 
-	for _, cert := range k.Certificates {
-		raw.X5c = append(raw.X5c, base64.StdEncoding.EncodeToString(cert.Raw))
+	raw.X5t = k.X509Thumb
+	raw.X5tSHA256 = k.X509ThumbSHA256
+	raw.X5u = k.X509URL
+	if len(k.Certificates) != 0 {
+		cert := k.Certificates[0]
+
+		if k.X509Thumb == "" {
+			raw.X5t = X509Thumbprint(cert)
+		}
+
+		if k.X509ThumbSHA256 == "" {
+			raw.X5tSHA256 = X509ThumbprintSHA256(cert)
+		}
 	}
 
 	return json.Marshal(raw)
@@ -131,21 +150,17 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if err == nil {
-		*k = JSONWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
-	}
-
-	k.Certificates = make([]*x509.Certificate, len(raw.X5c))
-	for i, cert := range raw.X5c {
-		raw, err := base64.StdEncoding.DecodeString(cert)
-		if err != nil {
-			return err
-		}
-		k.Certificates[i], err = x509.ParseCertificate(raw)
-		if err != nil {
-			return err
+		*k = JSONWebKey{
+			Key:             key,
+			KeyID:           raw.Kid,
+			Algorithm:       raw.Alg,
+			Use:             raw.Use,
+			X509URL:         raw.X5u,
+			X509Thumb:       raw.X5t,
+			X509ThumbSHA256: raw.X5tSHA256,
+			Certificates:    raw.X5c,
 		}
 	}
-
 	return
 }
 
@@ -167,6 +182,18 @@ func (s *JSONWebKeySet) Key(kid string) []JSONWebKey {
 	}
 
 	return keys
+}
+
+// X509Thumbprint calculates SHA-1 certificate hash for use with x5t claim.
+func X509Thumbprint(cert *x509.Certificate) string {
+	t := sha1.Sum(cert.Raw)
+	return base64.RawURLEncoding.EncodeToString(t[:])
+}
+
+// X509ThumbprintSHA256 calculates SHA-256 certificate hash for use with x5t#256
+func X509ThumbprintSHA256(cert *x509.Certificate) string {
+	t := sha1.Sum(cert.Raw)
+	return base64.RawURLEncoding.EncodeToString(t[:])
 }
 
 const rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`

@@ -18,8 +18,11 @@ package jose
 
 import (
 	"crypto/elliptic"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // KeyAlgorithm represents a key management algorithm.
@@ -119,41 +122,88 @@ const (
 
 // rawHeader represents the JOSE header for JWE/JWS objects (used for parsing).
 type rawHeader struct {
-	Alg   string               `json:"alg,omitempty"`
-	Enc   ContentEncryption    `json:"enc,omitempty"`
-	Zip   CompressionAlgorithm `json:"zip,omitempty"`
-	Crit  []string             `json:"crit,omitempty"`
-	Apu   *byteBuffer          `json:"apu,omitempty"`
-	Apv   *byteBuffer          `json:"apv,omitempty"`
-	Epk   *JSONWebKey          `json:"epk,omitempty"`
-	Iv    *byteBuffer          `json:"iv,omitempty"`
-	Tag   *byteBuffer          `json:"tag,omitempty"`
-	Jwk   *JSONWebKey          `json:"jwk,omitempty"`
-	Kid   string               `json:"kid,omitempty"`
-	Nonce string               `json:"nonce,omitempty"`
-	Typ   string               `json:"typ,omitempty"`
-	Cty   string               `json:"cty,omitempty"`
+	Alg       string               `json:"alg,omitempty"`
+	Enc       ContentEncryption    `json:"enc,omitempty"`
+	Zip       CompressionAlgorithm `json:"zip,omitempty"`
+	Crit      []string             `json:"crit,omitempty"`
+	Apu       *byteBuffer          `json:"apu,omitempty"`
+	Apv       *byteBuffer          `json:"apv,omitempty"`
+	Epk       *JSONWebKey          `json:"epk,omitempty"`
+	Iv        *byteBuffer          `json:"iv,omitempty"`
+	Tag       *byteBuffer          `json:"tag,omitempty"`
+	Jwk       *JSONWebKey          `json:"jwk,omitempty"`
+	Kid       string               `json:"kid,omitempty"`
+	X5u       string               `json:"x5u,omitempty"`
+	X5c       rawCertificates      `json:"x5c,omitempty"`
+	X5t       string               `json:"x5t,omitempty"`
+	X5tSHA256 string               `json:"x5t#S256,omitempty"`
+	Nonce     string               `json:"nonce,omitempty"`
+	Typ       string               `json:"typ,omitempty"`
+	Cty       string               `json:"cty,omitempty"`
 }
 
 // Header represents the read-only JOSE header for JWE/JWS objects.
 type Header struct {
-	KeyID       string
-	JSONWebKey  *JSONWebKey
-	Algorithm   string
-	Nonce       string
-	Type        string
-	ContentType string
+	KeyID                string
+	JSONWebKey           *JSONWebKey
+	Algorithm            string
+	Nonce                string
+	Type                 string
+	ContentType          string
+	X509URL              string
+	X509Thumbprint       string
+	X509ThumbprintSHA256 string
+	Certificates         []*x509.Certificate
+}
+
+// Certificates represent array of X509 certificates
+type rawCertificates []*x509.Certificate
+
+func (cs rawCertificates) MarshalJSON() ([]byte, error) {
+	s := make([]string, len(cs))
+	for i, c := range cs {
+		s[i] = base64.StdEncoding.EncodeToString(c.Raw)
+	}
+
+	return json.Marshal(s)
+}
+
+func (cs *rawCertificates) UnmarshalJSON(b []byte) error {
+	var s []string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	res := make(rawCertificates, len(s))
+	for i, cert := range s {
+		raw, err := base64.StdEncoding.DecodeString(cert)
+		if err != nil {
+			return err
+		}
+
+		res[i], err = x509.ParseCertificate(raw)
+		if err != nil {
+			return err
+		}
+	}
+
+	*cs = res
+	return nil
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
 func (parsed rawHeader) sanitized() Header {
 	return Header{
-		KeyID:       parsed.Kid,
-		JSONWebKey:  parsed.Jwk,
-		Algorithm:   parsed.Alg,
-		Nonce:       parsed.Nonce,
-		Type:        parsed.Typ,
-		ContentType: parsed.Cty,
+		KeyID:                parsed.Kid,
+		JSONWebKey:           parsed.Jwk,
+		Algorithm:            parsed.Alg,
+		Nonce:                parsed.Nonce,
+		Type:                 parsed.Typ,
+		ContentType:          parsed.Cty,
+		X509URL:              parsed.X5u,
+		X509Thumbprint:       parsed.X5t,
+		X509ThumbprintSHA256: parsed.X5tSHA256,
+		Certificates:         parsed.X5c,
 	}
 }
 
@@ -207,6 +257,18 @@ func (dst *rawHeader) merge(src *rawHeader) {
 	}
 	if dst.Cty == "" {
 		dst.Cty = src.Cty
+	}
+	if dst.X5u == "" {
+		dst.X5u = src.X5u
+	}
+	if dst.X5t == "" {
+		dst.X5t = src.X5t
+	}
+	if dst.X5tSHA256 == "" {
+		dst.X5tSHA256 = src.X5tSHA256
+	}
+	if dst.X5c == nil {
+		dst.X5c = src.X5c
 	}
 }
 
