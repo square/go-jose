@@ -19,6 +19,7 @@ package jose
 import (
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -239,14 +240,8 @@ func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) 
 		return nil, ErrCryptoFailure
 	}
 
-	if len(headers.X5c) != 0 {
-		pub := headers.X5c[0]
-		if headers.X5t != "" && X509Thumbprint(pub) != headers.X5t {
-			return nil, ErrCryptoFailure
-		}
-		if headers.X5tSHA256 != "" && X509ThumbprintSHA256(pub) != headers.X5tSHA256 {
-			return nil, ErrCryptoFailure
-		}
+	if err := verifyCerts(&headers); err != nil {
+		return nil, err
 	}
 
 	input := obj.computeAuthData(&signature)
@@ -276,6 +271,10 @@ func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signa
 			continue
 		}
 
+		if err := verifyCerts(&headers); err != nil {
+			continue
+		}
+
 		input := obj.computeAuthData(&signature)
 		alg := SignatureAlgorithm(headers.Alg)
 		err := verifier.verifyPayload(input, signature.Signature, alg)
@@ -285,4 +284,32 @@ func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signa
 	}
 
 	return -1, Signature{}, nil, ErrCryptoFailure
+}
+
+func verifyCerts(data *rawHeader) error {
+	if len(data.X5c) == 0 {
+		return nil
+	}
+
+	pub := data.X5c[0]
+	if data.X5t != "" && X509Thumbprint(pub) != data.X5t {
+		return ErrCryptoFailure
+	}
+	if data.X5tSHA256 != "" && X509ThumbprintSHA256(pub) != data.X5tSHA256 {
+		return ErrCryptoFailure
+	}
+
+	var im *x509.CertPool
+	if len(data.X5c) > 1 {
+		im = x509.NewCertPool()
+		for _, cert := range data.X5c[1:] {
+			im.AddCert(cert)
+		}
+	}
+
+	_, err := pub.Verify(x509.VerifyOptions{Intermediates: im})
+	if err != nil {
+		return ErrCryptoFailure
+	}
+	return nil
 }
