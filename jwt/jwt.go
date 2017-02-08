@@ -101,7 +101,8 @@ func ParseSignedAndEncrypted(s string) (*NestedJSONWebToken, error) {
 		return nil, err
 	}
 
-	if strings.ToUpper(enc.Header.ContentType) != "JWT" {
+	contentType, _ := enc.Header.ExtraHeaders[jose.HeaderContentType].(string)
+	if strings.ToUpper(contentType) != "JWT" {
 		return nil, ErrInvalidContentType
 	}
 

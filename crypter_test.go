@@ -24,6 +24,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"io"
+	"reflect"
 	"testing"
 )
 
@@ -154,7 +155,13 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 		},
 		func(obj *JSONWebEncryption) bool {
 			// Mess with GCM-KW auth tag
-			return bitflip(obj.protected.Tag.bytes())
+			tag, _ := obj.protected.getTag()
+			skip := bitflip(tag.bytes())
+			if skip {
+				return true
+			}
+			obj.protected.set(headerTag, tag)
+			return false
 		},
 	}
 
@@ -331,17 +338,67 @@ func TestEncrypterOptions(t *testing.T) {
 
 	opts := &EncrypterOptions{
 		Compression: DEFLATE,
-		Type:        "JWT",
-		ContentType: "JWT",
 	}
+	opts.WithType("JWT")
+	opts.WithContentType("JWT")
 	enc, err := NewEncrypter(A256GCM, Recipient{Algorithm: A256GCMKW, Key: sharedKey}, opts)
 	if err != nil {
 		fmt.Println(err)
 		t.Error("Failed to create encrypter")
 	}
 
-	if *opts != enc.Options() {
+	if !reflect.DeepEqual(*opts, enc.Options()) {
 		t.Error("Encrypter options do not match")
+	}
+}
+
+// Test that extra headers are generated and parsed in a round trip.
+func TestEncrypterExtraHeaderInclusion(t *testing.T) {
+	sharedKey := []byte{
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	}
+
+	opts := &EncrypterOptions{
+		Compression: DEFLATE,
+	}
+	opts.WithType("JWT")
+	opts.WithContentType("JWT")
+	opts.WithHeader(HeaderKey("myCustomHeader"), "xyz")
+	enc, err := NewEncrypter(A256GCM, Recipient{Algorithm: A256GCMKW, Key: sharedKey}, opts)
+	if err != nil {
+		fmt.Println(err)
+		t.Error("Failed to create encrypter")
+	}
+
+	if !reflect.DeepEqual(*opts, enc.Options()) {
+		t.Error("Encrypter options do not match")
+	}
+
+	input := []byte("Lorem ipsum dolor sit amet")
+	obj, err := enc.Encrypt(input)
+	if err != nil {
+		t.Fatal("error in encrypt: ", err)
+	}
+
+	parsed, err := ParseEncrypted(obj.FullSerialize())
+	if err != nil {
+		t.Fatal("error in parse: ", err)
+	}
+
+	output, err := parsed.Decrypt(sharedKey)
+	if err != nil {
+		t.Fatal("error on decrypt: ", err)
+	}
+
+	if bytes.Compare(input, output) != 0 {
+		t.Fatal("Decrypted output does not match input: ", output, input)
+	}
+
+	if parsed.Header.ExtraHeaders[HeaderType] != "JWT" ||
+		parsed.Header.ExtraHeaders[HeaderContentType] != "JWT" ||
+		parsed.Header.ExtraHeaders[HeaderKey("myCustomHeader")] != "xyz" {
+		t.Fatal("Mismatch in extra headers: %#v", parsed.Header.ExtraHeaders)
 	}
 }
 

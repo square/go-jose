@@ -22,6 +22,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // NonceSource represents a source of random nonces to go into JWS objects
@@ -45,8 +47,32 @@ type SigningKey struct {
 type SignerOptions struct {
 	NonceSource NonceSource
 	EmbedJWK    bool
-	Type        ContentType
-	ContentType ContentType
+
+	// Optional map of additional keys to be inserted into the protected header
+	// of a JWS object. Some specifications which make use of JWS like to insert
+	// additional values here. All values must be JSON-serializable.
+	ExtraHeaders map[HeaderKey]interface{}
+}
+
+// WithHeader adds an arbitrary value to the ExtraHeaders map, initializing it
+// if necessary. It returns itself and so can be used in a fluent style.
+func (so *SignerOptions) WithHeader(k HeaderKey, v interface{}) *SignerOptions {
+	if so.ExtraHeaders == nil {
+		so.ExtraHeaders = map[HeaderKey]interface{}{}
+	}
+	so.ExtraHeaders[k] = v
+	return so
+}
+
+// WithContentType adds a content type ("cty") header and returns the updated
+// SignerOptions.
+func (so *SignerOptions) WithContentType(contentType ContentType) *SignerOptions {
+	return so.WithHeader(HeaderContentType, contentType)
+}
+
+// WithType adds a type ("typ") header and returns the updated SignerOptions.
+func (so *SignerOptions) WithType(typ ContentType) *SignerOptions {
+	return so.WithHeader(HeaderType, typ)
 }
 
 type payloadSigner interface {
@@ -58,11 +84,10 @@ type payloadVerifier interface {
 }
 
 type genericSigner struct {
-	recipients  []recipientSigInfo
-	nonceSource NonceSource
-	embedJWK    bool
-	typ         ContentType
-	contentType ContentType
+	recipients   []recipientSigInfo
+	nonceSource  NonceSource
+	embedJWK     bool
+	extraHeaders map[HeaderKey]interface{}
 }
 
 type recipientSigInfo struct {
@@ -83,8 +108,7 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 	if opts != nil {
 		signer.nonceSource = opts.NonceSource
 		signer.embedJWK = opts.EmbedJWK
-		signer.typ = opts.Type
-		signer.contentType = opts.ContentType
+		signer.extraHeaders = opts.ExtraHeaders
 	}
 
 	for _, sig := range sigs {
@@ -163,17 +187,15 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 	obj.Signatures = make([]Signature, len(ctx.recipients))
 
 	for i, recipient := range ctx.recipients {
-		protected := &rawHeader{
-			Alg: string(recipient.sigAlg),
-			Typ: string(ctx.typ),
-			Cty: string(ctx.contentType),
+		protected := map[HeaderKey]interface{}{
+			headerAlgorithm: string(recipient.sigAlg),
 		}
 
 		if recipient.publicKey != nil {
 			if ctx.embedJWK {
-				protected.Jwk = recipient.publicKey
+				protected[headerJWK] = recipient.publicKey
 			}
-			protected.Kid = recipient.publicKey.KeyID
+			protected[headerKeyID] = recipient.publicKey.KeyID
 		}
 
 		if ctx.nonceSource != nil {
@@ -181,7 +203,11 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 			if err != nil {
 				return nil, fmt.Errorf("square/go-jose: Error generating nonce: %v", err)
 			}
-			protected.Nonce = nonce
+			protected[headerNonce] = nonce
+		}
+
+		for k, v := range ctx.extraHeaders {
+			protected[k] = v
 		}
 
 		serializedProtected := mustSerializeJSON(protected)
@@ -195,7 +221,14 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 			return nil, err
 		}
 
-		signatureInfo.protected = protected
+		signatureInfo.protected = &rawHeader{}
+		for k, v := range protected {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return nil, fmt.Errorf("square/go-jose: Error marshalling item %#v: %v", k, err)
+			}
+			(*signatureInfo.protected)[k] = makeRawMessage(b)
+		}
 		obj.Signatures[i] = signatureInfo
 	}
 
@@ -204,10 +237,9 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 
 func (ctx *genericSigner) Options() SignerOptions {
 	return SignerOptions{
-		NonceSource: ctx.nonceSource,
-		EmbedJWK:    ctx.embedJWK,
-		Type:        ctx.typ,
-		ContentType: ctx.contentType,
+		NonceSource:  ctx.nonceSource,
+		EmbedJWK:     ctx.embedJWK,
+		ExtraHeaders: ctx.extraHeaders,
 	}
 }
 
@@ -230,13 +262,17 @@ func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) 
 
 	signature := obj.Signatures[0]
 	headers := signature.mergedHeaders()
-	if len(headers.Crit) > 0 {
+	critical, err := headers.getCritical()
+	if err != nil {
+		return nil, err
+	}
+	if len(critical) > 0 {
 		// Unsupported crit header
 		return nil, ErrCryptoFailure
 	}
 
 	input := obj.computeAuthData(&signature)
-	alg := SignatureAlgorithm(headers.Alg)
+	alg := headers.getSignatureAlgorithm()
 	err = verifier.verifyPayload(input, signature.Signature, alg)
 	if err == nil {
 		return obj.payload, nil
@@ -257,14 +293,18 @@ func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signa
 
 	for i, signature := range obj.Signatures {
 		headers := signature.mergedHeaders()
-		if len(headers.Crit) > 0 {
+		critical, err := headers.getCritical()
+		if err != nil {
+			continue
+		}
+		if len(critical) > 0 {
 			// Unsupported crit header
 			continue
 		}
 
 		input := obj.computeAuthData(&signature)
-		alg := SignatureAlgorithm(headers.Alg)
-		err := verifier.verifyPayload(input, signature.Signature, alg)
+		alg := headers.getSignatureAlgorithm()
+		err = verifier.verifyPayload(input, signature.Signature, alg)
 		if err == nil {
 			return i, signature, obj.payload, nil
 		}

@@ -184,10 +184,7 @@ func TestBuilderSignedAndEncrypted(t *testing.T) {
 		Algorithm: jose.RSA1_5,
 		Key:       testPrivRSAKey1.Public(),
 	}
-	encrypter, err := jose.NewEncrypter(jose.A128CBC_HS256, recipient, &jose.EncrypterOptions{
-		ContentType: "JWT",
-		Type:        "JWT",
-	})
+	encrypter, err := jose.NewEncrypter(jose.A128CBC_HS256, recipient, (&jose.EncrypterOptions{}).WithContentType("JWT").WithType("JWT"))
 	require.NoError(t, err, "Error creating encrypter.")
 
 	jwt1, err := SignedAndEncrypted(rsaSigner, encrypter).Claims(&testClaims{"foo"}).Token()
@@ -216,14 +213,19 @@ func TestBuilderSignedAndEncrypted(t *testing.T) {
 		jwe, err := ParseSignedAndEncrypted(tok2)
 		if assert.NoError(t, err, "Error parsing signed-then-encrypted full token.") {
 			assert.Equal(t, []jose.Header{{
-				Algorithm:   string(jose.RSA1_5),
-				Type:        "JWT",
-				ContentType: "JWT",
+				Algorithm: string(jose.RSA1_5),
+				ExtraHeaders: map[jose.HeaderKey]interface{}{
+					jose.HeaderType:        "JWT",
+					jose.HeaderContentType: "JWT",
+					"enc": "A128CBC-HS256",
+				},
 			}}, jwe.Headers)
 			if jws, err := jwe.Decrypt(testPrivRSAKey1); assert.NoError(t, err) {
 				assert.Equal(t, []jose.Header{{
 					Algorithm: string(jose.RS256),
-					Type:      "JWT",
+					ExtraHeaders: map[jose.HeaderKey]interface{}{
+						jose.HeaderType: "JWT",
+					},
 				}}, jws.Headers)
 				out := &testClaims{}
 				assert.NoError(t, jws.Claims(&testPrivRSAKey1.PublicKey, out))
@@ -332,7 +334,7 @@ func TestBuilderHeadersEncrypter(t *testing.T) {
 	}
 
 	wantType := jose.ContentType("JWT")
-	encrypter, err := jose.NewEncrypter(jose.A128CBC_HS256, recipient, &jose.EncrypterOptions{Type: wantType})
+	encrypter, err := jose.NewEncrypter(jose.A128CBC_HS256, recipient, (&jose.EncrypterOptions{}).WithType(wantType))
 	require.NoError(t, err, "failed to create encrypter")
 
 	token, err := Encrypted(encrypter).Claims(claims).CompactSerialize()
@@ -341,7 +343,10 @@ func TestBuilderHeadersEncrypter(t *testing.T) {
 	jwe, err := jose.ParseEncrypted(token)
 	if assert.NoError(t, err, "error parsing encrypted token") {
 		assert.Equal(t, jose.Header{
-			Type:      string(wantType),
+			ExtraHeaders: map[jose.HeaderKey]interface{}{
+				jose.HeaderType: string(wantType),
+				"enc":           "A128CBC-HS256",
+			},
 			Algorithm: string(jose.RSA1_5),
 			KeyID:     wantKeyID,
 		}, jwe.Header)
@@ -401,7 +406,7 @@ func mustUnmarshalRSA(data string) *rsa.PrivateKey {
 }
 
 func mustMakeSigner(alg jose.SignatureAlgorithm, k interface{}) jose.Signer {
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: k}, &jose.SignerOptions{Type: "JWT"})
+	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: k}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		panic("failed to create signer:" + err.Error())
 	}

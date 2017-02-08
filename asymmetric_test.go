@@ -242,9 +242,8 @@ func TestInvalidECDecrypt(t *testing.T) {
 	generator := randomKeyGenerator{size: 16}
 
 	// Missing epk header
-	headers := rawHeader{
-		Alg: string(ECDH_ES),
-	}
+	headers := rawHeader{}
+	headers.set(headerAlgorithm, ECDH_ES)
 
 	_, err := dec.decryptKey(headers, nil, generator)
 	if err == nil {
@@ -252,7 +251,7 @@ func TestInvalidECDecrypt(t *testing.T) {
 	}
 
 	// Invalid epk header
-	headers.Epk = &JSONWebKey{}
+	headers.set(headerEPK, &JSONWebKey{})
 
 	_, err = dec.decryptKey(headers, nil, generator)
 	if err == nil {
@@ -443,12 +442,11 @@ func estInvalidECPublicKey(t *testing.T) {
 		D: fromBase64Int("0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo"),
 	}
 
-	headers := rawHeader{
-		Alg: string(ECDH_ES),
-		Epk: &JSONWebKey{
-			Key: &invalid.PublicKey,
-		},
-	}
+	headers := rawHeader{}
+	headers.set(headerAlgorithm, ECDH_ES)
+	headers.set(headerEPK, &JSONWebKey{
+		Key: &invalid.PublicKey,
+	})
 
 	dec := ecDecrypterSigner{
 		privateKey: ecTestKey256,

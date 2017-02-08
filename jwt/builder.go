@@ -92,7 +92,7 @@ func Encrypted(enc jose.Encrypter) Builder {
 // SignedAndEncrypted creates builder for signed-then-encrypted tokens.
 // ErrInvalidContentType will be returned if encrypter doesn't have JWT content type.
 func SignedAndEncrypted(sig jose.Signer, enc jose.Encrypter) NestedBuilder {
-	if enc.Options().ContentType != "JWT" {
+	if contentType, _ := enc.Options().ExtraHeaders[jose.HeaderContentType].(jose.ContentType); contentType != "JWT" {
 		return &nestedBuilder{
 			builder: builder{
 				err: ErrInvalidContentType,
