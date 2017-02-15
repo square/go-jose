@@ -361,11 +361,11 @@ func symmetricTestKey(size int) []testKey {
 	key, _, _ := randomKeyGenerator{size: size}.genKey()
 
 	return []testKey{
-		testKey{
+		{
 			enc: key,
 			dec: key,
 		},
-		testKey{
+		{
 			enc: &JsonWebKey{KeyID: "test", Key: key},
 			dec: &JsonWebKey{KeyID: "test", Key: key},
 		},
@@ -378,19 +378,19 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 		return symmetricTestKey(getContentCipher(encAlg).keySize())
 	case ECDH_ES, ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW:
 		return []testKey{
-			testKey{
+			{
 				dec: ecTestKey256,
 				enc: &ecTestKey256.PublicKey,
 			},
-			testKey{
+			{
 				dec: ecTestKey384,
 				enc: &ecTestKey384.PublicKey,
 			},
-			testKey{
+			{
 				dec: ecTestKey521,
 				enc: &ecTestKey521.PublicKey,
 			},
-			testKey{
+			{
 				dec: &JsonWebKey{KeyID: "test", Key: ecTestKey256},
 				enc: &JsonWebKey{KeyID: "test", Key: &ecTestKey256.PublicKey},
 			},
@@ -402,7 +402,7 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 	case A256GCMKW, A256KW:
 		return symmetricTestKey(32)
 	case RSA1_5, RSA_OAEP, RSA_OAEP_256:
-		return []testKey{testKey{
+		return []testKey{{
 			dec: rsaTestKey,
 			enc: &rsaTestKey.PublicKey,
 		}}
