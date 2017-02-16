@@ -132,7 +132,7 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 		}
 
 		// Check that there is not a nonce in the unprotected header
-		if parsed.Header != nil && parsed.Header.Nonce != "" {
+		if parsed.Header != nil && parsed.Header.getNonce() != "" {
 			return nil, ErrUnprotectedNonce
 		}
 
@@ -153,7 +153,11 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 			Signature: parsed.Signature,
 		}
 
-		signature.Header = signature.mergedHeaders().sanitized()
+		var err error
+		signature.Header, err = signature.mergedHeaders().sanitized()
+		if err != nil {
+			return nil, err
+		}
 
 		// As per RFC 7515 Section 4.1.3, only public keys are allowed to be embedded.
 		jwk := signature.Header.JSONWebKey
@@ -174,11 +178,16 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 		}
 
 		// Check that there is not a nonce in the unprotected header
-		if sig.Header != nil && sig.Header.Nonce != "" {
+		if sig.Header != nil && sig.Header.getNonce() != "" {
 			return nil, ErrUnprotectedNonce
 		}
 
-		obj.Signatures[i].Header = obj.Signatures[i].mergedHeaders().sanitized()
+		var err error
+		obj.Signatures[i].Header, err = obj.Signatures[i].mergedHeaders().sanitized()
+		if err != nil {
+			return nil, err
+		}
+
 		obj.Signatures[i].Signature = sig.Signature.bytes()
 
 		// As per RFC 7515 Section 4.1.3, only public keys are allowed to be embedded.

@@ -20,6 +20,8 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
+
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // KeyAlgorithm represents a key management algorithm.
@@ -117,96 +119,262 @@ const (
 	DEFLATE = CompressionAlgorithm("DEF") // DEFLATE (RFC 1951)
 )
 
+// A key in the protected header of a JWS object. Use of the Header...
+// constants is preferred to enhance type safety.
+type HeaderKey string
+
+const (
+	HeaderType        HeaderKey = "typ" // string
+	HeaderContentType           = "cty" // string
+
+	// These are set by go-jose and shouldn't need to be set by consumers of the
+	// library.
+	headerAlgorithm   = "alg"  // string
+	headerEncryption  = "enc"  // ContentEncryption
+	headerCompression = "zip"  // CompressionAlgorithm
+	headerCritical    = "crit" // []string
+
+	headerAPU = "apu" // *byteBuffer
+	headerAPV = "apv" // *byteBuffer
+	headerEPK = "epk" // *JSONWebKey
+	headerIV  = "iv"  // *byteBuffer
+	headerTag = "tag" // *byteBuffer
+
+	headerJWK   = "jwk"   // *JSONWebKey
+	headerKeyID = "kid"   // string
+	headerNonce = "nonce" // string
+)
+
 // rawHeader represents the JOSE header for JWE/JWS objects (used for parsing).
-type rawHeader struct {
-	Alg   string               `json:"alg,omitempty"`
-	Enc   ContentEncryption    `json:"enc,omitempty"`
-	Zip   CompressionAlgorithm `json:"zip,omitempty"`
-	Crit  []string             `json:"crit,omitempty"`
-	Apu   *byteBuffer          `json:"apu,omitempty"`
-	Apv   *byteBuffer          `json:"apv,omitempty"`
-	Epk   *JSONWebKey          `json:"epk,omitempty"`
-	Iv    *byteBuffer          `json:"iv,omitempty"`
-	Tag   *byteBuffer          `json:"tag,omitempty"`
-	Jwk   *JSONWebKey          `json:"jwk,omitempty"`
-	Kid   string               `json:"kid,omitempty"`
-	Nonce string               `json:"nonce,omitempty"`
-	Typ   string               `json:"typ,omitempty"`
-	Cty   string               `json:"cty,omitempty"`
-}
+//
+// The decoding of the constituent items is deferred because we want to marshal
+// some members into particular structs rather than generic maps, but at the
+// same time we need to receive any extra fields unhandled by this library to
+// pass through to consuming code in case it wants to examine them.
+type rawHeader map[HeaderKey]*json.RawMessage
 
 // Header represents the read-only JOSE header for JWE/JWS objects.
 type Header struct {
-	KeyID       string
-	JSONWebKey  *JSONWebKey
-	Algorithm   string
-	Nonce       string
-	Type        string
-	ContentType string
+	KeyID      string
+	JSONWebKey *JSONWebKey
+	Algorithm  string
+	Nonce      string
+
+	// Any headers not recognised above get unmarshaled from JSON in a generic
+	// manner and placed in this map.
+	ExtraHeaders map[HeaderKey]interface{}
+}
+
+func (parsed rawHeader) set(k HeaderKey, v interface{}) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	parsed[k] = makeRawMessage(b)
+	return nil
+}
+
+// getString gets a string from the raw JSON, defaulting to "".
+func (parsed rawHeader) getString(k HeaderKey) string {
+	v, ok := parsed[k]
+	if !ok {
+		return ""
+	}
+	var s string
+	err := json.Unmarshal(*v, &s)
+	if err != nil {
+		return ""
+	}
+	return s
+}
+
+// getByteBuffer gets a byte buffer from the raw JSON. Returns (nil, nil) if
+// not specified.
+func (parsed rawHeader) getByteBuffer(k HeaderKey) (*byteBuffer, error) {
+	v := parsed[k]
+	if v == nil {
+		return nil, nil
+	}
+	var bb *byteBuffer
+	err := json.Unmarshal(*v, &bb)
+	if err != nil {
+		return nil, err
+	}
+	return bb, nil
+}
+
+// getAlgorithm extracts parsed "alg" from the raw JSON as a KeyAlgorithm.
+func (parsed rawHeader) getAlgorithm() KeyAlgorithm {
+	return KeyAlgorithm(parsed.getString(headerAlgorithm))
+}
+
+// getSignatureAlgorithm extracts parsed "alg" from the raw JSON as a SignatureAlgorithm.
+func (parsed rawHeader) getSignatureAlgorithm() SignatureAlgorithm {
+	return SignatureAlgorithm(parsed.getString(headerAlgorithm))
+}
+
+// getEncryption extracts parsed "enc" from the raw JSON.
+func (parsed rawHeader) getEncryption() ContentEncryption {
+	return ContentEncryption(parsed.getString(headerEncryption))
+}
+
+// getCompression extracts parsed "zip" from the raw JSON.
+func (parsed rawHeader) getCompression() CompressionAlgorithm {
+	return CompressionAlgorithm(parsed.getString(headerCompression))
+}
+
+func (parsed rawHeader) getNonce() string {
+	return parsed.getString(headerNonce)
+}
+
+// getEPK extracts parsed "epk" from the raw JSON.
+func (parsed rawHeader) getEPK() (*JSONWebKey, error) {
+	v := parsed[headerEPK]
+	if v == nil {
+		return nil, nil
+	}
+	var epk *JSONWebKey
+	err := json.Unmarshal(*v, &epk)
+	if err != nil {
+		return nil, err
+	}
+	return epk, nil
+}
+
+// getAPU extracts parsed "apu" from the raw JSON.
+func (parsed rawHeader) getAPU() (*byteBuffer, error) {
+	return parsed.getByteBuffer(headerAPU)
+}
+
+// getAPV extracts parsed "apv" from the raw JSON.
+func (parsed rawHeader) getAPV() (*byteBuffer, error) {
+	return parsed.getByteBuffer(headerAPV)
+}
+
+// getIV extracts parsed "iv" frpom the raw JSON.
+func (parsed rawHeader) getIV() (*byteBuffer, error) {
+	return parsed.getByteBuffer(headerIV)
+}
+
+// getTag extracts parsed "tag" frpom the raw JSON.
+func (parsed rawHeader) getTag() (*byteBuffer, error) {
+	return parsed.getByteBuffer(headerTag)
+}
+
+// getJWK extracts parsed "jwk" from the raw JSON.
+func (parsed rawHeader) getJWK() (*JSONWebKey, error) {
+	v := parsed[headerJWK]
+	if v == nil {
+		return nil, nil
+	}
+	var jwk *JSONWebKey
+	err := json.Unmarshal(*v, &jwk)
+	if err != nil {
+		return nil, err
+	}
+	return jwk, nil
+}
+
+// getCritical extracts parsed "crit" from the raw JSON. If omitted, it
+// returns an empty slice.
+func (parsed rawHeader) getCritical() ([]string, error) {
+	v := parsed[headerCritical]
+	if v == nil {
+		return nil, nil
+	}
+
+	var q []string
+	err := json.Unmarshal(*v, &q)
+	if err != nil {
+		return nil, err
+	}
+	return q, nil
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
-func (parsed rawHeader) sanitized() Header {
-	return Header{
-		KeyID:       parsed.Kid,
-		JSONWebKey:  parsed.Jwk,
-		Algorithm:   parsed.Alg,
-		Nonce:       parsed.Nonce,
-		Type:        parsed.Typ,
-		ContentType: parsed.Cty,
+func (parsed rawHeader) sanitized() (h Header, err error) {
+	for k, v := range parsed {
+		switch k {
+		case headerJWK:
+			var jwk *JSONWebKey
+			err = json.Unmarshal(*v, &jwk)
+			if err != nil {
+				err = fmt.Errorf("failed to unmarshal JWK: %v: %#v", err, string(*v))
+				return
+			}
+			h.JSONWebKey = jwk
+		case headerKeyID:
+			var s string
+			err = json.Unmarshal(*v, &s)
+			if err != nil {
+				err = fmt.Errorf("failed to unmarshal key ID: %v: %#v", err, string(*v))
+				return
+			}
+			h.KeyID = s
+		case headerAlgorithm:
+			var s string
+			err = json.Unmarshal(*v, &s)
+			if err != nil {
+				err = fmt.Errorf("failed to unmarshal algorithm: %v: %#v", err, string(*v))
+				return
+			}
+			h.Algorithm = s
+		case headerNonce:
+			var s string
+			err = json.Unmarshal(*v, &s)
+			if err != nil {
+				err = fmt.Errorf("failed to unmarshal nonce: %v: %#v", err, string(*v))
+				return
+			}
+			h.Nonce = s
+		default:
+			if h.ExtraHeaders == nil {
+				h.ExtraHeaders = map[HeaderKey]interface{}{}
+			}
+			var v2 interface{}
+			err = json.Unmarshal(*v, &v2)
+			if err != nil {
+				err = fmt.Errorf("failed to unmarshal value: %v: %#v", err, string(*v))
+				return
+			}
+			h.ExtraHeaders[k] = v2
+		}
 	}
+	return
+}
+
+func (dst rawHeader) isSet(k HeaderKey) bool {
+	dvr := dst[k]
+	if dvr == nil {
+		return false
+	}
+
+	var dv interface{}
+	err := json.Unmarshal(*dvr, &dv)
+	if err != nil {
+		return true
+	}
+
+	if dvStr, ok := dv.(string); ok {
+		return dvStr != ""
+	}
+
+	return true
 }
 
 // Merge headers from src into dst, giving precedence to headers from l.
-func (dst *rawHeader) merge(src *rawHeader) {
+func (dst rawHeader) merge(src *rawHeader) {
 	if src == nil {
 		return
 	}
 
-	if dst.Alg == "" {
-		dst.Alg = src.Alg
-	}
-	if dst.Enc == "" {
-		dst.Enc = src.Enc
-	}
-	if dst.Zip == "" {
-		dst.Zip = src.Zip
-	}
-	if dst.Crit == nil {
-		dst.Crit = src.Crit
-	}
-	if dst.Crit == nil {
-		dst.Crit = src.Crit
-	}
-	if dst.Apu == nil {
-		dst.Apu = src.Apu
-	}
-	if dst.Apv == nil {
-		dst.Apv = src.Apv
-	}
-	if dst.Epk == nil {
-		dst.Epk = src.Epk
-	}
-	if dst.Iv == nil {
-		dst.Iv = src.Iv
-	}
-	if dst.Tag == nil {
-		dst.Tag = src.Tag
-	}
-	if dst.Kid == "" {
-		dst.Kid = src.Kid
-	}
-	if dst.Jwk == nil {
-		dst.Jwk = src.Jwk
-	}
-	if dst.Nonce == "" {
-		dst.Nonce = src.Nonce
-	}
-	if dst.Typ == "" {
-		dst.Typ = src.Typ
-	}
-	if dst.Cty == "" {
-		dst.Cty = src.Cty
+	for k, v := range *src {
+		if dst.isSet(k) {
+			continue
+		}
+
+		dst[k] = v
 	}
 }
 
@@ -236,4 +404,9 @@ func curveSize(crv elliptic.Curve) int {
 	}
 
 	return div + 1
+}
+
+func makeRawMessage(b []byte) *json.RawMessage {
+	rm := json.RawMessage(b)
+	return &rm
 }

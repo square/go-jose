@@ -23,6 +23,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"reflect"
 	"testing"
 
 	"gopkg.in/square/go-jose.v2/json"
@@ -313,9 +314,8 @@ func TestInvalidJWS(t *testing.T) {
 	}
 
 	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
-	obj.Signatures[0].header = &rawHeader{
-		Crit: []string{"TEST"},
-	}
+	obj.Signatures[0].header = &rawHeader{}
+	obj.Signatures[0].header.set(headerCritical, []string{"TEST"})
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
@@ -409,7 +409,8 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("Failed to parse jws")
 	}
 
-	if object.Signatures[0].protected.Jwk == nil {
+	jwk, err := object.Signatures[0].protected.getJWK()
+	if jwk == nil || err != nil {
 		t.Error("JWK isn't set in protected header")
 	}
 
@@ -426,7 +427,11 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("Failed to parse jws")
 	}
 
-	if object.Signatures[0].protected.Jwk != nil {
+	jwk2, err := object.Signatures[0].protected.getJWK()
+	if err != nil {
+		t.Error("JWK is invalid in protected header")
+	}
+	if jwk2 != nil {
 		t.Error("JWK is set in protected header")
 	}
 }
@@ -434,16 +439,50 @@ func TestEmbedJwk(t *testing.T) {
 func TestSignerOptions(t *testing.T) {
 	key, _ := GenerateSigningTestKey(HS256)
 	opts := &SignerOptions{
-		EmbedJWK:    true,
-		Type:        "JWT",
-		ContentType: "JWT",
+		EmbedJWK: true,
 	}
+	opts.WithContentType("JWT")
+	opts.WithType("JWT")
 	sig, err := NewSigner(SigningKey{HS256, key}, opts)
 	if err != nil {
 		t.Error("Failed to create signer")
 	}
 
-	if *opts != sig.Options() {
+	if !reflect.DeepEqual(*opts, sig.Options()) {
 		t.Error("Signer options do not match")
+	}
+}
+
+// Test that extra headers are generated and parsed in a round trip.
+func TestSignerExtraHeaderInclusion(t *testing.T) {
+	var payload = []byte("Lorem ipsum dolor sit amet")
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Error("Failed to generate key")
+	}
+
+	signer, err := NewSigner(SigningKey{ES256, key}, (&SignerOptions{}).WithContentType("foo/bar").WithHeader(HeaderKey("myCustomHeader"), "xyz"))
+	if err != nil {
+		t.Error("Failed to create signer", err)
+	}
+
+	object, err := signer.Sign(payload)
+	if err != nil {
+		t.Error("Failed to sign payload")
+	}
+
+	object, err = ParseSigned(object.FullSerialize())
+	if err != nil {
+		t.Error("Failed to parse jws")
+	}
+
+	correct := map[HeaderKey]interface{}{
+		HeaderContentType:           "foo/bar",
+		HeaderKey("myCustomHeader"): "xyz",
+	}
+
+	if !reflect.DeepEqual(object.Signatures[0].Header.ExtraHeaders, correct) {
+		t.Errorf("Mismatch in extra headers: %#v", object.Signatures[0].Header.ExtraHeaders)
 	}
 }

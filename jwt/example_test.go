@@ -132,7 +132,7 @@ func ExampleClaims_Validate_withParse() {
 
 func ExampleSigned() {
 	key := []byte("secret")
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, &jose.SignerOptions{Type: "JWT"})
+	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		panic(err)
 	}
@@ -156,7 +156,7 @@ func ExampleEncrypted() {
 	enc, err := jose.NewEncrypter(
 		jose.A128GCM,
 		jose.Recipient{Algorithm: jose.DIRECT, Key: sharedEncryptionKey},
-		&jose.EncrypterOptions{Type: "JWT"},
+		(&jose.EncrypterOptions{}).WithType("JWT"),
 	)
 	if err != nil {
 		panic(err)
@@ -181,10 +181,7 @@ func ExampleSignedAndEncrypted() {
 			Algorithm: jose.DIRECT,
 			Key:       sharedEncryptionKey,
 		},
-		&jose.EncrypterOptions{
-			Type:        "JWT",
-			ContentType: "JWT",
-		})
+		(&jose.EncrypterOptions{}).WithType("JWT").WithContentType("JWT"))
 	if err != nil {
 		panic(err)
 	}
