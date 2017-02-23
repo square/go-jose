@@ -217,11 +217,19 @@ func TestMultiRecipientJWS(t *testing.T) {
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 	}
+	jwkSharedKey := JSONWebKey{
+		KeyID: "123",
+		Key:   sharedKey,
+	}
 
 	signer, err := NewMultiSigner([]SigningKey{
 		{RS256, rsaTestKey},
 		{HS384, sharedKey},
+		{HS512, jwkSharedKey},
 	}, nil)
+	if err != nil {
+		t.Fatal("error creating signer: ", err)
+	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
 	obj, err := signer.Sign(input)
