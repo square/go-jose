@@ -177,7 +177,13 @@ func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey) (recipientSigIn
 	if err != nil {
 		return recipientSigInfo{}, err
 	}
-	recipient.publicKey.KeyID = signingKey.KeyID
+	if signingKey.IsPublic() {
+		recipient.publicKey.KeyID = signingKey.KeyID
+	} else {
+		recipient.publicKey = &JSONWebKey{
+			KeyID: signingKey.KeyID,
+		}
+	}
 	return recipient, nil
 }
 
