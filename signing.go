@@ -240,15 +240,15 @@ func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) 
 		return nil, ErrCryptoFailure
 	}
 
-	if err := verifyCerts(&headers); err != nil {
-		return nil, err
-	}
-
 	input := obj.computeAuthData(&signature)
 	alg := SignatureAlgorithm(headers.Alg)
 	err = verifier.verifyPayload(input, signature.Signature, alg)
 	if err == nil {
 		return obj.payload, nil
+	}
+
+	if err := verifyCerts(&headers); err != nil {
+		return nil, err
 	}
 
 	return nil, ErrCryptoFailure
@@ -271,16 +271,17 @@ func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signa
 			continue
 		}
 
+		input := obj.computeAuthData(&signature)
+		alg := SignatureAlgorithm(headers.Alg)
+		if err := verifier.verifyPayload(input, signature.Signature, alg); err != nil {
+			continue
+		}
+
 		if err := verifyCerts(&headers); err != nil {
 			continue
 		}
 
-		input := obj.computeAuthData(&signature)
-		alg := SignatureAlgorithm(headers.Alg)
-		err := verifier.verifyPayload(input, signature.Signature, alg)
-		if err == nil {
-			return i, signature, obj.payload, nil
-		}
+		return i, signature, obj.payload, nil
 	}
 
 	return -1, Signature{}, nil, ErrCryptoFailure
