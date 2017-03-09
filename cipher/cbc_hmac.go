@@ -34,72 +34,48 @@ const (
 	nonceBytes = 16
 )
 
-const (
-	integrity  = "Integrity"
-	encryption = "Encryption"
+var (
+	integrity  = []byte("Integrity")
+	encryption = []byte("Encryption")
+	dot        = []byte(".")
+	zero       = []byte{0, 0, 0, 0}
 )
-
-var dot = []byte(".")
-var zero = []byte{0, 0, 0, 0}
 
 const rsa2048ByteKeySize = 2048 / 8 // 256
 
 // ComputeIntegrityKey derives an integrity key based on a master key, using the A128CBC+HS256 draft specification
-func ComputeIntegrityKey(key []byte, algorithm string) []byte {
-	// content integrity key size is the
-	algBytes := []byte(algorithm)
-
-	buf := []byte{0, 0, 0, 1}
-	buf = append(buf, key...)
-
+func ComputeIntegrityKey(key []byte, algorithm string, hash hash.Hash) []byte {
+	hash.Write([]byte{0, 0, 0, 1})
+	hash.Write(key)
 	tmp := make([]byte, 4)
 	binary.BigEndian.PutUint32(tmp, uint32(len(key)*8))
-	buf = append(buf, tmp...)
-	buf = append(buf, algBytes...)
-	buf = append(buf, zero...)
-	buf = append(buf, zero...)
-	buf = append(buf, []byte(integrity)...)
+	hash.Write(tmp)
+	hash.Write([]byte(algorithm))
+	hash.Write(zero)
+	hash.Write(zero)
+	hash.Write([]byte(integrity))
 
-	hashed := sha256.Sum256(buf)
-
-	return hashed[:len(key)]
+	return hash.Sum(nil)[:len(key)]
 }
 
 // ComputeEncryptionKey derives an encryption key based on a master key, using the A128CBC+HS256 draft specification
-func ComputeEncryptionKey(key []byte, algorithm string) []byte {
-	keySize := len(key) / 2
-
-	encBytes := []byte(algorithm)
-
-	buf := []byte{0, 0, 0, 1}
-	buf = append(buf, key...)
-
+func ComputeEncryptionKey(key []byte, algorithm string, hash hash.Hash) []byte {
+	hash.Write([]byte{0, 0, 0, 1})
+	hash.Write(key)
 	tmp := make([]byte, 4)
 	binary.BigEndian.PutUint32(tmp, uint32(len(key)*4))
-	buf = append(buf, tmp...)
-	buf = append(buf, encBytes...)
-	buf = append(buf, zero...)
-	buf = append(buf, zero...)
-	buf = append(buf, []byte(encryption)...)
+	hash.Write(tmp)
+	hash.Write([]byte(algorithm))
+	hash.Write(zero)
+	hash.Write(zero)
+	hash.Write(encryption)
 
-	hashed := sha256.Sum256(buf)
-	encryptionKey := hashed[:keySize]
-
-	return encryptionKey
+	return hash.Sum(nil)[:len(key)/2]
 }
 
 // NewCBCHMACEx instantiates a new AEAD based on CBC+HMAC from the draft 7 spec
 func NewCBCHMACEx(key []byte, enc string, newBlockCipher func([]byte) (cipher.Block, error)) (cipher.AEAD, error) {
 	keySize := len(key) / 2
-
-	encryptionKey := ComputeEncryptionKey(key, enc)
-
-	integrityKey := ComputeIntegrityKey(key, enc)
-
-	blockCipher, err := newBlockCipher(encryptionKey)
-	if err != nil {
-		return nil, err
-	}
 
 	var hash func() hash.Hash
 	switch keySize {
@@ -109,6 +85,14 @@ func NewCBCHMACEx(key []byte, enc string, newBlockCipher func([]byte) (cipher.Bl
 		hash = sha512.New384
 	case 32:
 		hash = sha512.New
+	}
+
+	encryptionKey := ComputeEncryptionKey(key, enc, hash())
+	integrityKey := ComputeIntegrityKey(key, enc, hash())
+
+	blockCipher, err := newBlockCipher(encryptionKey)
+	if err != nil {
+		return nil, err
 	}
 
 	return &cbcAEAD{
