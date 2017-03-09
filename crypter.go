@@ -299,7 +299,6 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JsonWe
 func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) {
 	headers := obj.mergedHeaders(nil)
 
-	fmt.Println(obj.recipients)
 	if len(obj.recipients) > 1 {
 		return nil, errors.New("square/go-jose: too many recipients in payload; expecting only one")
 	}
@@ -337,8 +336,13 @@ func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 	cek, err := decrypter.decryptKey(recipientHeaders, &recipient, generator)
 	if err == nil {
 		// Found a valid CEK -- let's try to decrypt.
-		parts.kdata = make([]byte, len(recipient.encryptedKey))
-		copy(parts.kdata, recipient.encryptedKey)
+
+		// if A128+HS256, we need to append additional data
+		if obj.protected.Enc == A128CBCpHS256 {
+			parts.kdata = make([]byte, len(recipient.encryptedKey))
+			copy(parts.kdata, recipient.encryptedKey)
+		}
+
 		plaintext, err = cipher.decrypt(cek, authData, parts)
 	}
 

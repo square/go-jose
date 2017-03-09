@@ -25,7 +25,6 @@ import (
 	"crypto/sha512"
 	"crypto/subtle"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 
@@ -94,6 +93,16 @@ func newAESCBC(keySize int) contentCipher {
 	}
 }
 
+func newAESCBCPlus(keySize int) contentCipher {
+	return &aeadContentCipher{
+		keyBytes:     keySize * 2,
+		authtagBytes: 16,
+		getAead: func(key []byte) (cipher.AEAD, error) {
+			return josecipher.NewCBCHMACEx(key, aes.NewCipher)
+		},
+	}
+}
+
 // Get an AEAD cipher object for the given content encryption algorithm
 func getContentCipher(alg ContentEncryption) contentCipher {
 	switch alg {
@@ -106,7 +115,7 @@ func getContentCipher(alg ContentEncryption) contentCipher {
 	case A128CBC_HS256:
 		return newAESCBC(16)
 	case A128CBCpHS256:
-		return newAESCBC(16)
+		return newAESCBCPlus(16)
 	case A192CBC_HS384:
 		return newAESCBC(24)
 	case A256CBC_HS512:
@@ -215,8 +224,12 @@ func (ctx aeadContentCipher) decrypt(key, aad []byte, parts *aeadParts) ([]byte,
 	}
 
 	appended := append(parts.ciphertext, parts.tag...)
-	appended = append(appended, parts.kdata...)
-	fmt.Println(parts.kdata)
+
+	if parts.kdata != nil {
+		appended = append(appended, []byte(".")...)
+		appended = append(appended, parts.kdata...)
+	}
+
 	return aead.Open(nil, parts.iv, appended, aad)
 }
 
