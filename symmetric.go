@@ -93,12 +93,12 @@ func newAESCBC(keySize int) contentCipher {
 	}
 }
 
-func newAESCBCPlus(keySize int) contentCipher {
+func newAESCBCPlus(keySize int, enc ContentEncryption) contentCipher {
 	return &aeadContentCipher{
 		keyBytes:     keySize * 2,
 		authtagBytes: 16,
 		getAead: func(key []byte) (cipher.AEAD, error) {
-			return josecipher.NewCBCHMACEx(key, aes.NewCipher)
+			return josecipher.NewCBCHMACEx(key, string(enc), aes.NewCipher)
 		},
 	}
 }
@@ -115,7 +115,7 @@ func getContentCipher(alg ContentEncryption) contentCipher {
 	case A128CBC_HS256:
 		return newAESCBC(16)
 	case A128CBCpHS256:
-		return newAESCBCPlus(16)
+		return newAESCBCPlus(16, A128CBCpHS256)
 	case A192CBC_HS384:
 		return newAESCBC(24)
 	case A256CBC_HS512:
