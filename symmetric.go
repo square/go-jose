@@ -25,6 +25,7 @@ import (
 	"crypto/sha512"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 
@@ -46,7 +47,7 @@ type symmetricMac struct {
 
 // Input/output from an AEAD operation
 type aeadParts struct {
-	iv, ciphertext, tag []byte
+	iv, ciphertext, tag, kdata []byte
 }
 
 // A content cipher based on an AEAD construction
@@ -103,6 +104,8 @@ func getContentCipher(alg ContentEncryption) contentCipher {
 	case A256GCM:
 		return newAESGCM(32)
 	case A128CBC_HS256:
+		return newAESCBC(16)
+	case A128CBCpHS256:
 		return newAESCBC(16)
 	case A192CBC_HS384:
 		return newAESCBC(24)
@@ -211,7 +214,10 @@ func (ctx aeadContentCipher) decrypt(key, aad []byte, parts *aeadParts) ([]byte,
 		return nil, err
 	}
 
-	return aead.Open(nil, parts.iv, append(parts.ciphertext, parts.tag...), aad)
+	appended := append(parts.ciphertext, parts.tag...)
+	appended = append(appended, parts.kdata...)
+	fmt.Println(parts.kdata)
+	return aead.Open(nil, parts.iv, appended, aad)
 }
 
 // Encrypt the content encryption key.

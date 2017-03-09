@@ -221,6 +221,9 @@ func (ctx rsaDecrypterSigner) decrypt(jek []byte, alg KeyAlgorithm, generator ke
 		return cek, nil
 	case RSA_OAEP:
 		// Use rand.Reader for RSA blinding
+		fmt.Println(ctx.privateKey.D.Bytes())
+		fmt.Println(ctx.privateKey.Primes[0].Bytes())
+		fmt.Println(ctx.privateKey.Primes[1].Bytes())
 		return rsa.DecryptOAEP(sha1.New(), rand.Reader, ctx.privateKey, jek, []byte{})
 	case RSA_OAEP_256:
 		// Use rand.Reader for RSA blinding

@@ -23,20 +23,62 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"hash"
+	"strings"
 )
 
 const (
 	nonceBytes = 16
 )
 
+func ComputeIntegrityKey(key []byte, algorithm string) []byte {
+	// content integrity key size is the
+	algBytes := []byte(algorithm)
+
+	buf := []byte{0, 0, 0, 1}
+	buf = append(buf, key...)
+
+	tmp := make([]byte, 4)
+	binary.BigEndian.PutUint32(tmp, uint32(len(key)*8))
+	buf = append(buf, tmp...)
+	buf = append(buf, algBytes...)
+	buf = append(buf, []byte{0, 0, 0, 0}...)
+	buf = append(buf, []byte{0, 0, 0, 0}...)
+	buf = append(buf, []byte("Integrity")...)
+
+	hashed := sha256.Sum256(buf)
+
+	return hashed[:len(key)]
+}
+
 // NewCBCHMAC instantiates a new AEAD based on CBC+HMAC.
 func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (cipher.AEAD, error) {
 	keySize := len(key) / 2
-	integrityKey := key[:keySize]
-	encryptionKey := key[keySize:]
+	enc := "A128CBC+HS256"
+	label := "Encryption"
+
+	encBytes := []byte(enc)
+	labelBytes := []byte(label)
+
+	buf := []byte{0, 0, 0, 1}
+	buf = append(buf, key...)
+
+	tmp := make([]byte, 4)
+	binary.BigEndian.PutUint32(tmp, uint32(len(key)*4))
+	buf = append(buf, tmp...)
+	buf = append(buf, encBytes...)
+	buf = append(buf, []byte{0, 0, 0, 0}...)
+	buf = append(buf, []byte{0, 0, 0, 0}...)
+	buf = append(buf, labelBytes...)
+
+	hashed := sha256.Sum256(buf)
+	encryptionKey := hashed[:keySize]
+
+	integrityKey := ComputeIntegrityKey(key, enc)
 
 	blockCipher, err := newBlockCipher(encryptionKey)
 	if err != nil {
@@ -56,7 +98,7 @@ func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (
 	return &cbcAEAD{
 		hash:         hash,
 		blockCipher:  blockCipher,
-		authtagBytes: keySize,
+		authtagBytes: len(key),
 		integrityKey: integrityKey,
 	}, nil
 }
@@ -98,15 +140,27 @@ func (ctx *cbcAEAD) Seal(dst, nonce, plaintext, data []byte) []byte {
 	return ret
 }
 
+// nonce = iv
+// ciphertext = cdata
+// adata = data
+// kdata = doesn't exist yet
 // Open decrypts and authenticates the ciphertext.
 func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	if len(ciphertext) < ctx.authtagBytes {
 		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
 	}
 
-	offset := len(ciphertext) - ctx.authtagBytes
-	expectedTag := ctx.computeAuthTag(data, nonce, ciphertext[:offset])
-	match := subtle.ConstantTimeCompare(expectedTag, ciphertext[offset:])
+	offset := len(ciphertext) - ctx.authtagBytes - 256 // sha256 digest size
+	// fmt.Println(offset)
+	// kdata:
+	kdataOffset := len(ciphertext) - 256
+	kdata := ciphertext[kdataOffset:]
+	// fmt.Println(len(kdata))
+	// fmt.Println(kdata)
+	expectedTag := ctx.computeAuthTagEx(data, kdata, nonce, ciphertext[:offset])
+	// fmt.Println(expectedTag)
+	// fmt.Println(ciphertext[offset:kdataOffset])
+	match := subtle.ConstantTimeCompare(expectedTag, ciphertext[offset:kdataOffset])
 	if match != 1 {
 		return nil, errors.New("square/go-jose: invalid ciphertext (auth tag mismatch)")
 	}
@@ -132,6 +186,43 @@ func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	copy(out, plaintext)
 
 	return ret, nil
+}
+
+const base64PadCharacter = "="
+const base64Character62 = "+"
+const base64Character63 = "/"
+
+const base64UrlCharacter62 = "-"
+const base64UrlCharacter63 = "_"
+
+var replacer = strings.NewReplacer(base64Character62, base64UrlCharacter62, base64Character63, base64UrlCharacter63)
+
+func base64URLEncode(input []byte) string {
+	// encode as base64
+	encoded := base64.StdEncoding.EncodeToString(input)
+
+	encoded = strings.Split(encoded, base64PadCharacter)[0]
+	encoded = replacer.Replace(encoded)
+
+	return encoded
+}
+
+func (ctx *cbcAEAD) computeAuthTagEx(aad, kad, iv, ciphertext []byte) []byte {
+	buffer := append([]byte{}, aad...)
+	buffer = append(buffer, []byte(".")...)
+	blargh := []byte(base64URLEncode(kad))
+	fmt.Println(blargh)
+	buffer = append(buffer, blargh...)
+	buffer = append(buffer, []byte(".")...)
+	buffer = append(buffer, []byte(base64URLEncode(iv))...)
+	buffer = append(buffer, []byte(".")...)
+	buffer = append(buffer, []byte(base64URLEncode(ciphertext))...)
+
+	fmt.Println(buffer)
+	hmac := hmac.New(ctx.hash, ctx.integrityKey)
+	_, _ = hmac.Write(buffer)
+
+	return hmac.Sum(nil)[:ctx.authtagBytes]
 }
 
 // Compute an authentication tag
