@@ -21,8 +21,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"encoding/base64"
 	"math/big"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCompactParseJWE(t *testing.T) {
@@ -534,4 +538,55 @@ func TestSampleJose4jJWEMessagesECDH(t *testing.T) {
 			t.Error("plaintext is not what we expected for msg", msg)
 		}
 	}
+}
+
+func TestA128CBCPlusHS256(t *testing.T) {
+	header := "XBL3.0 x=13792142906564727160;eyJlbmMiOiJBMTI4Q0JDK0hTMjU2IiwiYWxnIjoiUlNBLU9BRVAiLCJjdHkiOiJKV1QiLCJ6aXAiOiJERUYiLCJ4NXQiOiJrMGpRbkFXYy11NVhLOGVDOFpMZENrbHo5dWsifQ.O84Jimil4CkryzOrQYSde0VrQVf8g3AVlcbOsjx4Le59Fi6aq_aDTslfXo793cH1S9cgfSEvkTUT6Gnu1eviTSsD20cb5GiwT-oDM0LGwXqaGv7VP88jxfMUUxiTyULRzlGaD77MrYQ-UZl6DtiC1Y-VmB2uw-5p85yKoK0cWaCD2KTUyI5VxIra3qz6ZfqNdJ8JCPzajPLDwHGMkgf5GO5wHY6XyOElF6k3G90FCN6R6sNRrhQIlkwJzB8uGJLZPMM16IvVnitcqizywK6CucsYlTYCQK_jABkgbioJ4F6WyxJBwAn8TbbYwxZx1WSEuegUDWhF5fHuJZbyzCPbeg.xr7OJejO98l470ArnHCQQg.4HYT9_uJmjRqu7I2DdDNxOPvpSlWg4OOrqnkbJ3toEYBTahyvSKnb-HvhWSxDY8k7FHLpxgoFGVgfI4HKYES9rh1E7Qi8Lg1d9dIqiuRAvLEykhWtSvWDHdBJnAUDue4CZooOkz4dp8stty6OiQ5ZnfK2dnQMQfMe-RcpSnvU3XlZeUAX_qo-pHk05wCB4xX62i5yILsI1o3I52xvvelouAhfQp7C9SWC_YN1E0a7V33uBjy2vCmNaYd5xapoCMSJ5n-09ATwUrBGSUS6U7PEr9Ual76iwTGBk8dCtmk5EIbSHX3qGg_QyMc2X7H3ZPKMCN21pMc_aQ06DxZxyeJeQMLgqOCLOqpWXpLsqBcQqqMjXHxahLvkr4koE1u-t_QdoM3gBPKEEpuZ_uEVd6kWMz4P7V_SwKxeNRPx0ttna13i8zNBaouQ7a2hPXZKrSo5-aOobkteUIowDRE1vaZna8_seynWyvEtsgo25aa7hsVR2H8sN_lkokratppDbasnjOscb9QzbIL3nay32acX5pHKdLuUCBpwLT3vu-Gi1_P0gZlRvNPIKhao6UaLOa5fIdrBBYSEFT4QLuaeVWdK4U3nyifgpxisSWosf6py6Vp-UayyBBSoCfn_xyCTmetojPjgiu9p54hg_IZbo3VCfuY3Wi1Oc_Vu5Al9oZNNTMKH2l8HnHeNboBJZaTDuEYNDOPPHw7ekEGtyTNg7AZWXYS_XfVNICHGpl0JUdh45X8zdRTjvQfgvKjtABhtu2dsU1dggOkR7JzJCR4mk113BbVDeSVZxMxzlbrT7MHVqF-m2JUnHsugZdsTa8BKp8PmqOrwHYVcoclEv1WVPs-JIJfd4s5b0djdX-Qd_GpM2Me-mRdSDiRvNIUBacs3UZ0UD9-dGF-h-8-zA4e0zvCt2DqBv1z62rq6xjLLQpDOkLNO3nVjxgQ-m_dZ7eDU7qiVWvmUAh6i9WhkIT651Z1wbwBmE3kHQ2gxFXCt8aXjD-Fir4VZ6WT49XpGd75TYiTiDrdD9gjylceC8vbUK3KybjB2qaGUie-H5Nv7ARUG3EihBN8MaYB_9PSx8FKwTawxJf9Vnk4u-Ej774qFDZ4HXbPCaI3mTI1JKSao1fG9lYkPgL5DL0TPf1HDlomRYdMG_Q7h9yguksTVruQdlM0XZeni1dm24LVtan3s7xPSOlMVQabqqSkjt-FtH_DTLEn_QoOvEkOUepjH6Z90FuqqbcBaKEJj0u2AoXlI6-lyhiLNmOBqGUKdmFfKfT74MSsuywUH31dgen-VLmuUXh5Zw.yitikUZ6AIJNpSs8WGFCI-kY6PkJwiul4pXVnFjzNco"
+
+	firstSplit := strings.Split(header, ";")
+
+	token := firstSplit[1]
+
+	e, err := base64.RawURLEncoding.DecodeString("AQAB")
+	assert.Nil(t, err, "Failed to parse modulus")
+	m, err := base64.RawURLEncoding.DecodeString("s63bYUt0-aXCcY-n5aRxLgnYxF8aoB3p67EwgYYt8hRv6wgSU1UDq1TuxRThfdIjvGLEGFjBRic04vlma7T1ouFxU4MY-Qf8blHY6npyriLbecc6zNVAxWPaLnvdkE0ygwUDsyHV4p9oBKRtnt1DH3Hs0toZJhNR3Qypad_Irry6SLSw9BLXndNSMxElKtCQVRf_ajOkkhWxDdnVf05cK_zt0SlNpsE45U4ONPmRDtXUpbr8hqRxPxe1GdpxL21r6oKoHBVGUe5MLoYZmgCADbLCDR2lPuFW1xE4er8TonMciJw-w4LGyftCEItq02p0iXINF3CHPHLD7xjbUxswvw")
+	assert.Nil(t, err, "Failed to parse exponent")
+
+	modulus := (&big.Int{}).SetBytes(m)
+	exponent := (&big.Int{}).SetBytes(e)
+	pubKey := rsa.PublicKey{
+		N: modulus,
+		E: int(exponent.Int64()),
+	}
+
+	assert.Equal(t, 256, len(pubKey.N.Bytes()))
+	assert.Equal(t, 65537, pubKey.E)
+
+	// load private key
+	d, err := base64.RawURLEncoding.DecodeString("Azu6Wj0yCllcmbqMuj8uojYfJnl8-ytOovp59aVlJ5lijNzaUjw8vVU2mWlPcs-DQR1DNhpIGsETMeUXCL0lkRweyUfvUnE9rlE0EWl0AtoxujacQkSxeQaGTevWCDC7cKF4eD1q9zxdx3zwqWPbP1zyIWE3WU4OXRH17SfPxAUtr5vTqky2HzM3qSNwUlAwOnZzidds27JOmo2Gmb9CZdTBDRe1r8LCjtxw-tIOGveJjvWBe_eypy6UOFBjww_G7ngy2ruiQ-rtC6r_EIpifkkorNpbGD1jw6v8Ebq852jrFIIabgLy5pbKqBn0H6S8c-wl0j1CzPEhf80EBPQtkQ")
+	assert.Nil(t, err, "Could not parse D")
+	p, err := base64.RawURLEncoding.DecodeString("1xwQelJdM6WBFideXMnHxhLp2p7IBl7Rdov8kXNAt6jVXS7cnnTRxuG1cFjdIwL2kBvYPgv_37qS6bKUNti5lAUO8YyHRSfSJi7mm4y6x9M9BuSdw0YxPhXLJhFx6NXqJpByYZe9Q6RauAiIT09Tbr9RJahbNyYWR8h7u4cjoMs")
+	assert.Nil(t, err, "Could not parse P")
+	q, err := base64.RawURLEncoding.DecodeString("1dWhCuaDCyuxjy3m2juWWRha3DqkMbXV5BId2PixI3rM7UjYdEQ3lrWF1pp5tufFZP3cR8hjKt5oj3FFoe29ZV-imkiu7W-akIYyzCdLt8sa7mJzctiZz0yLKC46N4B0KQiMgBg5qizt-wET_YC4NrRviidb_0roVAHjo6NndV0")
+	assert.Nil(t, err, "Could not parse Q")
+
+	priKey := &rsa.PrivateKey{
+		PublicKey: pubKey,
+		D:         (&big.Int{}).SetBytes(d),
+		Primes:    [](*big.Int){(&big.Int{}).SetBytes(p), (&big.Int{}).SetBytes(q)},
+	}
+
+	parsedToken, err := ParseEncrypted(token)
+	assert.Nil(t, err, "Failed to parse token")
+
+	plainText, err := parsedToken.Decrypt(priKey)
+	assert.Nil(t, err, "Failed to decrypt")
+	assert.NotNil(t, plainText, "Invalid plain text")
+
+	decoded, err := base64.URLEncoding.DecodeString(strings.Split((string(plainText)), ".")[1])
+	assert.Nil(t, err, "Failed to decode")
+
+	claims := string(decoded)
+	assert.True(t, strings.Contains(claims, "\"iss\":\"xsts.auth.xboxlive.com\""))
+	assert.True(t, strings.Contains(claims, "\"aud\":\"http://test.beam.pro/\""))
 }
