@@ -27,7 +27,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash"
-	"strings"
 )
 
 const (
@@ -40,8 +39,6 @@ var (
 	dot        = []byte(".")
 	zero       = []byte{0, 0, 0, 0}
 )
-
-const rsa2048ByteKeySize = 2048 / 8 // 256
 
 // ComputeIntegrityKey derives an integrity key based on a master key, using the A128CBC+HS256 draft specification
 func ComputeIntegrityKey(key []byte, algorithm string, hash hash.Hash) []byte {
@@ -322,23 +319,6 @@ func unpadBuffer(buffer []byte, blockSize int) ([]byte, error) {
 	return buffer[:len(buffer)-count], nil
 }
 
-const (
-	base64PadCharacter = "="
-
-	base64Character62 = "+"
-	base64Character63 = "/"
-
-	base64UrlCharacter62 = "-"
-	base64UrlCharacter63 = "_"
-)
-
-var replacer = strings.NewReplacer(base64Character62, base64UrlCharacter62, base64Character63, base64UrlCharacter63)
-
 func base64URLEncode(input []byte) string {
-	// encode as base64
-	encoded := base64.RawStdEncoding.EncodeToString(input)
-
-	encoded = replacer.Replace(encoded)
-
-	return encoded
+	return base64.RawURLEncoding.EncodeToString(input)
 }
