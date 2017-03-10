@@ -101,9 +101,11 @@ const (
 // Content encryption algorithms
 const (
 	A128CBC_HS256 = ContentEncryption("A128CBC-HS256") // AES-CBC + HMAC-SHA256 (128)
-	A128CBCpHS256 = ContentEncryption("A128CBC+HS256") // AES-CBC + HMAC-SHA256 (128)
 	A192CBC_HS384 = ContentEncryption("A192CBC-HS384") // AES-CBC + HMAC-SHA384 (192)
 	A256CBC_HS512 = ContentEncryption("A256CBC-HS512") // AES-CBC + HMAC-SHA512 (256)
+	A128CBCpHS256 = ContentEncryption("A128CBC+HS256") // AES-CBC + HMAC-SHA256 (128)
+	A192CBCpHS384 = ContentEncryption("A192CBC+HS384") // AES-CBC + HMAC-SHA384 (192)
+	A256CBCpHS512 = ContentEncryption("A256CBC+HS512") // AES-CBC + HMAC-SHA512 (256)
 	A128GCM       = ContentEncryption("A128GCM")       // AES-GCM (128)
 	A192GCM       = ContentEncryption("A192GCM")       // AES-GCM (192)
 	A256GCM       = ContentEncryption("A256GCM")       // AES-GCM (256)

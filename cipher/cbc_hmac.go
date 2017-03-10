@@ -100,6 +100,7 @@ func NewCBCHMACEx(key []byte, enc string, newBlockCipher func([]byte) (cipher.Bl
 		blockCipher:  blockCipher,
 		authtagBytes: len(key),
 		integrityKey: integrityKey,
+		isKdfCbc:     true,
 	}, nil
 }
 
@@ -138,6 +139,7 @@ type cbcAEAD struct {
 	authtagBytes int
 	integrityKey []byte
 	blockCipher  cipher.Block
+	isKdfCbc     bool
 }
 
 func (ctx *cbcAEAD) NonceSize() int {
@@ -169,17 +171,18 @@ func (ctx *cbcAEAD) Seal(dst, nonce, plaintext, data []byte) []byte {
 	return ret
 }
 
-// Open decrypts and authenticates the ciphertext.
-func (ctx *cbcAEAD) OpenEx(dst, nonce, ciphertext, data []byte) ([]byte, error) {
+func (ctx *cbcAEAD) OpenWithRecipientKey(dst, nonce, ciphertext, data, rcptKey []byte) ([]byte, error) {
+	if !ctx.isKdfCbc {
+		return ctx.Open(dst, nonce, ciphertext, data)
+	}
+
 	if len(ciphertext) < ctx.authtagBytes {
 		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
 	}
 
-	offset := len(ciphertext) - ctx.authtagBytes - rsa2048ByteKeySize
-	kdataOffset := len(ciphertext) - rsa2048ByteKeySize
-	kdata := ciphertext[kdataOffset:]
-	expectedTag := ctx.computeAuthTagEx(data, kdata, nonce, ciphertext[:offset])
-	match := subtle.ConstantTimeCompare(expectedTag, ciphertext[offset:kdataOffset])
+	offset := len(ciphertext) - ctx.authtagBytes
+	expectedTag := ctx.computeAuthTagEx(data, rcptKey, nonce, ciphertext[:offset])
+	match := subtle.ConstantTimeCompare(expectedTag, ciphertext[offset:])
 	if match != 1 {
 		return nil, errors.New("square/go-jose: invalid ciphertext (auth tag mismatch)")
 	}
@@ -210,21 +213,6 @@ func (ctx *cbcAEAD) OpenEx(dst, nonce, ciphertext, data []byte) ([]byte, error) 
 func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	if len(ciphertext) < ctx.authtagBytes {
 		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
-	}
-
-	// plus check:
-	dotPos := len(ciphertext) - rsa2048ByteKeySize // this is some magic based on the fact that we know the xtoken key strength
-
-	if dotPos > 0 && dotPos < len(ciphertext) {
-		// the inclusion of a dot after the ciphertext and auth tag indicates that there was additional data included
-		// in the buffer that needs to be handled and teased out
-		if subtle.ConstantTimeCompare(dot, ciphertext[dotPos-1:dotPos]) == 1 {
-			// we need to drop the dot from the cipher text
-			ct := make([]byte, len(ciphertext[:dotPos-1]))
-			copy(ct, ciphertext[:dotPos-1])
-			ct = append(ct, ciphertext[dotPos:]...)
-			return ctx.OpenEx(dst, nonce, ct, data)
-		}
 	}
 
 	offset := len(ciphertext) - ctx.authtagBytes
