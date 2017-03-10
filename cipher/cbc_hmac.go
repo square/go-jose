@@ -127,6 +127,7 @@ func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (
 		blockCipher:  blockCipher,
 		authtagBytes: keySize,
 		integrityKey: integrityKey,
+		isKdfCbc:     false,
 	}, nil
 }
 
