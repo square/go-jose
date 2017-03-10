@@ -332,17 +332,11 @@ func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 	var plaintext []byte
 	recipient := obj.recipients[0]
 	recipientHeaders := obj.mergedHeaders(&recipient)
+	parts.kdata = recipient.encryptedKey
 
 	cek, err := decrypter.decryptKey(recipientHeaders, &recipient, generator)
 	if err == nil {
 		// Found a valid CEK -- let's try to decrypt.
-
-		// if A128+HS256, we need to append additional data
-		if obj.protected.Enc == A128CBCpHS256 {
-			parts.kdata = make([]byte, len(recipient.encryptedKey))
-			copy(parts.kdata, recipient.encryptedKey)
-		}
-
 		plaintext, err = cipher.decrypt(cek, authData, parts)
 	}
 

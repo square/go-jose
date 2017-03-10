@@ -27,79 +27,52 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash"
-	"strings"
 )
 
 const (
 	nonceBytes = 16
 )
 
-const (
-	integrity  = "Integrity"
-	encryption = "Encryption"
+var (
+	integrity  = []byte("Integrity")
+	encryption = []byte("Encryption")
+	dot        = []byte(".")
+	zero       = []byte{0, 0, 0, 0}
 )
 
-var dot = []byte(".")
-var zero = []byte{0, 0, 0, 0}
-
-const rsa2048ByteKeySize = 2048 / 8 // 256
-
 // ComputeIntegrityKey derives an integrity key based on a master key, using the A128CBC+HS256 draft specification
-func ComputeIntegrityKey(key []byte, algorithm string) []byte {
-	// content integrity key size is the
-	algBytes := []byte(algorithm)
-
-	buf := []byte{0, 0, 0, 1}
-	buf = append(buf, key...)
-
+func ComputeIntegrityKey(key []byte, algorithm string, hash hash.Hash) []byte {
+	hash.Write([]byte{0, 0, 0, 1})
+	hash.Write(key)
 	tmp := make([]byte, 4)
 	binary.BigEndian.PutUint32(tmp, uint32(len(key)*8))
-	buf = append(buf, tmp...)
-	buf = append(buf, algBytes...)
-	buf = append(buf, zero...)
-	buf = append(buf, zero...)
-	buf = append(buf, []byte(integrity)...)
+	hash.Write(tmp)
+	hash.Write([]byte(algorithm))
+	hash.Write(zero)
+	hash.Write(zero)
+	hash.Write([]byte(integrity))
 
-	hashed := sha256.Sum256(buf)
-
-	return hashed[:len(key)]
+	return hash.Sum(nil)[:len(key)]
 }
 
 // ComputeEncryptionKey derives an encryption key based on a master key, using the A128CBC+HS256 draft specification
-func ComputeEncryptionKey(key []byte, algorithm string) []byte {
-	keySize := len(key) / 2
-
-	encBytes := []byte(algorithm)
-
-	buf := []byte{0, 0, 0, 1}
-	buf = append(buf, key...)
-
+func ComputeEncryptionKey(key []byte, algorithm string, hash hash.Hash) []byte {
+	hash.Write([]byte{0, 0, 0, 1})
+	hash.Write(key)
 	tmp := make([]byte, 4)
 	binary.BigEndian.PutUint32(tmp, uint32(len(key)*4))
-	buf = append(buf, tmp...)
-	buf = append(buf, encBytes...)
-	buf = append(buf, zero...)
-	buf = append(buf, zero...)
-	buf = append(buf, []byte(encryption)...)
+	hash.Write(tmp)
+	hash.Write([]byte(algorithm))
+	hash.Write(zero)
+	hash.Write(zero)
+	hash.Write(encryption)
 
-	hashed := sha256.Sum256(buf)
-	encryptionKey := hashed[:keySize]
-
-	return encryptionKey
+	return hash.Sum(nil)[:len(key)/2]
 }
 
 // NewCBCHMACEx instantiates a new AEAD based on CBC+HMAC from the draft 7 spec
 func NewCBCHMACEx(key []byte, enc string, newBlockCipher func([]byte) (cipher.Block, error)) (cipher.AEAD, error) {
 	keySize := len(key) / 2
-
-	encryptionKey := ComputeEncryptionKey(key, enc)
-
-	integrityKey := ComputeIntegrityKey(key, enc)
-
-	blockCipher, err := newBlockCipher(encryptionKey)
-	if err != nil {
-		return nil, err
-	}
 
 	var hash func() hash.Hash
 	switch keySize {
@@ -111,11 +84,20 @@ func NewCBCHMACEx(key []byte, enc string, newBlockCipher func([]byte) (cipher.Bl
 		hash = sha512.New
 	}
 
+	encryptionKey := ComputeEncryptionKey(key, enc, hash())
+	integrityKey := ComputeIntegrityKey(key, enc, hash())
+
+	blockCipher, err := newBlockCipher(encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
 	return &cbcAEAD{
 		hash:         hash,
 		blockCipher:  blockCipher,
 		authtagBytes: len(key),
 		integrityKey: integrityKey,
+		isKdfCbc:     true,
 	}, nil
 }
 
@@ -145,6 +127,7 @@ func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (
 		blockCipher:  blockCipher,
 		authtagBytes: keySize,
 		integrityKey: integrityKey,
+		isKdfCbc:     false,
 	}, nil
 }
 
@@ -154,6 +137,7 @@ type cbcAEAD struct {
 	authtagBytes int
 	integrityKey []byte
 	blockCipher  cipher.Block
+	isKdfCbc     bool
 }
 
 func (ctx *cbcAEAD) NonceSize() int {
@@ -185,17 +169,18 @@ func (ctx *cbcAEAD) Seal(dst, nonce, plaintext, data []byte) []byte {
 	return ret
 }
 
-// Open decrypts and authenticates the ciphertext.
-func (ctx *cbcAEAD) OpenEx(dst, nonce, ciphertext, data []byte) ([]byte, error) {
+func (ctx *cbcAEAD) OpenWithRecipientKey(dst, nonce, ciphertext, data, rcptKey []byte) ([]byte, error) {
+	if !ctx.isKdfCbc {
+		return ctx.Open(dst, nonce, ciphertext, data)
+	}
+
 	if len(ciphertext) < ctx.authtagBytes {
 		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
 	}
 
-	offset := len(ciphertext) - ctx.authtagBytes - rsa2048ByteKeySize
-	kdataOffset := len(ciphertext) - rsa2048ByteKeySize
-	kdata := ciphertext[kdataOffset:]
-	expectedTag := ctx.computeAuthTagEx(data, kdata, nonce, ciphertext[:offset])
-	match := subtle.ConstantTimeCompare(expectedTag, ciphertext[offset:kdataOffset])
+	offset := len(ciphertext) - ctx.authtagBytes
+	expectedTag := ctx.computeAuthTagEx(data, rcptKey, nonce, ciphertext[:offset])
+	match := subtle.ConstantTimeCompare(expectedTag, ciphertext[offset:])
 	if match != 1 {
 		return nil, errors.New("square/go-jose: invalid ciphertext (auth tag mismatch)")
 	}
@@ -226,21 +211,6 @@ func (ctx *cbcAEAD) OpenEx(dst, nonce, ciphertext, data []byte) ([]byte, error) 
 func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	if len(ciphertext) < ctx.authtagBytes {
 		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
-	}
-
-	// plus check:
-	dotPos := len(ciphertext) - rsa2048ByteKeySize // this is some magic based on the fact that we know the xtoken key strength
-
-	if dotPos > 0 && dotPos < len(ciphertext) {
-		// the inclusion of a dot after the ciphertext and auth tag indicates that there was additional data included
-		// in the buffer that needs to be handled and teased out
-		if subtle.ConstantTimeCompare(dot, ciphertext[dotPos-1:dotPos]) == 1 {
-			// we need to drop the dot from the cipher text
-			ct := make([]byte, len(ciphertext[:dotPos-1]))
-			copy(ct, ciphertext[:dotPos-1])
-			ct = append(ct, ciphertext[dotPos:]...)
-			return ctx.OpenEx(dst, nonce, ct, data)
-		}
 	}
 
 	offset := len(ciphertext) - ctx.authtagBytes
@@ -350,23 +320,6 @@ func unpadBuffer(buffer []byte, blockSize int) ([]byte, error) {
 	return buffer[:len(buffer)-count], nil
 }
 
-const (
-	base64PadCharacter = "="
-
-	base64Character62 = "+"
-	base64Character63 = "/"
-
-	base64UrlCharacter62 = "-"
-	base64UrlCharacter63 = "_"
-)
-
-var replacer = strings.NewReplacer(base64Character62, base64UrlCharacter62, base64Character63, base64UrlCharacter63)
-
 func base64URLEncode(input []byte) string {
-	// encode as base64
-	encoded := base64.RawStdEncoding.EncodeToString(input)
-
-	encoded = replacer.Replace(encoded)
-
-	return encoded
+	return base64.RawURLEncoding.EncodeToString(input)
 }
