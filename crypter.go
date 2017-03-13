@@ -332,6 +332,7 @@ func (obj JsonWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 	var plaintext []byte
 	recipient := obj.recipients[0]
 	recipientHeaders := obj.mergedHeaders(&recipient)
+	parts.kdata = recipient.encryptedKey
 
 	cek, err := decrypter.decryptKey(recipientHeaders, &recipient, generator)
 	if err == nil {

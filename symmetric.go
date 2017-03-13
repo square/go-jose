@@ -46,7 +46,11 @@ type symmetricMac struct {
 
 // Input/output from an AEAD operation
 type aeadParts struct {
-	iv, ciphertext, tag []byte
+	iv, ciphertext, tag, kdata, rcptKey []byte
+}
+
+type aeadRecipientCipher interface {
+	OpenWithRecipientKey(dst, nonce, ciphertext, additionalData, recipientKey []byte) ([]byte, error)
 }
 
 // A content cipher based on an AEAD construction
@@ -93,6 +97,16 @@ func newAESCBC(keySize int) contentCipher {
 	}
 }
 
+func newAESCBCPlus(keySize int, enc ContentEncryption) contentCipher {
+	return &aeadContentCipher{
+		keyBytes:     keySize * 2,
+		authtagBytes: 16,
+		getAead: func(key []byte) (cipher.AEAD, error) {
+			return josecipher.NewCBCHMACEx(key, string(enc), aes.NewCipher)
+		},
+	}
+}
+
 // Get an AEAD cipher object for the given content encryption algorithm
 func getContentCipher(alg ContentEncryption) contentCipher {
 	switch alg {
@@ -104,6 +118,12 @@ func getContentCipher(alg ContentEncryption) contentCipher {
 		return newAESGCM(32)
 	case A128CBC_HS256:
 		return newAESCBC(16)
+	case A128CBCpHS256:
+		return newAESCBCPlus(16, A128CBCpHS256)
+	case A192CBCpHS384:
+		return newAESCBCPlus(24, A192CBCpHS384)
+	case A256CBCpHS512:
+		return newAESCBCPlus(32, A256CBCpHS512)
 	case A192CBC_HS384:
 		return newAESCBC(24)
 	case A256CBC_HS512:
@@ -211,7 +231,14 @@ func (ctx aeadContentCipher) decrypt(key, aad []byte, parts *aeadParts) ([]byte,
 		return nil, err
 	}
 
-	return aead.Open(nil, parts.iv, append(parts.ciphertext, parts.tag...), aad)
+	appended := append(parts.ciphertext, parts.tag...)
+
+	if rcpt, ok := aead.(aeadRecipientCipher); ok {
+		return rcpt.OpenWithRecipientKey(nil, parts.iv, appended, aad, parts.kdata)
+	}
+
+	return aead.Open(nil, parts.iv, appended, aad)
+
 }
 
 // Encrypt the content encryption key.

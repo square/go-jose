@@ -103,6 +103,9 @@ const (
 	A128CBC_HS256 = ContentEncryption("A128CBC-HS256") // AES-CBC + HMAC-SHA256 (128)
 	A192CBC_HS384 = ContentEncryption("A192CBC-HS384") // AES-CBC + HMAC-SHA384 (192)
 	A256CBC_HS512 = ContentEncryption("A256CBC-HS512") // AES-CBC + HMAC-SHA512 (256)
+	A128CBCpHS256 = ContentEncryption("A128CBC+HS256") // AES-CBC + HMAC-SHA256 (128)
+	A192CBCpHS384 = ContentEncryption("A192CBC+HS384") // AES-CBC + HMAC-SHA384 (192)
+	A256CBCpHS512 = ContentEncryption("A256CBC+HS512") // AES-CBC + HMAC-SHA512 (256)
 	A128GCM       = ContentEncryption("A128GCM")       // AES-GCM (128)
 	A192GCM       = ContentEncryption("A192GCM")       // AES-GCM (192)
 	A256GCM       = ContentEncryption("A256GCM")       // AES-GCM (256)
@@ -118,6 +121,7 @@ const (
 type rawHeader struct {
 	Alg   string               `json:"alg,omitempty"`
 	Enc   ContentEncryption    `json:"enc,omitempty"`
+	Cty   string               `json:"cty,omitempty"`
 	Zip   CompressionAlgorithm `json:"zip,omitempty"`
 	Crit  []string             `json:"crit,omitempty"`
 	Apu   *byteBuffer          `json:"apu,omitempty"`
@@ -136,6 +140,7 @@ type JoseHeader struct {
 	JsonWebKey *JsonWebKey
 	Algorithm  string
 	Nonce      string
+	Cty        string
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
@@ -145,6 +150,7 @@ func (parsed rawHeader) sanitized() JoseHeader {
 		JsonWebKey: parsed.Jwk,
 		Algorithm:  parsed.Alg,
 		Nonce:      parsed.Nonce,
+		Cty:        parsed.Cty,
 	}
 }
 
@@ -192,6 +198,9 @@ func (dst *rawHeader) merge(src *rawHeader) {
 	}
 	if dst.Nonce == "" {
 		dst.Nonce = src.Nonce
+	}
+	if dst.Cty == "" {
+		dst.Cty = src.Cty
 	}
 }
 
