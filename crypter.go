@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/WatchBeam/go-jose/json"
 )
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.
@@ -415,6 +415,7 @@ func (obj JSONWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 	var plaintext []byte
 	recipient := obj.recipients[0]
 	recipientHeaders := obj.mergedHeaders(&recipient)
+	parts.kdata = recipient.encryptedKey
 
 	cek, err := decrypter.decryptKey(recipientHeaders, &recipient, generator)
 	if err == nil {

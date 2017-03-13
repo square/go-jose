@@ -28,7 +28,7 @@ import (
 	"reflect"
 	"testing"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/WatchBeam/go-jose/json"
 )
 
 // Test chain of two X.509 certificates

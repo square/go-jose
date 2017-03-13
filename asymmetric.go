@@ -28,8 +28,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"gopkg.in/square/go-jose.v2/cipher"
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/WatchBeam/go-jose/cipher"
+	"github.com/WatchBeam/go-jose/json"
 )
 
 // A generic RSA-based encrypter/verifier

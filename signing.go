@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/WatchBeam/go-jose/json"
 )
 
 // NonceSource represents a source of random nonces to go into JWS objects

@@ -21,8 +21,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/WatchBeam/go-jose"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/square/go-jose.v2"
 )
 
 var (

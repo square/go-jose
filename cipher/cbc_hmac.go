@@ -23,6 +23,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"hash"
@@ -31,6 +32,74 @@ import (
 const (
 	nonceBytes = 16
 )
+
+var (
+	integrity  = []byte("Integrity")
+	encryption = []byte("Encryption")
+	dot        = []byte(".")
+	zero       = []byte{0, 0, 0, 0}
+)
+
+// ComputeIntegrityKey derives an integrity key based on a master key, using the A128CBC+HS256 draft specification
+func ComputeIntegrityKey(key []byte, algorithm string, hash hash.Hash) []byte {
+	hash.Write([]byte{0, 0, 0, 1})
+	hash.Write(key)
+	tmp := make([]byte, 4)
+	binary.BigEndian.PutUint32(tmp, uint32(len(key)*8))
+	hash.Write(tmp)
+	hash.Write([]byte(algorithm))
+	hash.Write(zero)
+	hash.Write(zero)
+	hash.Write([]byte(integrity))
+
+	return hash.Sum(nil)[:len(key)]
+}
+
+// ComputeEncryptionKey derives an encryption key based on a master key, using the A128CBC+HS256 draft specification
+func ComputeEncryptionKey(key []byte, algorithm string, hash hash.Hash) []byte {
+	hash.Write([]byte{0, 0, 0, 1})
+	hash.Write(key)
+	tmp := make([]byte, 4)
+	binary.BigEndian.PutUint32(tmp, uint32(len(key)*4))
+	hash.Write(tmp)
+	hash.Write([]byte(algorithm))
+	hash.Write(zero)
+	hash.Write(zero)
+	hash.Write(encryption)
+
+	return hash.Sum(nil)[:len(key)/2]
+}
+
+// NewCBCHMACEx instantiates a new AEAD based on CBC+HMAC from the draft 7 spec
+func NewCBCHMACEx(key []byte, enc string, newBlockCipher func([]byte) (cipher.Block, error)) (cipher.AEAD, error) {
+	keySize := len(key) / 2
+
+	var hash func() hash.Hash
+	switch keySize {
+	case 16:
+		hash = sha256.New
+	case 24:
+		hash = sha512.New384
+	case 32:
+		hash = sha512.New
+	}
+
+	encryptionKey := ComputeEncryptionKey(key, enc, hash())
+	integrityKey := ComputeIntegrityKey(key, enc, hash())
+
+	blockCipher, err := newBlockCipher(encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cbcAEAD{
+		hash:         hash,
+		blockCipher:  blockCipher,
+		authtagBytes: len(key),
+		integrityKey: integrityKey,
+		isKdfCbc:     true,
+	}, nil
+}
 
 // NewCBCHMAC instantiates a new AEAD based on CBC+HMAC.
 func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (cipher.AEAD, error) {
@@ -58,6 +127,7 @@ func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (
 		blockCipher:  blockCipher,
 		authtagBytes: keySize,
 		integrityKey: integrityKey,
+		isKdfCbc:     false,
 	}, nil
 }
 
@@ -67,6 +137,7 @@ type cbcAEAD struct {
 	authtagBytes int
 	integrityKey []byte
 	blockCipher  cipher.Block
+	isKdfCbc     bool
 }
 
 func (ctx *cbcAEAD) NonceSize() int {
@@ -98,7 +169,45 @@ func (ctx *cbcAEAD) Seal(dst, nonce, plaintext, data []byte) []byte {
 	return ret
 }
 
-// Open decrypts and authenticates the ciphertext.
+func (ctx *cbcAEAD) OpenWithRecipientKey(dst, nonce, ciphertext, data, rcptKey []byte) ([]byte, error) {
+	if !ctx.isKdfCbc {
+		return ctx.Open(dst, nonce, ciphertext, data)
+	}
+
+	if len(ciphertext) < ctx.authtagBytes {
+		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
+	}
+
+	offset := len(ciphertext) - ctx.authtagBytes
+	expectedTag := ctx.computeAuthTagEx(data, rcptKey, nonce, ciphertext[:offset])
+	match := subtle.ConstantTimeCompare(expectedTag, ciphertext[offset:])
+	if match != 1 {
+		return nil, errors.New("square/go-jose: invalid ciphertext (auth tag mismatch)")
+	}
+
+	cbc := cipher.NewCBCDecrypter(ctx.blockCipher, nonce)
+
+	// Make copy of ciphertext buffer, don't want to modify in place
+	buffer := append([]byte{}, []byte(ciphertext[:offset])...)
+
+	if len(buffer)%ctx.blockCipher.BlockSize() > 0 {
+		return nil, errors.New("square/go-jose: invalid ciphertext (invalid length)")
+	}
+
+	cbc.CryptBlocks(buffer, buffer)
+
+	// Remove padding
+	plaintext, err := unpadBuffer(buffer, ctx.blockCipher.BlockSize())
+	if err != nil {
+		return nil, err
+	}
+
+	ret, out := resize(dst, uint64(len(dst))+uint64(len(plaintext)))
+	copy(out, plaintext)
+
+	return ret, nil
+}
+
 func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	if len(ciphertext) < ctx.authtagBytes {
 		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
@@ -132,6 +241,22 @@ func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	copy(out, plaintext)
 
 	return ret, nil
+}
+
+// Compute an authentication tag
+func (ctx *cbcAEAD) computeAuthTagEx(aad, kad, iv, ciphertext []byte) []byte {
+	buffer := append([]byte{}, aad...)
+	buffer = append(buffer, dot...)
+	buffer = append(buffer, []byte(base64URLEncode(kad))...)
+	buffer = append(buffer, dot...)
+	buffer = append(buffer, []byte(base64URLEncode(iv))...)
+	buffer = append(buffer, dot...)
+	buffer = append(buffer, []byte(base64URLEncode(ciphertext))...)
+
+	hmac := hmac.New(ctx.hash, ctx.integrityKey)
+	_, _ = hmac.Write(buffer)
+
+	return hmac.Sum(nil)[:ctx.authtagBytes]
 }
 
 // Compute an authentication tag
@@ -193,4 +318,8 @@ func unpadBuffer(buffer []byte, blockSize int) ([]byte, error) {
 	}
 
 	return buffer[:len(buffer)-count], nil
+}
+
+func base64URLEncode(input []byte) string {
+	return base64.RawURLEncoding.EncodeToString(input)
 }
