@@ -24,6 +24,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"sort"
@@ -34,6 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 type testClaims struct {
@@ -54,6 +56,30 @@ var sampleClaims = Claims{
 	IssuedAt: NewNumericDate(time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)),
 	Issuer:   "issuer",
 	Audience: Audience{"a1", "a2"},
+}
+
+type numberClaims struct {
+	Int   int64   `json:"int"`
+	Float float64 `json:"float"`
+}
+
+func TestIntegerAndFloatsNormalize(t *testing.T) {
+	c := numberClaims{1 << 60, 12345.6789}
+
+	normalized, err := normalize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ni, err := (normalized["int"].(json.Number)).Int64()
+	nf, err := (normalized["float"].(json.Number)).Float64()
+
+	if ni != c.Int {
+		t.Error(fmt.Sprintf("normalize failed to preserve int64 (got %v, wanted %v, type %s)", normalized["int"], c.Int, reflect.TypeOf(normalized["int"])))
+	}
+	if nf != c.Float {
+		t.Error(fmt.Sprintf("normalize failed to preserve float64 (got %v, wanted %v, type %s)", normalized["float"], c.Float, reflect.TypeOf(normalized["float"])))
+	}
 }
 
 func TestBuilderCustomClaimsNonPointer(t *testing.T) {

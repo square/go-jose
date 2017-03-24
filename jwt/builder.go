@@ -18,6 +18,7 @@
 package jwt
 
 import (
+	"bytes"
 	"reflect"
 
 	"gopkg.in/square/go-jose.v2/json"
@@ -136,7 +137,11 @@ func normalize(i interface{}) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(raw, &m); err != nil {
+
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.UseNumber()
+
+	if err := d.Decode(&m); err != nil {
 		return nil, err
 	}
 
