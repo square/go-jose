@@ -25,6 +25,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
@@ -149,7 +150,7 @@ func ExampleSigned() {
 	}
 
 	fmt.Println(raw)
-	// Output: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiaXNzIjoiaXNzdWVyIiwibmJmIjoxLjQ1MTYwNjRlKzA5LCJzdWIiOiJzdWJqZWN0In0.mI6U-xUdttpOPIDUAI2uyg9lFgoqaAb-hwmz8L6L3fo
+	// Output: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiaXNzIjoiaXNzdWVyIiwibmJmIjoxNDUxNjA2NDAwLCJzdWIiOiJzdWJqZWN0In0.4PgCj0VO-uG_cb1mNA38NjJyp0N-NdGIDLoYelEkciw
 }
 
 func ExampleEncrypted() {
