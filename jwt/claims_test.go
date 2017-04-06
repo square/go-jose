@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/WatchBeam/go-jose/json"
+	"gopkg.in/square/go-jose.v2/json"
 
 	"github.com/stretchr/testify/assert"
 )

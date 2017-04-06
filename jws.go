@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/WatchBeam/go-jose/json"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // rawJSONWebSignature represents a raw JWS JSON object. Used for parsing/serializing.

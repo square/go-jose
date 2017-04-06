@@ -20,9 +20,9 @@ package jwt
 import (
 	"reflect"
 
-	"github.com/WatchBeam/go-jose/json"
+	"gopkg.in/square/go-jose.v2/json"
 
-	"github.com/WatchBeam/go-jose"
+	"gopkg.in/square/go-jose.v2"
 )
 
 // Builder is a utility for making JSON Web Tokens. Calls can be chained, and

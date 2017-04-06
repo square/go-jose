@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/WatchBeam/go-jose/json"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.

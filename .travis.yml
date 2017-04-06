@@ -13,7 +13,7 @@ go:
 - 1.7
 - tip
 
-go_import_path: github.com/WatchBeam/go-jose
+go_import_path: gopkg.in/square/go-jose.v2
 
 before_script:
 - export PATH=$HOME/.local/bin:$PATH
