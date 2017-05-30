@@ -153,6 +153,38 @@ func ExampleSigned() {
 	// Output: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiaXNzIjoiaXNzdWVyIiwibmJmIjoxNDUxNjA2NDAwLCJzdWIiOiJzdWJqZWN0In0.4PgCj0VO-uG_cb1mNA38NjJyp0N-NdGIDLoYelEkciw
 }
 
+func ExampleSigned_privateClaims() {
+	key := []byte("secret")
+	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
+	if err != nil {
+		panic(err)
+	}
+
+	cl := jwt.Claims{
+		Subject:   "subject",
+		Issuer:    "issuer",
+		NotBefore: jwt.NewNumericDate(time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)),
+		Audience:  jwt.Audience{"leela", "fry"},
+	}
+
+	// When setting private claims, make sure to add struct tags
+	// to specify how to serialize the field. The naming behavior
+	// should match the encoding/json package otherwise.
+	privateCl := struct {
+		CustomClaim string `json:"custom"`
+	}{
+		"custom claim value",
+	}
+
+	raw, err := jwt.Signed(sig).Claims(cl).Claims(privateCl).CompactSerialize()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(raw)
+	// Ouput: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiY3VzdG9tIjoiY3VzdG9tIGNsYWltIHZhbHVlIiwiaXNzIjoiaXNzdWVyIiwibmJmIjoxNDUxNjA2NDAwLCJzdWIiOiJzdWJqZWN0In0.knXH3ReNJToS5XI7BMCkk80ugpCup3tOy53xq-ga47o
+}
+
 func ExampleEncrypted() {
 	enc, err := jose.NewEncrypter(
 		jose.A128GCM,
