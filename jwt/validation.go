@@ -70,10 +70,6 @@ func (c Claims) ValidateWithLeeway(e Expected, leeway time.Duration) error {
 	}
 
 	if len(e.Audience) != 0 {
-		if len(e.Audience) != len(c.Audience) {
-			return ErrInvalidAudience
-		}
-
 		for _, v := range e.Audience {
 			if !c.Audience.Contains(v) {
 				return ErrInvalidAudience
