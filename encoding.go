@@ -25,6 +25,7 @@ import (
 	"io"
 	"math/big"
 	"regexp"
+	"strings"
 )
 
 var stripWhitespaceRegex = regexp.MustCompile("\\s")
@@ -147,7 +148,8 @@ func (b *byteBuffer) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	decoded, err := base64.RawURLEncoding.DecodeString(encoded)
+	// Remove padding if there is any
+	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(encoded, "="))
 	if err != nil {
 		return err
 	}
