@@ -23,6 +23,8 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/crypto/ed25519"
+
 	"gopkg.in/square/go-jose.v2/json"
 )
 
@@ -124,6 +126,10 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 // newVerifier creates a verifier based on the key type
 func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 	switch verificationKey := verificationKey.(type) {
+	case ed25519.PublicKey:
+		return &edEncrypterVerifier{
+			publicKey: verificationKey,
+		}, nil
 	case *rsa.PublicKey:
 		return &rsaEncrypterVerifier{
 			publicKey: verificationKey,
@@ -157,6 +163,8 @@ func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interf
 
 func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSigInfo, error) {
 	switch signingKey := signingKey.(type) {
+	case ed25519.PrivateKey:
+		return newEd25519Signer(alg, signingKey)
 	case *rsa.PrivateKey:
 		return newRSASigner(alg, signingKey)
 	case *ecdsa.PrivateKey:

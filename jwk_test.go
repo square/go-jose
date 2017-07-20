@@ -235,7 +235,7 @@ func TestRoundtripX5C(t *testing.T) {
 func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
-	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
+	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey, ed25519PrivateKey} {
 		for _, use := range []string{"", "sig", "enc"} {
 			jwk := JSONWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
 			if use != "" {
