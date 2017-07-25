@@ -400,10 +400,10 @@ var cookbookJWKs = []string{
 
 	//ED Private
 	stripWhitespace(`{
-	 "kty": "OKP",
-	 "crv": "Ed25519",
-      "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
-      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+     "kty": "OKP",
+     "crv": "Ed25519",
+     "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+     "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
    }`),
 
 	// EC Private
