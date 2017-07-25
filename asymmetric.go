@@ -467,7 +467,6 @@ func (ctx ecDecrypterSigner) decryptKey(headers rawHeader, recipient *recipientI
 	return josecipher.KeyUnwrap(block, recipient.encryptedKey)
 }
 func (ctx edDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error) {
-
 	if alg != EdDSA {
 		return Signature{}, ErrUnsupportedAlgorithm
 	}

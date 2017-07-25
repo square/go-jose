@@ -68,7 +68,7 @@ var (
 
 // Key management algorithms
 const (
-	ED25519Key         = KeyAlgorithm("ED25519")
+	ED25519            = KeyAlgorithm("ED25519")
 	RSA1_5             = KeyAlgorithm("RSA1_5")             // RSA-PKCS1v1.5
 	RSA_OAEP           = KeyAlgorithm("RSA-OAEP")           // RSA-OAEP-SHA1
 	RSA_OAEP_256       = KeyAlgorithm("RSA-OAEP-256")       // RSA-OAEP-SHA256

@@ -133,7 +133,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	case "oct":
 		key, err = raw.symmetricKey()
 	case "OKP":
-		if raw.Crv == "Ed25519" {
+		if raw.Crv == "Ed25519" && raw.X != nil {
 			if raw.D != nil {
 				key, err = raw.edPrivateKey()
 			} else {
@@ -445,7 +445,6 @@ func (key rawJSONWebKey) rsaPrivateKey() (*rsa.PrivateKey, error) {
 }
 
 func fromEdPrivateKey(ed ed25519.PrivateKey) (*rawJSONWebKey, error) {
-
 	raw := fromEdPublicKey(ed25519.PublicKey(ed[0:32]))
 
 	raw.D = newBuffer(ed[32:])

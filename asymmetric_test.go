@@ -143,7 +143,6 @@ func TestVectorsRSA(t *testing.T) {
 }
 
 func TestEd25519(t *testing.T) {
-
 	_, err := newEd25519Signer("XYZ", nil)
 	if err != ErrUnsupportedAlgorithm {
 		t.Error("should return error on invalid algorithm")
