@@ -27,9 +27,7 @@ import (
 var encrypter Encrypter
 
 func Example_jWE() {
-	// Generate a public/private key pair to use for this example. The library
-	// also provides two utility functions (LoadPublicKey and LoadPrivateKey)
-	// that can be used to load keys from PEM/DER-encoded data.
+	// Generate a public/private key pair to use for this example.
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		panic(err)
@@ -77,9 +75,7 @@ func Example_jWE() {
 }
 
 func Example_jWS() {
-	// Generate a public/private key pair to use for this example. The library
-	// also provides two utility functions (LoadPublicKey and LoadPrivateKey)
-	// that can be used to load keys from PEM/DER-encoded data.
+	// Generate a public/private key pair to use for this example.
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		panic(err)
