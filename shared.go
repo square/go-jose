@@ -297,6 +297,9 @@ func (parsed rawHeader) getCritical() ([]string, error) {
 // sanitized produces a cleaned-up header object from the raw JSON.
 func (parsed rawHeader) sanitized() (h Header, err error) {
 	for k, v := range parsed {
+		if v == nil {
+			continue
+		}
 		switch k {
 		case headerJWK:
 			var jwk *JSONWebKey

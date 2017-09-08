@@ -310,3 +310,25 @@ func TestErrorMissingPayloadJWS(t *testing.T) {
 		t.Errorf("unexpected error message, should contain 'missing payload': %s", err)
 	}
 }
+
+// Test that a null value in the header doesn't panic
+func TestNullHeaderValue(t *testing.T) {
+	msg := `{
+   "payload":
+    "eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGF
+     tcGxlLmNvbS9pc19yb290Ijp0cnVlfQ",
+   "protected":"eyJhbGciOiJFUzI1NiIsIm5vbmNlIjpudWxsfQ",
+   "header":
+    {"kid":"e9bc097a-ce51-4036-9562-d2ade882db0d"},
+   "signature":
+    "DtEhU3ljbEg8L38VWAfUAqOyKAM6-Xx-F4GawxaepmXFCgfTjDxw5djxLa8IS
+     lSApmWQxfKTUJqPP3-Kg6NU1Q"
+  }`
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("ParseSigned panic'd when parsing a message with a null protected header value")
+		}
+	}()
+	ParseSigned(msg)
+}
