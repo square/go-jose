@@ -215,9 +215,9 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 			// We want to embed the JWK or set the kid header, but not both. Having a protected
 			// header that contains an embedded JWK while also simultaneously containing the kid
 			// header is confusing, and at least in ACME the two are considered to be mutually
-			// exclusive. The fact that both can exist at the same time is somewhat a somewhat
-			// unfortunate result of the JOSE spec. We've decided that this library will only
-			// include one or the other to avoid this confusion.
+			// exclusive. The fact that both can exist at the same time is a somewhat unfortunate
+			// result of the JOSE spec. We've decided that this library will only include one or
+			// the other to avoid this confusion.
 			//
 			// See https://github.com/square/go-jose/issues/157 for more context.
 			if ctx.embedJWK {
