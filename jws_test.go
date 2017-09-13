@@ -332,3 +332,20 @@ func TestNullHeaderValue(t *testing.T) {
 	}()
 	ParseSigned(msg)
 }
+
+// Test for bug:
+// https://github.com/square/go-jose/issues/157
+func TestEmbedBug(t *testing.T) {
+	signerKey := SigningKey{
+		Key: &JSONWebKey{
+			Key:   rsaTestKey,
+			KeyID: "rsa-test-key",
+		},
+		Algorithm: RS256,
+	}
+
+	_, err := NewSigner(signerKey, &SignerOptions{EmbedJWK: true})
+	if err == nil {
+		t.Fatal("expected error when creating signer with EmbedJWK set to true where JWK is a private key")
+	}
+}

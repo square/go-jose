@@ -114,7 +114,7 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 	}
 
 	for _, sig := range sigs {
-		err := signer.addRecipient(sig.Algorithm, sig.Key)
+		err := signer.addRecipient(sig.Algorithm, sig.Key, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -151,8 +151,8 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 	}
 }
 
-func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interface{}) error {
-	recipient, err := makeJWSRecipient(alg, signingKey)
+func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interface{}, opts *SignerOptions) error {
+	recipient, err := makeJWSRecipient(alg, signingKey, opts)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interf
 	return nil
 }
 
-func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSigInfo, error) {
+func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}, opts *SignerOptions) (recipientSigInfo, error) {
 	switch signingKey := signingKey.(type) {
 	case ed25519.PrivateKey:
 		return newEd25519Signer(alg, signingKey)
@@ -172,22 +172,27 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipient
 	case []byte:
 		return newSymmetricSigner(alg, signingKey)
 	case JSONWebKey:
-		return newJWKSigner(alg, signingKey)
+		return newJWKSigner(alg, signingKey, opts)
 	case *JSONWebKey:
-		return newJWKSigner(alg, *signingKey)
+		return newJWKSigner(alg, *signingKey, opts)
 	default:
 		return recipientSigInfo{}, ErrUnsupportedKeyType
 	}
 }
 
-func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey) (recipientSigInfo, error) {
-	recipient, err := makeJWSRecipient(alg, signingKey.Key)
+func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey, opts *SignerOptions) (recipientSigInfo, error) {
+	if opts != nil && opts.EmbedJWK && !signingKey.IsPublic() {
+		return recipientSigInfo{}, errors.New("square/go-jose: can't embed JWK with private key")
+	}
+
+	recipient, err := makeJWSRecipient(alg, signingKey.Key, opts)
 	if err != nil {
 		return recipientSigInfo{}, err
 	}
 	if signingKey.IsPublic() {
 		recipient.publicKey.KeyID = signingKey.KeyID
 	} else {
+		// Stripping private key, but keeping the key id.
 		recipient.publicKey = &JSONWebKey{
 			KeyID: signingKey.KeyID,
 		}
