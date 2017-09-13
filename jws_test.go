@@ -332,3 +332,65 @@ func TestNullHeaderValue(t *testing.T) {
 	}()
 	ParseSigned(msg)
 }
+
+// Test for bug:
+// https://github.com/square/go-jose/issues/157
+func TestEmbedJWKBug(t *testing.T) {
+	signerKey := SigningKey{
+		Key: &JSONWebKey{
+			Key:   rsaTestKey,
+			KeyID: "rsa-test-key",
+		},
+		Algorithm: RS256,
+	}
+
+	signer, err := NewSigner(signerKey, &SignerOptions{EmbedJWK: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	signerNoEmbed, err := NewSigner(signerKey, &SignerOptions{EmbedJWK: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jws, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jwsNoEmbed, err := signerNoEmbed.Sign([]byte("Lorem ipsum dolor sit amet"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// This used to panic with:
+	// json: error calling MarshalJSON for type *jose.JSONWebKey: square/go-jose: unknown key type '%!s(<nil>)'
+	output := jws.FullSerialize()
+	outputNoEmbed := jwsNoEmbed.FullSerialize()
+
+	// Expected output with embed set to true is a JWS with the public JWK embedded, with kid header empty.
+	// Expected output with embed set to false is that we set the kid header for key identification instead.
+	parsed, err := ParseSigned(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parsedNoEmbed, err := ParseSigned(outputNoEmbed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if parsed.Signatures[0].Header.KeyID != "" {
+		t.Error("expected kid field in protected header to be empty")
+	}
+	if parsed.Signatures[0].Header.JSONWebKey.KeyID != "rsa-test-key" {
+		t.Error("expected rsa-test-key to be kid in embedded JWK in protected header")
+	}
+	if parsedNoEmbed.Signatures[0].Header.KeyID != "rsa-test-key" {
+		t.Error("expected kid field in protected header to be rsa-test-key")
+	}
+	if parsedNoEmbed.Signatures[0].Header.JSONWebKey != nil {
+		t.Error("expected no embedded JWK to be present")
+	}
+}

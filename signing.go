@@ -185,11 +185,17 @@ func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey) (recipientSigIn
 	if err != nil {
 		return recipientSigInfo{}, err
 	}
-	if signingKey.IsPublic() {
-		recipient.publicKey.KeyID = signingKey.KeyID
-	} else {
-		recipient.publicKey = &JSONWebKey{
-			KeyID: signingKey.KeyID,
+	if recipient.publicKey != nil {
+		// recipient.publicKey is a JWK synthesized for embedding when recipientSigInfo
+		// was created for the inner key (such as a RSA or ECDSA public key). It contains
+		// the pub key for embedding, but doesn't have extra params like key id.
+		publicKey := signingKey
+		publicKey.Key = recipient.publicKey.Key
+		recipient.publicKey = &publicKey
+
+		// This should be impossible, but let's check anyway.
+		if !recipient.publicKey.IsPublic() {
+			return recipientSigInfo{}, errors.New("square/go-jose: public key was unexpectedly not public")
 		}
 	}
 	return recipient, nil
@@ -206,10 +212,19 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 		}
 
 		if recipient.publicKey != nil {
+			// We want to embed the JWK or set the kid header, but not both. Having a protected
+			// header that contains an embedded JWK while also simultaneously containing the kid
+			// header is confusing, and at least in ACME the two are considered to be mutually
+			// exclusive. The fact that both can exist at the same time is a somewhat unfortunate
+			// result of the JOSE spec. We've decided that this library will only include one or
+			// the other to avoid this confusion.
+			//
+			// See https://github.com/square/go-jose/issues/157 for more context.
 			if ctx.embedJWK {
 				protected[headerJWK] = recipient.publicKey
+			} else {
+				protected[headerKeyID] = recipient.publicKey.KeyID
 			}
-			protected[headerKeyID] = recipient.publicKey.KeyID
 		}
 
 		if ctx.nonceSource != nil {

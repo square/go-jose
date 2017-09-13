@@ -28,6 +28,8 @@ import (
 	"reflect"
 	"testing"
 
+	"golang.org/x/crypto/ed25519"
+
 	"gopkg.in/square/go-jose.v2/json"
 )
 
@@ -642,10 +644,38 @@ func TestJWKSymmetricInvalid(t *testing.T) {
 	}
 }
 
+func TestJWKIsPublic(t *testing.T) {
+	bigInt := big.NewInt(0)
+	eccPub := ecdsa.PublicKey{elliptic.P256(), bigInt, bigInt}
+	rsaPub := rsa.PublicKey{bigInt, 1}
+
+	cases := []struct {
+		key              interface{}
+		expectedIsPublic bool
+	}{
+		{&eccPub, true},
+		{&ecdsa.PrivateKey{eccPub, bigInt}, false},
+		{&rsaPub, true},
+		{&rsa.PrivateKey{rsaPub, bigInt, []*big.Int{bigInt, bigInt}, rsa.PrecomputedValues{}}, false},
+		{&ed25519PublicKey, true},
+		{&ed25519PrivateKey, false},
+	}
+
+	for _, tc := range cases {
+		k := &JSONWebKey{Key: tc.key}
+		if public := k.IsPublic(); public != tc.expectedIsPublic {
+			t.Errorf("expected IsPublic to return %t, got %t", tc.expectedIsPublic, public)
+		}
+	}
+}
+
 func TestJWKValid(t *testing.T) {
 	bigInt := big.NewInt(0)
 	eccPub := ecdsa.PublicKey{elliptic.P256(), bigInt, bigInt}
 	rsaPub := rsa.PublicKey{bigInt, 1}
+	edPubEmpty := ed25519.PublicKey([]byte{})
+	edPrivEmpty := ed25519.PublicKey([]byte{})
+
 	cases := []struct {
 		key              interface{}
 		expectedValidity bool
@@ -659,6 +689,10 @@ func TestJWKValid(t *testing.T) {
 		{&rsaPub, true},
 		{&rsa.PrivateKey{}, false},
 		{&rsa.PrivateKey{rsaPub, bigInt, []*big.Int{bigInt, bigInt}, rsa.PrecomputedValues{}}, true},
+		{&ed25519PublicKey, true},
+		{&ed25519PrivateKey, true},
+		{&edPubEmpty, false},
+		{&edPrivEmpty, false},
 	}
 
 	for _, tc := range cases {
