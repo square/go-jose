@@ -192,6 +192,11 @@ func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey) (recipientSigIn
 		publicKey := signingKey
 		publicKey.Key = recipient.publicKey.Key
 		recipient.publicKey = &publicKey
+
+		// This should be impossible, but let's check anyway.
+		if !recipient.publicKey.IsPublic() {
+			return recipientSigInfo{}, errors.New("square/go-jose: public key was unexpectedly not public")
+		}
 	}
 	return recipient, nil
 }
