@@ -114,7 +114,7 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 	}
 
 	for _, sig := range sigs {
-		err := signer.addRecipient(sig.Algorithm, sig.Key, opts)
+		err := signer.addRecipient(sig.Algorithm, sig.Key)
 		if err != nil {
 			return nil, err
 		}
@@ -151,8 +151,8 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 	}
 }
 
-func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interface{}, opts *SignerOptions) error {
-	recipient, err := makeJWSRecipient(alg, signingKey, opts)
+func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interface{}) error {
+	recipient, err := makeJWSRecipient(alg, signingKey)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interf
 	return nil
 }
 
-func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}, opts *SignerOptions) (recipientSigInfo, error) {
+func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipientSigInfo, error) {
 	switch signingKey := signingKey.(type) {
 	case ed25519.PrivateKey:
 		return newEd25519Signer(alg, signingKey)
@@ -172,30 +172,26 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}, opts *Sign
 	case []byte:
 		return newSymmetricSigner(alg, signingKey)
 	case JSONWebKey:
-		return newJWKSigner(alg, signingKey, opts)
+		return newJWKSigner(alg, signingKey)
 	case *JSONWebKey:
-		return newJWKSigner(alg, *signingKey, opts)
+		return newJWKSigner(alg, *signingKey)
 	default:
 		return recipientSigInfo{}, ErrUnsupportedKeyType
 	}
 }
 
-func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey, opts *SignerOptions) (recipientSigInfo, error) {
-	if opts != nil && opts.EmbedJWK && !signingKey.IsPublic() {
-		return recipientSigInfo{}, errors.New("square/go-jose: can't embed JWK with private key")
-	}
-
-	recipient, err := makeJWSRecipient(alg, signingKey.Key, opts)
+func newJWKSigner(alg SignatureAlgorithm, signingKey JSONWebKey) (recipientSigInfo, error) {
+	recipient, err := makeJWSRecipient(alg, signingKey.Key)
 	if err != nil {
 		return recipientSigInfo{}, err
 	}
-	if signingKey.IsPublic() {
-		recipient.publicKey.KeyID = signingKey.KeyID
-	} else {
-		// Stripping private key, but keeping the key id.
-		recipient.publicKey = &JSONWebKey{
-			KeyID: signingKey.KeyID,
-		}
+	if recipient.publicKey != nil {
+		// recipient.publicKey is a JWK synthesized for embedding when recipientSigInfo
+		// was created for the inner key (such as a RSA or ECDSA public key). It contains
+		// the pub key for embedding, but doesn't have extra params like key id.
+		publicKey := signingKey
+		publicKey.Key = recipient.publicKey.Key
+		recipient.publicKey = &publicKey
 	}
 	return recipient, nil
 }
@@ -211,10 +207,19 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 		}
 
 		if recipient.publicKey != nil {
+			// We want to embed the JWK or set the kid header, but not both. Having a protected
+			// header that contains an embedded JWK while also simultaneously containing the kid
+			// header is confusing, and at least in ACME the two are considered to be mutually
+			// exclusive. The fact that both can exist at the same time is somewhat a somewhat
+			// unfortunate result of the JOSE spec. We've decided that this library will only
+			// include one or the other to avoid this confusion.
+			//
+			// See https://github.com/square/go-jose/issues/157 for more context.
 			if ctx.embedJWK {
 				protected[headerJWK] = recipient.publicKey
+			} else {
+				protected[headerKeyID] = recipient.publicKey.KeyID
 			}
-			protected[headerKeyID] = recipient.publicKey.KeyID
 		}
 
 		if ctx.nonceSource != nil {
