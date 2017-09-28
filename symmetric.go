@@ -29,7 +29,7 @@ import (
 	"hash"
 	"io"
 
-	"gopkg.in/square/go-jose.v2/cipher"
+	"gopkg.in/NeilMadden/go-jose.v2/cipher"
 )
 
 // Random reader (stubbed out in tests)

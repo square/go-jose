@@ -29,8 +29,8 @@ import (
 	"math/big"
 
 	"golang.org/x/crypto/ed25519"
-	"gopkg.in/square/go-jose.v2/cipher"
-	"gopkg.in/square/go-jose.v2/json"
+	"gopkg.in/NeilMadden/go-jose.v2/cipher"
+	"gopkg.in/NeilMadden/go-jose.v2/json"
 	"encoding/base64"
 )
 
@@ -59,6 +59,7 @@ type ecKeyGenerator struct {
 	algID              string
 	publicKey          *ecdsa.PublicKey
 	partyInfoGenerator PartyInfoGenerator
+	customKeyGenerator CustomKeyGenerator
 }
 
 // A generic EC-based decrypter/signer
@@ -390,7 +391,13 @@ func (ctx ecKeyGenerator) keySize() int {
 
 // Get a content encryption key for ECDH-ES
 func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
-	priv, err := ecdsa.GenerateKey(ctx.publicKey.Curve, randReader)
+	var priv *ecdsa.PrivateKey
+	var err error
+	if ctx.customKeyGenerator != nil {
+		priv, err = ctx.customKeyGenerator(ctx.publicKey.Curve)
+	} else {
+		priv, err = ecdsa.GenerateKey(ctx.publicKey.Curve, randReader)
+	}
 	if err != nil {
 		return nil, rawHeader{}, err
 	}

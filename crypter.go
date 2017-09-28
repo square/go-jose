@@ -23,7 +23,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"gopkg.in/NeilMadden/go-jose.v2/json"
+	"crypto/elliptic"
 )
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.
@@ -35,6 +36,9 @@ type Encrypter interface {
 
 // PartyInfoGenerator generates the apu and apv values from the public key values
 type PartyInfoGenerator func(ourPublicKey, theirPublicKey *JSONWebKey) (apu, apv []byte)
+
+// KeyGenerator generates the ephemeral key pair for ECDH-ES
+type CustomKeyGenerator func(curve elliptic.Curve) (*ecdsa.PrivateKey, error)
 
 // A generic content cipher
 type contentCipher interface {
@@ -86,6 +90,9 @@ type EncrypterOptions struct {
 
 	// For ECDH-ES this is an optional function to generate the apu and apv claim values
 	partyInfoGenerator PartyInfoGenerator
+
+	// For ECDH-ES this is an optional function to generate the private key
+	customKeyGenerator CustomKeyGenerator
 }
 
 // WithHeader adds an arbitrary value to the ExtraHeaders map, initializing it
@@ -112,6 +119,12 @@ func (eo *EncrypterOptions) WithType(typ ContentType) *EncrypterOptions {
 // WithPartyInfoGenerator sets the function used to calculate the apu and apv PartyInfo elements during ECDH key derivation
 func (eo *EncrypterOptions) WithPartyInfoGenerator(gen PartyInfoGenerator) *EncrypterOptions {
 	eo.partyInfoGenerator = gen
+	return eo
+}
+
+// WithCustomKeyGenerator sets the function used to generate the ephemeral private key during ECDH key derivation
+func (eo *EncrypterOptions) WithCustomKeyGenerator(gen CustomKeyGenerator) *EncrypterOptions {
+	eo.customKeyGenerator = gen
 	return eo
 }
 
@@ -175,11 +188,16 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 		if opts != nil && opts.partyInfoGenerator != nil {
 			partyInfoGenerator = opts.partyInfoGenerator
 		}
+		var customKeyGenerator CustomKeyGenerator
+		if opts != nil && opts.customKeyGenerator != nil {
+			customKeyGenerator = opts.customKeyGenerator
+		}
 		encrypter.keyGenerator = ecKeyGenerator{
 			size:               encrypter.cipher.keySize(),
 			algID:              string(enc),
 			publicKey:          rawKey.(*ecdsa.PublicKey),
 			partyInfoGenerator: partyInfoGenerator,
+			customKeyGenerator: customKeyGenerator,
 		}
 		recipientInfo, _ := newECDHRecipient(rcpt.Algorithm, rawKey.(*ecdsa.PublicKey))
 		recipientInfo.keyID = keyID
