@@ -11,7 +11,7 @@ The utility includes the subcommands `encrypt`, `decrypt`, `sign`, `verify` and
 
 Algorithms are selected via the `--alg` and `--enc` flags, which influence the
 `alg` and `enc` headers in respectively. For JWE, `--alg` specifies the key
-managment algorithm (e.g. `RSA-OAEP`) and `--enc` specifies the content
+management algorithm (e.g. `RSA-OAEP`) and `--enc` specifies the content
 encryption algorithm (e.g. `A128GCM`). For JWS, `--alg` specifies the
 signature algorithm (e.g. `PS256`).
 
