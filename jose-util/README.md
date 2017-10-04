@@ -23,7 +23,7 @@ message, but it's possible to get the full serialization by supplying the
 
 Keys are specified via the `--key` flag. Supported key types are naked RSA/EC
 keys and X.509 certificates with embedded RSA/EC keys. Keys must be in PEM
-or DER formats.
+or DER formats. JWK format produced by `jwk-keygen` is also supported.
 
 ## Examples
 
