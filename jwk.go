@@ -254,6 +254,25 @@ func (k *JSONWebKey) IsPublic() bool {
 	}
 }
 
+// Public creates JSONWebKey with corresponding publik key if JWK represents asymmetric private key.
+func (k *JSONWebKey) Public() JSONWebKey {
+	if k.IsPublic() {
+		return *k
+	}
+	ret := *k
+	switch key := k.Key.(type) {
+	case *ecdsa.PrivateKey:
+		ret.Key = key.Public()
+	case *rsa.PrivateKey:
+		ret.Key = key.Public()
+	case ed25519.PrivateKey:
+		ret.Key = key.Public()
+	default:
+		return JSONWebKey{} // returning invalid key
+	}
+	return ret
+}
+
 // Valid checks that the key contains the expected parameters.
 func (k *JSONWebKey) Valid() bool {
 	if k.Key == nil {
