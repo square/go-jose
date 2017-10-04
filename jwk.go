@@ -247,7 +247,7 @@ func (k *JSONWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
 // IsPublic returns true if the JWK represents a public key (not symmetric, not private).
 func (k *JSONWebKey) IsPublic() bool {
 	switch k.Key.(type) {
-	case *ecdsa.PublicKey, *rsa.PublicKey, *ed25519.PublicKey:
+	case *ecdsa.PublicKey, *rsa.PublicKey, ed25519.PublicKey:
 		return true
 	default:
 		return false
@@ -276,12 +276,12 @@ func (k *JSONWebKey) Valid() bool {
 		if key.N == nil || key.E == 0 || key.D == nil || len(key.Primes) < 2 {
 			return false
 		}
-	case *ed25519.PublicKey:
-		if len(*key) != 32 {
+	case ed25519.PublicKey:
+		if len(key) != 32 {
 			return false
 		}
-	case *ed25519.PrivateKey:
-		if len(*key) != 64 {
+	case ed25519.PrivateKey:
+		if len(key) != 64 {
 			return false
 		}
 	default:
