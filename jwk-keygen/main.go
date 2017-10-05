@@ -26,7 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/ed25519"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -173,11 +173,28 @@ func main() {
 		// JWK Thumbprint (RFC7638) is not used for key id because of
 		// lack of canonical representation.
 		fname := fmt.Sprintf("jwk_%s_%s_%s", *use, *alg, *kid)
-		err = ioutil.WriteFile(fname+".pub", pubJS, 0444)
+		err = writeNewFile(fname+".pub", pubJS, 0444)
 		app.FatalIfError(err, "can't write public key to file %s.pub", fname)
 		fmt.Printf("Written public key to %s.pub\n", fname)
-		err = ioutil.WriteFile(fname, privJS, 0400)
+		err = writeNewFile(fname, privJS, 0400)
 		app.FatalIfError(err, "cant' write private key to file %s", fname)
 		fmt.Printf("Written private key to %s\n", fname)
 	}
+}
+
+// writeNewFile is shameless copy-paste from ioutil.WriteFile with a bit
+// different flags for OpenFile.
+func writeNewFile(filename string, data []byte, perm os.FileMode) error {
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+	if err != nil {
+		return err
+	}
+	n, err := f.Write(data)
+	if err == nil && n < len(data) {
+		err = io.ErrShortWrite
+	}
+	if err1 := f.Close(); err == nil {
+		err = err1
+	}
+	return err
 }
