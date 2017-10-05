@@ -697,8 +697,19 @@ func TestJWKValid(t *testing.T) {
 
 	for _, tc := range cases {
 		k := &JSONWebKey{Key: tc.key}
-		if valid := k.Valid(); valid != tc.expectedValidity {
+		valid := k.Valid()
+		if valid != tc.expectedValidity {
 			t.Errorf("expected Valid to return %t, got %t", tc.expectedValidity, valid)
+		}
+		if valid {
+			wasPublic := k.IsPublic()
+			p := k.Public() // all aforemention keys are asymmetric
+			if !p.Valid() {
+				t.Errorf("unable to derive public key from valid asymmetric key")
+			}
+			if wasPublic != k.IsPublic() {
+				t.Errorf("original key was touched during public key derivation")
+			}
 		}
 	}
 }
