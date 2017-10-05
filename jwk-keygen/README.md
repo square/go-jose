@@ -11,8 +11,8 @@ encryption and signing.
 
 Algorithms are selected via the `--alg` flag, which influence the `alg` header.
 For JWE (`--use=enc`), `--alg` specifies the key management algorithm (e.g.
-`RSA-OAEP`).  . For JWS (`--use=sig`), `--alg` specifies the signature
-algorithm (e.g. `PS256`).
+`RSA-OAEP`). For JWS (`--use=sig`), `--alg` specifies the signature algorithm
+(e.g. `PS256`).
 
 Output file is determined by specified usage, algorithm and Key ID, e.g.
 `jwk-keygen --use=sig --alg=RS512 --kid=test` produces files
