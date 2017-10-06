@@ -1,4 +1,4 @@
-# Go JOSE 
+# Go JOSE
 
 [![godoc](http://img.shields.io/badge/godoc-version_1-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v1)
 [![godoc](http://img.shields.io/badge/godoc-version_2-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
@@ -52,7 +52,7 @@ The interface for [go-jose.v1](https://gopkg.in/square/go-jose.v1) will remain
 backwards compatible. No new feature development will take place on the `v1` branch,
 however bug fixes and security fixes will be backported.
 
-The interface for [go-jose.v2](https://gopkg.in/square/go-jose.v2) is mostly 
+The interface for [go-jose.v2](https://gopkg.in/square/go-jose.v2) is mostly
 stable, but we suggest pinning to a particular revision for now as we still reserve
 the right to make changes. New feature development happens on this branch.
 
@@ -89,7 +89,8 @@ standard where possible. The Godoc reference has a list of constants.
  Content encryption         | Algorithm identifier(s)
  :------------------------- | :------------------------------
  AES-CBC+HMAC               | A128CBC-HS256, A192CBC-HS384, A256CBC-HS512
- AES-GCM                    | A128GCM, A192GCM, A256GCM 
+ AES-CBC+HMAC (draft 7)     | A128CBC+HS256, A192CBC+HS384, A256CBC+HS512
+ AES-GCM                    | A128GCM, A192GCM, A256GCM
 
  Compression                | Algorithm identifiers(s)
  :------------------------- | -------------------------------
