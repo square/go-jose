@@ -24,12 +24,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
 
-	"github.com/square/go-jose/json"
+	"golang.org/x/crypto/ed25519"
+
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // Test chain of two X.509 certificates
@@ -202,7 +203,7 @@ func TestRoundtripEcPrivate(t *testing.T) {
 }
 
 func TestRoundtripX5C(t *testing.T) {
-	jwk := JsonWebKey{
+	jwk := JSONWebKey{
 		Key:          rsaTestKey,
 		KeyID:        "bar",
 		Algorithm:    "foo",
@@ -214,7 +215,7 @@ func TestRoundtripX5C(t *testing.T) {
 		t.Error("problem marshaling", err)
 	}
 
-	var jwk2 JsonWebKey
+	var jwk2 JSONWebKey
 	err = jwk2.UnmarshalJSON(jsonbar)
 	if err != nil {
 		t.Error("problem unmarshalling", err)
@@ -236,9 +237,9 @@ func TestRoundtripX5C(t *testing.T) {
 func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
-	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey} {
+	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey, ed25519PrivateKey} {
 		for _, use := range []string{"", "sig", "enc"} {
-			jwk := JsonWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
+			jwk := JSONWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
 			if use != "" {
 				jwk.Use = use
 			}
@@ -248,7 +249,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 				t.Error("problem marshaling", i, err)
 			}
 
-			var jwk2 JsonWebKey
+			var jwk2 JSONWebKey
 			err = jwk2.UnmarshalJSON(jsonbar)
 			if err != nil {
 				t.Error("problem unmarshalling", i, err)
@@ -279,18 +280,18 @@ func TestMarshalUnmarshal(t *testing.T) {
 
 func TestMarshalNonPointer(t *testing.T) {
 	type EmbedsKey struct {
-		Key JsonWebKey
+		Key JSONWebKey
 	}
 
-	keyJson := []byte(`{
+	keyJSON := []byte(`{
 		"e": "AQAB",
 		"kty": "RSA",
 		"n": "vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw"
 	}`)
-	var parsedKey JsonWebKey
-	err := json.Unmarshal(keyJson, &parsedKey)
+	var parsedKey JSONWebKey
+	err := json.Unmarshal(keyJSON, &parsedKey)
 	if err != nil {
-		t.Error(fmt.Sprintf("Error unmarshalling key: %v", err))
+		t.Errorf("Error unmarshalling key: %v", err)
 		return
 	}
 	ek := EmbedsKey{
@@ -298,7 +299,7 @@ func TestMarshalNonPointer(t *testing.T) {
 	}
 	out, err := json.Marshal(ek)
 	if err != nil {
-		t.Error(fmt.Sprintf("Error marshalling JSON: %v", err))
+		t.Errorf("Error marshalling JSON: %v", err)
 		return
 	}
 	expected := "{\"Key\":{\"kty\":\"RSA\",\"n\":\"vd7rZIoTLEe-z1_8G1FcXSw9CQFEJgV4g9V277sER7yx5Qjz_Pkf2YVth6wwwFJEmzc0hoKY-MMYFNwBE4hQHw\",\"e\":\"AQAB\"}}"
@@ -349,7 +350,7 @@ func TestMarshalUnmarshalInvalid(t *testing.T) {
 	}
 
 	for i, key := range keys {
-		jwk := JsonWebKey{Key: key}
+		jwk := JSONWebKey{Key: key}
 		_, err := jwk.MarshalJSON()
 		if err == nil {
 			t.Error("managed to serialize invalid key", i)
@@ -377,7 +378,7 @@ func TestWebKeyVectorsInvalid(t *testing.T) {
 	}
 
 	for _, key := range keys {
-		var jwk2 JsonWebKey
+		var jwk2 JSONWebKey
 		err := jwk2.UnmarshalJSON([]byte(key))
 		if err == nil {
 			t.Error("managed to parse invalid key:", key)
@@ -397,6 +398,14 @@ var cookbookJWKs = []string{
          A5RkTKqjqvjyekWF-7ytDyRXYgCF5cj0Kt",
      "y": "AdymlHvOiLxXkEhayXQnNCvDX4h9htZaCJN34kfmC6pV5OhQHiraVy
          SsUdaQkAgDPrwQrJmbnX9cwlGfP-HqHZR1"
+   }`),
+
+	//ED Private
+	stripWhitespace(`{
+     "kty": "OKP",
+     "crv": "Ed25519",
+     "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+     "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
    }`),
 
 	// EC Private
@@ -497,6 +506,7 @@ var cookbookJWKs = []string{
 // SHA-256 thumbprints of the above keys, hex-encoded
 var cookbookJWKThumbprints = []string{
 	"747ae2dd2003664aeeb21e4753fe7402846170a16bc8df8f23a8cf06d3cbe793",
+	"f6934029a341ddf81dceb753e91d17efe16664f40d9f4ed84bc5ea87e111f29d",
 	"747ae2dd2003664aeeb21e4753fe7402846170a16bc8df8f23a8cf06d3cbe793",
 	"f63838e96077ad1fc01c3f8405774dedc0641f558ebb4b40dccf5f9b6d66a932",
 	"0fc478f8579325fcee0d4cbc6d9d1ce21730a6e97e435d6008fb379b0ebe47d4",
@@ -505,7 +515,7 @@ var cookbookJWKThumbprints = []string{
 
 func TestWebKeyVectorsValid(t *testing.T) {
 	for _, key := range cookbookJWKs {
-		var jwk2 JsonWebKey
+		var jwk2 JSONWebKey
 		err := jwk2.UnmarshalJSON([]byte(key))
 		if err != nil {
 			t.Error("unable to parse valid key:", key, err)
@@ -515,7 +525,7 @@ func TestWebKeyVectorsValid(t *testing.T) {
 
 func TestThumbprint(t *testing.T) {
 	for i, key := range cookbookJWKs {
-		var jwk2 JsonWebKey
+		var jwk2 JSONWebKey
 		err := jwk2.UnmarshalJSON([]byte(key))
 		if err != nil {
 			t.Error("unable to parse valid key:", key, err)
@@ -534,9 +544,9 @@ func TestThumbprint(t *testing.T) {
 }
 
 func TestMarshalUnmarshalJWKSet(t *testing.T) {
-	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
-	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
-	var set JsonWebKeySet
+	jwk1 := JSONWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JSONWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JSONWebKeySet
 	set.Keys = append(set.Keys, jwk1)
 	set.Keys = append(set.Keys, jwk2)
 
@@ -544,7 +554,7 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	if err != nil {
 		t.Error("problem marshalling set", err)
 	}
-	var set2 JsonWebKeySet
+	var set2 JSONWebKeySet
 	err = json.Unmarshal(jsonbar, &set2)
 	if err != nil {
 		t.Error("problem unmarshalling set", err)
@@ -559,9 +569,9 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 }
 
 func TestJWKSetKey(t *testing.T) {
-	jwk1 := JsonWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
-	jwk2 := JsonWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
-	var set JsonWebKeySet
+	jwk1 := JSONWebKey{Key: rsaTestKey, KeyID: "ABCDEFG", Algorithm: "foo"}
+	jwk2 := JSONWebKey{Key: rsaTestKey, KeyID: "GFEDCBA", Algorithm: "foo"}
+	var set JSONWebKeySet
 	set.Keys = append(set.Keys, jwk1)
 	set.Keys = append(set.Keys, jwk2)
 	k := set.Key("ABCDEFG")
@@ -577,7 +587,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 	sample1 := `{"kty":"oct","alg":"A128KW","k":"GawgguFyGrWKav7AX4VKUg"}`
 	sample2 := `{"kty":"oct","k":"AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow","kid":"HMAC key used in JWS spec Appendix A.1 example"}`
 
-	var jwk1 JsonWebKey
+	var jwk1 JSONWebKey
 	json.Unmarshal([]byte(sample1), &jwk1)
 
 	if jwk1.Algorithm != "A128KW" {
@@ -588,7 +598,7 @@ func TestJWKSymmetricKey(t *testing.T) {
 		t.Errorf("expected Key to be '%s', but was '%s'", hex.EncodeToString(expected1), hex.EncodeToString(jwk1.Key.([]byte)))
 	}
 
-	var jwk2 JsonWebKey
+	var jwk2 JSONWebKey
 	json.Unmarshal([]byte(sample2), &jwk2)
 
 	if jwk2.KeyID != "HMAC key used in JWS spec Appendix A.1 example" {
@@ -603,16 +613,16 @@ func TestJWKSymmetricKey(t *testing.T) {
 }
 
 func TestJWKSymmetricRoundtrip(t *testing.T) {
-	jwk1 := JsonWebKey{Key: []byte{1, 2, 3, 4}}
+	jwk1 := JSONWebKey{Key: []byte{1, 2, 3, 4}}
 	marshaled, err := jwk1.MarshalJSON()
 	if err != nil {
-		t.Errorf("failed to marshal valid JWK object", err)
+		t.Error("failed to marshal valid JWK object", err)
 	}
 
-	var jwk2 JsonWebKey
+	var jwk2 JSONWebKey
 	err = jwk2.UnmarshalJSON(marshaled)
 	if err != nil {
-		t.Errorf("failed to unmarshal valid JWK object", err)
+		t.Error("failed to unmarshal valid JWK object", err)
 	}
 
 	if !bytes.Equal(jwk1.Key.([]byte), jwk2.Key.([]byte)) {
@@ -621,16 +631,41 @@ func TestJWKSymmetricRoundtrip(t *testing.T) {
 }
 
 func TestJWKSymmetricInvalid(t *testing.T) {
-	invalid := JsonWebKey{}
+	invalid := JSONWebKey{}
 	_, err := invalid.MarshalJSON()
 	if err == nil {
 		t.Error("excepted error on marshaling invalid symmetric JWK object")
 	}
 
-	var jwk JsonWebKey
+	var jwk JSONWebKey
 	err = jwk.UnmarshalJSON([]byte(`{"kty":"oct"}`))
 	if err == nil {
 		t.Error("excepted error on unmarshaling invalid symmetric JWK object")
+	}
+}
+
+func TestJWKIsPublic(t *testing.T) {
+	bigInt := big.NewInt(0)
+	eccPub := ecdsa.PublicKey{elliptic.P256(), bigInt, bigInt}
+	rsaPub := rsa.PublicKey{bigInt, 1}
+
+	cases := []struct {
+		key              interface{}
+		expectedIsPublic bool
+	}{
+		{&eccPub, true},
+		{&ecdsa.PrivateKey{eccPub, bigInt}, false},
+		{&rsaPub, true},
+		{&rsa.PrivateKey{rsaPub, bigInt, []*big.Int{bigInt, bigInt}, rsa.PrecomputedValues{}}, false},
+		{ed25519PublicKey, true},
+		{ed25519PrivateKey, false},
+	}
+
+	for _, tc := range cases {
+		k := &JSONWebKey{Key: tc.key}
+		if public := k.IsPublic(); public != tc.expectedIsPublic {
+			t.Errorf("expected IsPublic to return %t, got %t", tc.expectedIsPublic, public)
+		}
 	}
 }
 
@@ -638,6 +673,9 @@ func TestJWKValid(t *testing.T) {
 	bigInt := big.NewInt(0)
 	eccPub := ecdsa.PublicKey{elliptic.P256(), bigInt, bigInt}
 	rsaPub := rsa.PublicKey{bigInt, 1}
+	edPubEmpty := ed25519.PublicKey([]byte{})
+	edPrivEmpty := ed25519.PublicKey([]byte{})
+
 	cases := []struct {
 		key              interface{}
 		expectedValidity bool
@@ -651,12 +689,27 @@ func TestJWKValid(t *testing.T) {
 		{&rsaPub, true},
 		{&rsa.PrivateKey{}, false},
 		{&rsa.PrivateKey{rsaPub, bigInt, []*big.Int{bigInt, bigInt}, rsa.PrecomputedValues{}}, true},
+		{ed25519PublicKey, true},
+		{ed25519PrivateKey, true},
+		{edPubEmpty, false},
+		{edPrivEmpty, false},
 	}
 
 	for _, tc := range cases {
-		k := &JsonWebKey{Key: tc.key}
-		if valid := k.Valid(); valid != tc.expectedValidity {
+		k := &JSONWebKey{Key: tc.key}
+		valid := k.Valid()
+		if valid != tc.expectedValidity {
 			t.Errorf("expected Valid to return %t, got %t", tc.expectedValidity, valid)
+		}
+		if valid {
+			wasPublic := k.IsPublic()
+			p := k.Public() // all aforemention keys are asymmetric
+			if !p.Valid() {
+				t.Errorf("unable to derive public key from valid asymmetric key")
+			}
+			if wasPublic != k.IsPublic() {
+				t.Errorf("original key was touched during public key derivation")
+			}
 		}
 	}
 }

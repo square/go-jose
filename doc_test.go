@@ -24,12 +24,10 @@ import (
 )
 
 // Dummy encrypter for use in examples
-var encrypter, _ = NewEncrypter(DIRECT, A128GCM, []byte{})
+var encrypter Encrypter
 
 func Example_jWE() {
-	// Generate a public/private key pair to use for this example. The library
-	// also provides two utility functions (LoadPublicKey and LoadPrivateKey)
-	// that can be used to load keys from PEM/DER-encoded data.
+	// Generate a public/private key pair to use for this example.
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		panic(err)
@@ -38,7 +36,7 @@ func Example_jWE() {
 	// Instantiate an encrypter using RSA-OAEP with AES128-GCM. An error would
 	// indicate that the selected algorithm(s) are not currently supported.
 	publicKey := &privateKey.PublicKey
-	encrypter, err := NewEncrypter(RSA_OAEP, A128GCM, publicKey)
+	encrypter, err := NewEncrypter(A128GCM, Recipient{Algorithm: RSA_OAEP, Key: publicKey}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -77,16 +75,14 @@ func Example_jWE() {
 }
 
 func Example_jWS() {
-	// Generate a public/private key pair to use for this example. The library
-	// also provides two utility functions (LoadPublicKey and LoadPrivateKey)
-	// that can be used to load keys from PEM/DER-encoded data.
+	// Generate a public/private key pair to use for this example.
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		panic(err)
 	}
 
 	// Instantiate a signer using RSASSA-PSS (SHA512) with the given private key.
-	signer, err := NewSigner(PS512, privateKey)
+	signer, err := NewSigner(SigningKey{Algorithm: PS512, Key: privateKey}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -128,20 +124,20 @@ func ExampleNewEncrypter_publicKey() {
 	var publicKey *rsa.PublicKey
 
 	// Instantiate an encrypter using RSA-OAEP with AES128-GCM.
-	NewEncrypter(RSA_OAEP, A128GCM, publicKey)
+	NewEncrypter(A128GCM, Recipient{Algorithm: RSA_OAEP, Key: publicKey}, nil)
 
 	// Instantiate an encrypter using RSA-PKCS1v1.5 with AES128-CBC+HMAC.
-	NewEncrypter(RSA1_5, A128CBC_HS256, publicKey)
+	NewEncrypter(A128CBC_HS256, Recipient{Algorithm: RSA1_5, Key: publicKey}, nil)
 }
 
 func ExampleNewEncrypter_symmetric() {
 	var sharedKey []byte
 
 	// Instantiate an encrypter using AES128-GCM with AES-GCM key wrap.
-	NewEncrypter(A128GCMKW, A128GCM, sharedKey)
+	NewEncrypter(A128GCM, Recipient{Algorithm: A128GCMKW, Key: sharedKey}, nil)
 
-	// Instantiate an encrypter using AES256-GCM directly, w/o key wrapping.
-	NewEncrypter(DIRECT, A256GCM, sharedKey)
+	// Instantiate an encrypter using AES128-GCM directly, w/o key wrapping.
+	NewEncrypter(A128GCM, Recipient{Algorithm: DIRECT, Key: sharedKey}, nil)
 }
 
 func ExampleNewSigner_publicKey() {
@@ -149,20 +145,20 @@ func ExampleNewSigner_publicKey() {
 	var ecdsaPrivateKey *ecdsa.PrivateKey
 
 	// Instantiate a signer using RSA-PKCS#1v1.5 with SHA-256.
-	NewSigner(RS256, rsaPrivateKey)
+	NewSigner(SigningKey{Algorithm: RS256, Key: rsaPrivateKey}, nil)
 
 	// Instantiate a signer using ECDSA with SHA-384.
-	NewSigner(ES384, ecdsaPrivateKey)
+	NewSigner(SigningKey{Algorithm: ES384, Key: ecdsaPrivateKey}, nil)
 }
 
 func ExampleNewSigner_symmetric() {
 	var sharedKey []byte
 
 	// Instantiate an signer using HMAC-SHA256.
-	NewSigner(HS256, sharedKey)
+	NewSigner(SigningKey{Algorithm: HS256, Key: sharedKey}, nil)
 
 	// Instantiate an signer using HMAC-SHA512.
-	NewSigner(HS512, sharedKey)
+	NewSigner(SigningKey{Algorithm: HS512, Key: sharedKey}, nil)
 }
 
 func ExampleNewMultiEncrypter() {
@@ -170,22 +166,10 @@ func ExampleNewMultiEncrypter() {
 	var sharedKey []byte
 
 	// Instantiate an encrypter using AES-GCM.
-	encrypter, err := NewMultiEncrypter(A128GCM)
-	if err != nil {
-		panic(err)
-	}
-
-	// Add a recipient using a shared key with AES-GCM key wap
-	err = encrypter.AddRecipient(A128GCMKW, sharedKey)
-	if err != nil {
-		panic(err)
-	}
-
-	// Add a recipient using an RSA public key with RSA-OAEP
-	err = encrypter.AddRecipient(RSA_OAEP, publicKey)
-	if err != nil {
-		panic(err)
-	}
+	NewMultiEncrypter(A128GCM, []Recipient{
+		{Algorithm: A128GCMKW, Key: sharedKey},
+		{Algorithm: RSA_OAEP, Key: publicKey},
+	}, nil)
 }
 
 func ExampleNewMultiSigner() {
@@ -193,19 +177,10 @@ func ExampleNewMultiSigner() {
 	var sharedKey []byte
 
 	// Instantiate a signer for multiple recipients.
-	signer := NewMultiSigner()
-
-	// Add a recipient using a shared key with HMAC-SHA256
-	err := signer.AddRecipient(HS256, sharedKey)
-	if err != nil {
-		panic(err)
-	}
-
-	// Add a recipient using an RSA private key with RSASSA-PSS with SHA384
-	err = signer.AddRecipient(PS384, privateKey)
-	if err != nil {
-		panic(err)
-	}
+	NewMultiSigner([]SigningKey{
+		{Algorithm: HS256, Key: sharedKey},
+		{Algorithm: PS384, Key: privateKey},
+	}, nil)
 }
 
 func ExampleEncrypter_encrypt() {

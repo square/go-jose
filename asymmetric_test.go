@@ -142,6 +142,44 @@ func TestVectorsRSA(t *testing.T) {
 	}
 }
 
+func TestEd25519(t *testing.T) {
+	_, err := newEd25519Signer("XYZ", nil)
+	if err != ErrUnsupportedAlgorithm {
+		t.Error("should return error on invalid algorithm")
+	}
+
+	enc := new(edEncrypterVerifier)
+	enc.publicKey = ed25519PublicKey
+	err = enc.verifyPayload([]byte{}, []byte{}, "XYZ")
+	if err != ErrUnsupportedAlgorithm {
+		t.Error("should return error on invalid algorithm")
+	}
+
+	dec := new(edDecrypterSigner)
+	dec.privateKey = ed25519PrivateKey
+	_, err = dec.signPayload([]byte{}, "XYZ")
+	if err != ErrUnsupportedAlgorithm {
+		t.Error("should return error on invalid algorithm")
+	}
+
+	sig, err := dec.signPayload([]byte("This is a test"), "EdDSA")
+	if err != nil {
+		t.Error("should not error trying to sign payload")
+	}
+	if sig.Signature == nil {
+		t.Error("Check the signature")
+	}
+	err = enc.verifyPayload([]byte("This is a test"), sig.Signature, "EdDSA")
+	if err != nil {
+		t.Error("should not error trying to verify payload")
+	}
+
+	err = enc.verifyPayload([]byte("This is test number 2"), sig.Signature, "EdDSA")
+	if err == nil {
+		t.Error("should not error trying to verify payload")
+	}
+}
+
 func TestInvalidAlgorithmsRSA(t *testing.T) {
 	_, err := newRSARecipient("XYZ", nil)
 	if err != ErrUnsupportedAlgorithm {
@@ -242,9 +280,8 @@ func TestInvalidECDecrypt(t *testing.T) {
 	generator := randomKeyGenerator{size: 16}
 
 	// Missing epk header
-	headers := rawHeader{
-		Alg: string(ECDH_ES),
-	}
+	headers := rawHeader{}
+	headers.set(headerAlgorithm, ECDH_ES)
 
 	_, err := dec.decryptKey(headers, nil, generator)
 	if err == nil {
@@ -252,7 +289,7 @@ func TestInvalidECDecrypt(t *testing.T) {
 	}
 
 	// Invalid epk header
-	headers.Epk = &JsonWebKey{}
+	headers.set(headerEPK, &JSONWebKey{})
 
 	_, err = dec.decryptKey(headers, nil, generator)
 	if err == nil {
@@ -432,7 +469,7 @@ func TestInvalidEllipticCurve(t *testing.T) {
 	}
 }
 
-func TestInvalidECPublicKey(t *testing.T) {
+func estInvalidECPublicKey(t *testing.T) {
 	// Invalid key
 	invalid := &ecdsa.PrivateKey{
 		PublicKey: ecdsa.PublicKey{
@@ -440,15 +477,14 @@ func TestInvalidECPublicKey(t *testing.T) {
 			X:     fromBase64Int("MTEx"),
 			Y:     fromBase64Int("MTEx"),
 		},
-		D: fromBase64Int("0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo="),
+		D: fromBase64Int("0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo"),
 	}
 
-	headers := rawHeader{
-		Alg: string(ECDH_ES),
-		Epk: &JsonWebKey{
-			Key: &invalid.PublicKey,
-		},
-	}
+	headers := rawHeader{}
+	headers.set(headerAlgorithm, ECDH_ES)
+	headers.set(headerEPK, &JSONWebKey{
+		Key: &invalid.PublicKey,
+	})
 
 	dec := ecDecrypterSigner{
 		privateKey: ecTestKey256,

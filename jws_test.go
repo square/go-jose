@@ -17,7 +17,7 @@
 package jose
 
 import (
-	"fmt"
+	"crypto/x509"
 	"strings"
 	"testing"
 )
@@ -155,15 +155,15 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 		t.Error("Too many or too few signatures.")
 	}
 	sig := jws.Signatures[0]
-	if sig.Header.JsonWebKey == nil {
+	if sig.Header.JSONWebKey == nil {
 		t.Error("No JWK in signature header.")
 	}
-	payload, err := jws.Verify(sig.Header.JsonWebKey)
+	payload, err := jws.Verify(sig.Header.JSONWebKey)
 	if err != nil {
-		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
+		t.Errorf("Signature did not validate: %v", err)
 	}
 	if string(payload) != "foo\n" {
-		t.Error(fmt.Sprintf("Payload was incorrect: '%s' should have been 'foo\\n'", string(payload)))
+		t.Errorf("Payload was incorrect: '%s' should have been 'foo\\n'", string(payload))
 	}
 }
 
@@ -181,22 +181,22 @@ func TestVerifyFlattenedWithPrivateProtected(t *testing.T) {
 		t.Error("Too many or too few signatures.")
 	}
 	sig := jws.Signatures[0]
-	if sig.Header.JsonWebKey == nil {
+	if sig.Header.JSONWebKey == nil {
 		t.Error("No JWK in signature header.")
 	}
-	payload, err := jws.Verify(sig.Header.JsonWebKey)
+	payload, err := jws.Verify(sig.Header.JSONWebKey)
 	if err != nil {
-		t.Error(fmt.Sprintf("Signature did not validate: %v", err))
+		t.Errorf("Signature did not validate: %v", err)
 	}
 	expected := "{\"contact\":[\"mailto:foo@bar.com\"]}"
 	if string(payload) != expected {
-		t.Error(fmt.Sprintf("Payload was incorrect: '%s' should have been '%s'", string(payload), expected))
+		t.Errorf("Payload was incorrect: '%s' should have been '%s'", string(payload), expected)
 	}
 }
 
 // Test vectors generated with nimbus-jose-jwt
 func TestSampleNimbusJWSMessagesRSA(t *testing.T) {
-	rsaPublicKey, err := LoadPublicKey(fromBase64Bytes(`
+	rsaPublicKey, err := x509.ParsePKIXPublicKey(fromBase64Bytes(`
 		MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3aLSGwbeX0ZA2Ha+EvELaIFGzO
 		91+Q15JQc/tdGdCgGW3XAbrh7ZUhDh1XKzbs+UOQxqn3Eq4YOx18IG0WsJSuCaHQIxnDlZ
 		t/GP8WLwjMC0izlJLm2SyfM/EEoNpmTC3w6MQ2dHK7SZ9Zoq+sKijQd+V7CYdr8zHMpDrd
@@ -235,15 +235,15 @@ func TestSampleNimbusJWSMessagesRSA(t *testing.T) {
 
 // Test vectors generated with nimbus-jose-jwt
 func TestSampleNimbusJWSMessagesEC(t *testing.T) {
-	ecPublicKeyP256, err := LoadPublicKey(fromBase64Bytes("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIg62jq6FyL1otEj9Up7S35BUrwGF9TVrAzrrY1rHUKZqYIGEg67u/imjgadVcr7y9Q32I0gB8W8FHqbqt696rA=="))
+	ecPublicKeyP256, err := x509.ParsePKIXPublicKey(fromBase64Bytes("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIg62jq6FyL1otEj9Up7S35BUrwGF9TVrAzrrY1rHUKZqYIGEg67u/imjgadVcr7y9Q32I0gB8W8FHqbqt696rA=="))
 	if err != nil {
 		panic(err)
 	}
-	ecPublicKeyP384, err := LoadPublicKey(fromBase64Bytes("MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEPXsVlqCtN2oTY+F+hFZm3M0ldYpb7IeeJM5wYmT0k1RaqzBFDhDMNnYK5Q5x+OyssZrAtHgYDFw02AVJhhng/eHRp7mqmL/vI3wbxJtrLKYldIbBA+9fYBQcKeibjlu5"))
+	ecPublicKeyP384, err := x509.ParsePKIXPublicKey(fromBase64Bytes("MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEPXsVlqCtN2oTY+F+hFZm3M0ldYpb7IeeJM5wYmT0k1RaqzBFDhDMNnYK5Q5x+OyssZrAtHgYDFw02AVJhhng/eHRp7mqmL/vI3wbxJtrLKYldIbBA+9fYBQcKeibjlu5"))
 	if err != nil {
 		panic(err)
 	}
-	ecPublicKeyP521, err := LoadPublicKey(fromBase64Bytes("MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAa2w3MMJ5FWD6tSf68G+Wy5jIhWXOD3IA7pE5IC/myQzo1lWcD8KS57SM6nm4POtPcxyLmDhL7FLuh8DKoIZyvtAAdK8+tOQP7XXRlT2bkvzIuazp05It3TAPu00YzTIpKfDlc19Y1lvf7etrbFqhShD92B+hHmhT4ddrdbPCBDW8hvU="))
+	ecPublicKeyP521, err := x509.ParsePKIXPublicKey(fromBase64Bytes("MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAa2w3MMJ5FWD6tSf68G+Wy5jIhWXOD3IA7pE5IC/myQzo1lWcD8KS57SM6nm4POtPcxyLmDhL7FLuh8DKoIZyvtAAdK8+tOQP7XXRlT2bkvzIuazp05It3TAPu00YzTIpKfDlc19Y1lvf7etrbFqhShD92B+hHmhT4ddrdbPCBDW8hvU="))
 	if err != nil {
 		panic(err)
 	}
@@ -300,13 +300,136 @@ func TestSampleNimbusJWSMessagesHMAC(t *testing.T) {
 	}
 }
 
+func TestHeaderFieldsCompact(t *testing.T) {
+	msg := "eyJhbGciOiJFUzUxMiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.AeYNFC1rwIgQv-5fwd8iRyYzvTaSCYTEICepgu9gRId-IW99kbSVY7yH0MvrQnqI-a0L8zwKWDR35fW5dukPAYRkADp3Y1lzqdShFcEFziUVGo46vqbiSajmKFrjBktJcCsfjKSaLHwxErF-T10YYPCQFHWb2nXJOOI3CZfACYqgO84g"
+
+	obj, err := ParseSigned(msg)
+	if err != nil {
+		t.Fatal("unable to parse message", msg, err)
+	}
+	if obj.Signatures[0].Header.Algorithm != "ES512" {
+		t.Error("merged header did not contain expected alg value")
+	}
+	if obj.Signatures[0].Protected.Algorithm != "ES512" {
+		t.Error("protected header did not contain expected alg value")
+	}
+	if obj.Signatures[0].Unprotected.Algorithm != "" {
+		t.Error("unprotected header contained an alg value")
+	}
+}
+
+func TestHeaderFieldsFull(t *testing.T) {
+	msg := `{"payload":"TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ","protected":"eyJhbGciOiJFUzUxMiJ9","header":{"custom":"test"},"signature":"AeYNFC1rwIgQv-5fwd8iRyYzvTaSCYTEICepgu9gRId-IW99kbSVY7yH0MvrQnqI-a0L8zwKWDR35fW5dukPAYRkADp3Y1lzqdShFcEFziUVGo46vqbiSajmKFrjBktJcCsfjKSaLHwxErF-T10YYPCQFHWb2nXJOOI3CZfACYqgO84g"}`
+
+	obj, err := ParseSigned(msg)
+	if err != nil {
+		t.Fatal("unable to parse message", msg, err)
+	}
+	if obj.Signatures[0].Header.Algorithm != "ES512" {
+		t.Error("merged header did not contain expected alg value")
+	}
+	if obj.Signatures[0].Protected.Algorithm != "ES512" {
+		t.Error("protected header did not contain expected alg value")
+	}
+	if obj.Signatures[0].Unprotected.Algorithm != "" {
+		t.Error("unprotected header contained an alg value")
+	}
+	if obj.Signatures[0].Unprotected.ExtraHeaders["custom"] != "test" {
+		t.Error("unprotected header did not contain custom header value")
+	}
+}
+
 // Test vectors generated with nimbus-jose-jwt
 func TestErrorMissingPayloadJWS(t *testing.T) {
-	_, err := (&rawJsonWebSignature{}).sanitized()
+	_, err := (&rawJSONWebSignature{}).sanitized()
 	if err == nil {
 		t.Error("was able to parse message with missing payload")
 	}
 	if !strings.Contains(err.Error(), "missing payload") {
 		t.Errorf("unexpected error message, should contain 'missing payload': %s", err)
+	}
+}
+
+// Test that a null value in the header doesn't panic
+func TestNullHeaderValue(t *testing.T) {
+	msg := `{
+   "payload":
+    "eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGF
+     tcGxlLmNvbS9pc19yb290Ijp0cnVlfQ",
+   "protected":"eyJhbGciOiJFUzI1NiIsIm5vbmNlIjpudWxsfQ",
+   "header":
+    {"kid":"e9bc097a-ce51-4036-9562-d2ade882db0d"},
+   "signature":
+    "DtEhU3ljbEg8L38VWAfUAqOyKAM6-Xx-F4GawxaepmXFCgfTjDxw5djxLa8IS
+     lSApmWQxfKTUJqPP3-Kg6NU1Q"
+  }`
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("ParseSigned panic'd when parsing a message with a null protected header value")
+		}
+	}()
+	ParseSigned(msg)
+}
+
+// Test for bug:
+// https://github.com/square/go-jose/issues/157
+func TestEmbedJWKBug(t *testing.T) {
+	signerKey := SigningKey{
+		Key: &JSONWebKey{
+			Key:   rsaTestKey,
+			KeyID: "rsa-test-key",
+		},
+		Algorithm: RS256,
+	}
+
+	signer, err := NewSigner(signerKey, &SignerOptions{EmbedJWK: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	signerNoEmbed, err := NewSigner(signerKey, &SignerOptions{EmbedJWK: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jws, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jwsNoEmbed, err := signerNoEmbed.Sign([]byte("Lorem ipsum dolor sit amet"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// This used to panic with:
+	// json: error calling MarshalJSON for type *jose.JSONWebKey: square/go-jose: unknown key type '%!s(<nil>)'
+	output := jws.FullSerialize()
+	outputNoEmbed := jwsNoEmbed.FullSerialize()
+
+	// Expected output with embed set to true is a JWS with the public JWK embedded, with kid header empty.
+	// Expected output with embed set to false is that we set the kid header for key identification instead.
+	parsed, err := ParseSigned(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parsedNoEmbed, err := ParseSigned(outputNoEmbed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if parsed.Signatures[0].Header.KeyID != "" {
+		t.Error("expected kid field in protected header to be empty")
+	}
+	if parsed.Signatures[0].Header.JSONWebKey.KeyID != "rsa-test-key" {
+		t.Error("expected rsa-test-key to be kid in embedded JWK in protected header")
+	}
+	if parsedNoEmbed.Signatures[0].Header.KeyID != "rsa-test-key" {
+		t.Error("expected kid field in protected header to be rsa-test-key")
+	}
+	if parsedNoEmbed.Signatures[0].Header.JSONWebKey != nil {
+		t.Error("expected no embedded JWK to be present")
 	}
 }

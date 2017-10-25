@@ -21,8 +21,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/square/go-jose"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/square/go-jose.v2"
 )
 
 var (
@@ -50,7 +50,7 @@ var (
 )
 
 func main() {
-	app.Version("master")
+	app.Version("v2")
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -63,13 +63,13 @@ func main() {
 
 	switch command {
 	case "encrypt":
-		pub, err := jose.LoadPublicKey(keyBytes)
+		pub, err := LoadPublicKey(keyBytes)
 		exitOnError(err, "unable to read public key")
 
 		alg := jose.KeyAlgorithm(*algFlag)
 		enc := jose.ContentEncryption(*encFlag)
 
-		crypter, err := jose.NewEncrypter(alg, enc, pub)
+		crypter, err := jose.NewEncrypter(enc, jose.Recipient{Algorithm: alg, Key: pub}, nil)
 		exitOnError(err, "unable to instantiate encrypter")
 
 		obj, err := crypter.Encrypt(readInput(*inFile))
@@ -85,7 +85,7 @@ func main() {
 
 		writeOutput(*outFile, []byte(msg))
 	case "decrypt":
-		priv, err := jose.LoadPrivateKey(keyBytes)
+		priv, err := LoadPrivateKey(keyBytes)
 		exitOnError(err, "unable to read private key")
 
 		obj, err := jose.ParseEncrypted(string(readInput(*inFile)))
@@ -96,11 +96,11 @@ func main() {
 
 		writeOutput(*outFile, plaintext)
 	case "sign":
-		signingKey, err := jose.LoadPrivateKey(keyBytes)
+		signingKey, err := LoadPrivateKey(keyBytes)
 		exitOnError(err, "unable to read private key")
 
 		alg := jose.SignatureAlgorithm(*sigAlgFlag)
-		signer, err := jose.NewSigner(alg, signingKey)
+		signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: signingKey}, nil)
 		exitOnError(err, "unable to make signer")
 
 		obj, err := signer.Sign(readInput(*inFile))
@@ -116,8 +116,8 @@ func main() {
 
 		writeOutput(*outFile, []byte(msg))
 	case "verify":
-		verificationKey, err := jose.LoadPublicKey(keyBytes)
-		exitOnError(err, "unable to read private key")
+		verificationKey, err := LoadPublicKey(keyBytes)
+		exitOnError(err, "unable to read public key")
 
 		obj, err := jose.ParseSigned(string(readInput(*inFile)))
 		exitOnError(err, "unable to parse message")
@@ -133,13 +133,13 @@ func main() {
 		var err error
 		switch *formatFlag {
 		case "", "JWE":
-			var jwe *jose.JsonWebEncryption
+			var jwe *jose.JSONWebEncryption
 			jwe, err = jose.ParseEncrypted(input)
 			if err == nil {
 				serialized = jwe.FullSerialize()
 			}
 		case "JWS":
-			var jws *jose.JsonWebSignature
+			var jws *jose.JSONWebSignature
 			jws, err = jose.ParseSigned(input)
 			if err == nil {
 				serialized = jws.FullSerialize()

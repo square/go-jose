@@ -23,9 +23,10 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"reflect"
 	"testing"
 
-	"github.com/square/go-jose/json"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 type staticNonceSource string
@@ -34,14 +35,15 @@ func (sns staticNonceSource) Nonce() (string, error) {
 	return string(sns), nil
 }
 
-func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) (string, error), corrupter func(*JsonWebSignature), signingKey interface{}, verificationKey interface{}, nonce string) error {
-	signer, err := NewSigner(sigAlg, signingKey)
-	if err != nil {
-		return fmt.Errorf("error on new signer: %s", err)
+func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JSONWebSignature) (string, error), corrupter func(*JSONWebSignature), signingKey interface{}, verificationKey interface{}, nonce string) error {
+	opts := &SignerOptions{}
+	if nonce != "" {
+		opts.NonceSource = staticNonceSource(nonce)
 	}
 
-	if nonce != "" {
-		signer.SetNonceSource(staticNonceSource(nonce))
+	signer, err := NewSigner(SigningKey{Algorithm: sigAlg, Key: signingKey}, opts)
+	if err != nil {
+		return fmt.Errorf("error on new signer: %s", err)
 	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
@@ -70,8 +72,8 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 
 	// Check that verify works with embedded keys (if present)
 	for i, sig := range obj.Signatures {
-		if sig.Header.JsonWebKey != nil {
-			_, err = obj.Verify(sig.Header.JsonWebKey)
+		if sig.Header.JSONWebKey != nil {
+			_, err = obj.Verify(sig.Header.JSONWebKey)
 			if err != nil {
 				return fmt.Errorf("error on verify with embedded key %d: %s", i, err)
 			}
@@ -92,14 +94,14 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JsonWebSignature) 
 
 func TestRoundtripsJWS(t *testing.T) {
 	// Test matrix
-	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512}
+	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512, EdDSA}
 
-	serializers := []func(*JsonWebSignature) (string, error){
-		func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() },
-		func(obj *JsonWebSignature) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JSONWebSignature) (string, error){
+		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },
+		func(obj *JSONWebSignature) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupter := func(obj *JsonWebSignature) {}
+	corrupter := func(obj *JSONWebSignature) {}
 
 	for _, alg := range sigAlgs {
 		signingKey, verificationKey := GenerateSigningTestKey(alg)
@@ -115,19 +117,19 @@ func TestRoundtripsJWS(t *testing.T) {
 
 func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	// Test matrix
-	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512}
+	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512, EdDSA}
 
-	serializers := []func(*JsonWebSignature) (string, error){
-		func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() },
-		func(obj *JsonWebSignature) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JSONWebSignature) (string, error){
+		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },
+		func(obj *JSONWebSignature) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupters := []func(*JsonWebSignature){
-		func(obj *JsonWebSignature) {
+	corrupters := []func(*JSONWebSignature){
+		func(obj *JSONWebSignature) {
 			// Changes bytes in signature
 			obj.Signatures[0].Signature[10]++
 		},
-		func(obj *JsonWebSignature) {
+		func(obj *JSONWebSignature) {
 			// Set totally invalid signature
 			obj.Signatures[0].Signature = []byte("###")
 		},
@@ -151,8 +153,8 @@ func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 func TestSignerWithBrokenRand(t *testing.T) {
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512}
 
-	serializer := func(obj *JsonWebSignature) (string, error) { return obj.CompactSerialize() }
-	corrupter := func(obj *JsonWebSignature) {}
+	serializer := func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() }
+	corrupter := func(obj *JSONWebSignature) {}
 
 	// Break rand reader
 	readers := []func() io.Reader{
@@ -179,8 +181,9 @@ func TestSignerWithBrokenRand(t *testing.T) {
 func TestJWSInvalidKey(t *testing.T) {
 	signingKey0, verificationKey0 := GenerateSigningTestKey(RS256)
 	_, verificationKey1 := GenerateSigningTestKey(ES256)
+	_, verificationKey2 := GenerateSigningTestKey(EdDSA)
 
-	signer, err := NewSigner(RS256, signingKey0)
+	signer, err := NewSigner(SigningKey{Algorithm: RS256, Key: signingKey0}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -203,6 +206,12 @@ func TestJWSInvalidKey(t *testing.T) {
 		t.Error("verification should fail with incorrect key")
 	}
 
+	// Must not work with incorrect key
+	_, err = obj.Verify(verificationKey2)
+	if err == nil {
+		t.Error("verification should fail with incorrect key")
+	}
+
 	// Must not work with invalid key
 	_, err = obj.Verify("")
 	if err == nil {
@@ -211,15 +220,23 @@ func TestJWSInvalidKey(t *testing.T) {
 }
 
 func TestMultiRecipientJWS(t *testing.T) {
-	signer := NewMultiSigner()
-
 	sharedKey := []byte{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 	}
+	jwkSharedKey := JSONWebKey{
+		KeyID: "123",
+		Key:   sharedKey,
+	}
 
-	signer.AddRecipient(RS256, rsaTestKey)
-	signer.AddRecipient(HS384, sharedKey)
+	signer, err := NewMultiSigner([]SigningKey{
+		{RS256, rsaTestKey},
+		{HS384, sharedKey},
+		{HS512, jwkSharedKey},
+	}, nil)
+	if err != nil {
+		t.Fatal("error creating signer: ", err)
+	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
 	obj, err := signer.Sign(input)
@@ -268,6 +285,9 @@ func TestMultiRecipientJWS(t *testing.T) {
 
 func GenerateSigningTestKey(sigAlg SignatureAlgorithm) (sig, ver interface{}) {
 	switch sigAlg {
+	case EdDSA:
+		sig = ed25519PrivateKey
+		ver = ed25519PublicKey
 	case RS256, RS384, RS512, PS256, PS384, PS512:
 		sig = rsaTestKey
 		ver = &rsaTestKey.PublicKey
@@ -294,27 +314,26 @@ func GenerateSigningTestKey(sigAlg SignatureAlgorithm) (sig, ver interface{}) {
 }
 
 func TestInvalidSignerAlg(t *testing.T) {
-	_, err := NewSigner("XYZ", nil)
+	_, err := NewSigner(SigningKey{"XYZ", nil}, nil)
 	if err == nil {
 		t.Error("should not accept invalid algorithm")
 	}
 
-	_, err = NewSigner("XYZ", []byte{})
+	_, err = NewSigner(SigningKey{"XYZ", []byte{}}, nil)
 	if err == nil {
 		t.Error("should not accept invalid algorithm")
 	}
 }
 
 func TestInvalidJWS(t *testing.T) {
-	signer, err := NewSigner(PS256, rsaTestKey)
+	signer, err := NewSigner(SigningKey{PS256, rsaTestKey}, nil)
 	if err != nil {
 		panic(err)
 	}
 
 	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
-	obj.Signatures[0].header = &rawHeader{
-		Crit: []string{"TEST"},
-	}
+	obj.Signatures[0].header = &rawHeader{}
+	obj.Signatures[0].header.set(headerCritical, []string{"TEST"})
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
@@ -340,7 +359,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem generating test signing key", err)
 	}
 
-	basejwk := JsonWebKey{Key: key}
+	basejwk := JSONWebKey{Key: key}
 	jsonbar, err := basejwk.MarshalJSON()
 	if err != nil {
 		t.Error("problem marshalling base JWK", err)
@@ -357,15 +376,15 @@ func TestSignerKid(t *testing.T) {
 		t.Error("problem marshalling kided JWK", err)
 	}
 
-	var jwk JsonWebKey
+	var jwk JSONWebKey
 	err = jwk.UnmarshalJSON(jsonbar2)
 	if err != nil {
 		t.Error("problem unmarshalling kided JWK", err)
 	}
 
-	signer, err := NewSigner(ES256, &jwk)
+	signer, err := NewSigner(SigningKey{ES256, &jwk}, nil)
 	if err != nil {
-		t.Error("problem creating signer", err)
+		t.Error("problem creating signer with *JSONWebKey", err)
 	}
 	signed, err := signer.Sign(payload)
 
@@ -379,6 +398,11 @@ func TestSignerKid(t *testing.T) {
 	if parsed.Signatures[0].Header.KeyID != kid {
 		t.Error("KeyID did not survive trip")
 	}
+
+	signer, err = NewSigner(SigningKey{ES256, jwk}, nil)
+	if err != nil {
+		t.Error("problem creating signer with JSONWebKey", err)
+	}
 }
 
 func TestEmbedJwk(t *testing.T) {
@@ -388,7 +412,7 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("Failed to generate key")
 	}
 
-	signer, err := NewSigner(ES256, key)
+	signer, err := NewSigner(SigningKey{ES256, key}, &SignerOptions{EmbedJWK: true})
 	if err != nil {
 		t.Error("Failed to create signer")
 	}
@@ -403,12 +427,13 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("Failed to parse jws")
 	}
 
-	if object.Signatures[0].protected.Jwk == nil {
+	jwk, err := object.Signatures[0].protected.getJWK()
+	if jwk == nil || err != nil {
 		t.Error("JWK isn't set in protected header")
 	}
 
-	// Now sign it again, but don't embed JWK.
-	signer.SetEmbedJwk(false)
+	// This time, sign and do not embed JWK in message
+	signer, err = NewSigner(SigningKey{ES256, key}, &SignerOptions{EmbedJWK: false})
 
 	object, err = signer.Sign(payload)
 	if err != nil {
@@ -420,32 +445,79 @@ func TestEmbedJwk(t *testing.T) {
 		t.Error("Failed to parse jws")
 	}
 
-	if object.Signatures[0].protected.Jwk != nil {
+	jwk2, err := object.Signatures[0].protected.getJWK()
+	if err != nil {
+		t.Error("JWK is invalid in protected header")
+	}
+	if jwk2 != nil {
 		t.Error("JWK is set in protected header")
 	}
 }
 
-func TestSignerWithJWKAndKeyID(t *testing.T) {
-	enc, err := NewSigner(HS256, &JsonWebKey{
-		KeyID: "test-id",
-		Key:   []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-	})
+func TestSignerOptionsEd(t *testing.T) {
+	key, _ := GenerateSigningTestKey(EdDSA)
+	opts := &SignerOptions{
+		EmbedJWK: true,
+	}
+	opts.WithContentType("JWT")
+	opts.WithType("JWT")
+	sig, err := NewSigner(SigningKey{EdDSA, key}, opts)
 	if err != nil {
-		t.Error(err)
+		t.Error("Failed to create signer")
 	}
 
-	signed, _ := enc.Sign([]byte("Lorem ipsum dolor sit amet"))
-
-	serialized1, _ := signed.CompactSerialize()
-	serialized2 := signed.FullSerialize()
-
-	parsed1, _ := ParseSigned(serialized1)
-	parsed2, _ := ParseSigned(serialized2)
-
-	if parsed1.Signatures[0].Header.KeyID != "test-id" {
-		t.Errorf("expected message to have key id from JWK, but found '%s' instead", parsed1.Signatures[0].Header.KeyID)
+	if !reflect.DeepEqual(*opts, sig.Options()) {
+		t.Error("Signer options do not match")
 	}
-	if parsed2.Signatures[0].Header.KeyID != "test-id" {
-		t.Errorf("expected message to have key id from JWK, but found '%s' instead", parsed2.Signatures[0].Header.KeyID)
+}
+
+func TestSignerOptions(t *testing.T) {
+	key, _ := GenerateSigningTestKey(HS256)
+	opts := &SignerOptions{
+		EmbedJWK: true,
+	}
+	opts.WithContentType("JWT")
+	opts.WithType("JWT")
+	sig, err := NewSigner(SigningKey{HS256, key}, opts)
+	if err != nil {
+		t.Error("Failed to create signer")
+	}
+
+	if !reflect.DeepEqual(*opts, sig.Options()) {
+		t.Error("Signer options do not match")
+	}
+}
+
+// Test that extra headers are generated and parsed in a round trip.
+func TestSignerExtraHeaderInclusion(t *testing.T) {
+	var payload = []byte("Lorem ipsum dolor sit amet")
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Error("Failed to generate key")
+	}
+
+	signer, err := NewSigner(SigningKey{ES256, key}, (&SignerOptions{}).WithContentType("foo/bar").WithHeader(HeaderKey("myCustomHeader"), "xyz"))
+	if err != nil {
+		t.Error("Failed to create signer", err)
+	}
+
+	object, err := signer.Sign(payload)
+	if err != nil {
+		t.Error("Failed to sign payload")
+	}
+
+	object, err = ParseSigned(object.FullSerialize())
+	if err != nil {
+		t.Error("Failed to parse jws")
+	}
+
+	correct := map[HeaderKey]interface{}{
+		HeaderContentType:           "foo/bar",
+		HeaderKey("myCustomHeader"): "xyz",
+	}
+
+	if !reflect.DeepEqual(object.Signatures[0].Header.ExtraHeaders, correct) {
+		t.Errorf("Mismatch in extra headers: %#v", object.Signatures[0].Header.ExtraHeaders)
 	}
 }
