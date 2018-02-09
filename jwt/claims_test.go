@@ -78,3 +78,16 @@ func TestDecodeClaims(t *testing.T) {
 		assert.Equal(t, v.Err, json.Unmarshal([]byte(v.Raw), &c))
 	}
 }
+
+func TestEmptySignature(t *testing.T) {
+	var empty []byte
+	s := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0."
+	wt, err := ParseSigned(s)
+	if err != nil {
+		t.Errorf("Failed to parse jws: %#v", err)
+	}
+	out := make(map[string]interface{})
+	if err := wt.Claims(empty, &out); err != nil {
+		t.Errorf("Claim with no signature failed: %#v", err)
+	}
+}
