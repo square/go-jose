@@ -61,8 +61,45 @@ func NewCBCHMAC(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (
 	}, nil
 }
 
+// NewCBCHMACDeprecated instantiates a new AEAD based on CBC+HMAC.
+func NewCBCHMACDeprecated(key []byte, newBlockCipher func([]byte) (cipher.Block, error)) (cipher.AEAD, error) {
+	keySize := len(key) / 2
+	integrityKey := key[keySize:]
+	encryptionKey := key[:keySize]
+
+	blockCipher, err := newBlockCipher(encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var hash func() hash.Hash
+	switch keySize {
+	case 16:
+		hash = sha256.New
+	case 24:
+		hash = sha512.New384
+	case 32:
+		hash = sha512.New
+	}
+
+	return &cbcAEADDeprecated{
+		hash:         hash,
+		blockCipher:  blockCipher,
+		authtagBytes: keySize*2,
+		integrityKey: integrityKey,
+	}, nil
+}
+
 // An AEAD based on CBC+HMAC
 type cbcAEAD struct {
+	hash         func() hash.Hash
+	authtagBytes int
+	integrityKey []byte
+	blockCipher  cipher.Block
+}
+
+// An AEAD based on CBC+HMAC
+type cbcAEADDeprecated struct {
 	hash         func() hash.Hash
 	authtagBytes int
 	integrityKey []byte
@@ -73,7 +110,17 @@ func (ctx *cbcAEAD) NonceSize() int {
 	return nonceBytes
 }
 
+func (ctx *cbcAEADDeprecated) NonceSize() int {
+	return nonceBytes
+}
+
 func (ctx *cbcAEAD) Overhead() int {
+	// Maximum overhead is block size (for padding) plus auth tag length, where
+	// the length of the auth tag is equivalent to the key size.
+	return ctx.blockCipher.BlockSize() + ctx.authtagBytes
+}
+
+func (ctx *cbcAEADDeprecated) Overhead() int {
 	// Maximum overhead is block size (for padding) plus auth tag length, where
 	// the length of the auth tag is equivalent to the key size.
 	return ctx.blockCipher.BlockSize() + ctx.authtagBytes
@@ -81,6 +128,25 @@ func (ctx *cbcAEAD) Overhead() int {
 
 // Seal encrypts and authenticates the plaintext.
 func (ctx *cbcAEAD) Seal(dst, nonce, plaintext, data []byte) []byte {
+	// Output buffer -- must take care not to mangle plaintext input.
+	ciphertext := make([]byte, uint64(len(plaintext))+uint64(ctx.Overhead()))[:len(plaintext)]
+	copy(ciphertext, plaintext)
+	ciphertext = padBuffer(ciphertext, ctx.blockCipher.BlockSize())
+
+	cbc := cipher.NewCBCEncrypter(ctx.blockCipher, nonce)
+
+	cbc.CryptBlocks(ciphertext, ciphertext)
+	authtag := ctx.computeAuthTag(data, nonce, ciphertext)
+
+	ret, out := resize(dst, uint64(len(dst))+uint64(len(ciphertext))+uint64(len(authtag)))
+	copy(out, ciphertext)
+	copy(out[len(ciphertext):], authtag)
+
+	return ret
+}
+
+// Seal encrypts and authenticates the plaintext.
+func (ctx *cbcAEADDeprecated) Seal(dst, nonce, plaintext, data []byte) []byte {
 	// Output buffer -- must take care not to mangle plaintext input.
 	ciphertext := make([]byte, uint64(len(plaintext))+uint64(ctx.Overhead()))[:len(plaintext)]
 	copy(ciphertext, plaintext)
@@ -134,8 +200,54 @@ func (ctx *cbcAEAD) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
 	return ret, nil
 }
 
+// Open decrypts and authenticates the ciphertext.
+func (ctx *cbcAEADDeprecated) Open(dst, nonce, ciphertext, data []byte) ([]byte, error) {
+	if len(ciphertext) < ctx.authtagBytes {
+		return nil, errors.New("square/go-jose: invalid ciphertext (too short)")
+	}
+
+	offset := len(ciphertext) - ctx.authtagBytes
+
+	cbc := cipher.NewCBCDecrypter(ctx.blockCipher, nonce)
+
+	// Make copy of ciphertext buffer, don't want to modify in place
+	buffer := append([]byte{}, []byte(ciphertext[:offset])...)
+
+	if len(buffer)%ctx.blockCipher.BlockSize() > 0 {
+		return nil, errors.New("square/go-jose: invalid ciphertext (invalid length)")
+	}
+
+	cbc.CryptBlocks(buffer, buffer)
+
+	// Remove padding
+	plaintext, err := unpadBuffer(buffer, ctx.blockCipher.BlockSize())
+	if err != nil {
+		return nil, err
+	}
+	ret, out := resize(dst, uint64(len(dst))+uint64(len(plaintext)))
+	copy(out, plaintext)
+
+	return ret, nil
+}
+
 // Compute an authentication tag
 func (ctx *cbcAEAD) computeAuthTag(aad, nonce, ciphertext []byte) []byte {
+	buffer := make([]byte, uint64(len(aad))+uint64(len(nonce))+uint64(len(ciphertext))+8)
+	n := 0
+	n += copy(buffer, aad)
+	n += copy(buffer[n:], nonce)
+	n += copy(buffer[n:], ciphertext)
+	binary.BigEndian.PutUint64(buffer[n:], uint64(len(aad))*8)
+
+	// According to documentation, Write() on hash.Hash never fails.
+	hmac := hmac.New(ctx.hash, ctx.integrityKey)
+	_, _ = hmac.Write(buffer)
+
+	return hmac.Sum(nil)[:ctx.authtagBytes]
+}
+
+// Compute an authentication tag
+func (ctx *cbcAEADDeprecated) computeAuthTag(aad, nonce, ciphertext []byte) []byte {
 	buffer := make([]byte, uint64(len(aad))+uint64(len(nonce))+uint64(len(ciphertext))+8)
 	n := 0
 	n += copy(buffer, aad)

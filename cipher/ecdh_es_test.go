@@ -48,7 +48,7 @@ var bobKey = &ecdsa.PrivateKey{
 func fromBase64Int(data string) *big.Int {
 	val, err := base64.URLEncoding.DecodeString(data)
 	if err != nil {
-		panic("Invalid test data")
+		panic("Invalid test data: " + err.Error())
 	}
 	return new(big.Int).SetBytes(val)
 }

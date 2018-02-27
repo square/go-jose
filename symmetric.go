@@ -25,10 +25,11 @@ import (
 	"crypto/sha512"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 
-	"github.com/square/go-jose/cipher"
+	"github.com/AccelByte/go-jose/cipher"
 )
 
 // Random reader (stubbed out in tests)
@@ -51,6 +52,13 @@ type aeadParts struct {
 
 // A content cipher based on an AEAD construction
 type aeadContentCipher struct {
+	keyBytes     int
+	authtagBytes int
+	getAead      func(key []byte) (cipher.AEAD, error)
+}
+
+// A content cipher based on an AEAD construction
+type aeadContentCipherDeprecated struct {
 	keyBytes     int
 	authtagBytes int
 	getAead      func(key []byte) (cipher.AEAD, error)
@@ -93,6 +101,17 @@ func newAESCBC(keySize int) contentCipher {
 	}
 }
 
+// Create a new content cipher based on AES-CBC+HMAC
+func newAESCBCDeprecated(keySize int) contentCipher {
+	return &aeadContentCipherDeprecated{
+		keyBytes:     keySize * 2,
+		authtagBytes: 32,
+		getAead: func(key []byte) (cipher.AEAD, error) {
+			return josecipher.NewCBCHMACDeprecated(key, aes.NewCipher)
+		},
+	}
+}
+
 // Get an AEAD cipher object for the given content encryption algorithm
 func getContentCipher(alg ContentEncryption) contentCipher {
 	switch alg {
@@ -104,6 +123,8 @@ func getContentCipher(alg ContentEncryption) contentCipher {
 		return newAESGCM(32)
 	case A128CBC_HS256:
 		return newAESCBC(16)
+	case A128CBC_HS256_DEPRECATED:
+		return newAESCBCDeprecated(16)
 	case A192CBC_HS384:
 		return newAESCBC(24)
 	case A256CBC_HS512:
@@ -162,6 +183,11 @@ func (ctx randomKeyGenerator) keySize() int {
 	return ctx.size
 }
 
+// Get key size for this cipher
+func (ctx aeadContentCipherDeprecated) keySize() int {
+	return ctx.keyBytes
+}
+
 // Generate a static key (for direct mode)
 func (ctx staticKeyGenerator) genKey() ([]byte, rawHeader, error) {
 	cek := make([]byte, len(ctx.key))
@@ -204,9 +230,45 @@ func (ctx aeadContentCipher) encrypt(key, aad, pt []byte) (*aeadParts, error) {
 	}, nil
 }
 
+// Encrypt some data
+func (ctx aeadContentCipherDeprecated) encrypt(key, aad, pt []byte) (*aeadParts, error) {
+	// Get a new AEAD instance
+	aead, err := ctx.getAead(key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize a new nonce
+	iv := make([]byte, aead.NonceSize())
+	_, err = io.ReadFull(randReader, iv)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertextAndTag := aead.Seal(nil, iv, pt, aad)
+	offset := len(ciphertextAndTag) - ctx.authtagBytes
+
+	return &aeadParts{
+		iv:         iv,
+		ciphertext: ciphertextAndTag[:offset],
+		tag:        ciphertextAndTag[offset:],
+	}, nil
+}
+
 // Decrypt some data
 func (ctx aeadContentCipher) decrypt(key, aad []byte, parts *aeadParts) ([]byte, error) {
 	aead, err := ctx.getAead(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return aead.Open(nil, parts.iv, append(parts.ciphertext, parts.tag...), aad)
+}
+
+// Decrypt some data
+func (ctx aeadContentCipherDeprecated) decrypt(key, aad []byte, parts *aeadParts) ([]byte, error) {
+	aead, err := ctx.getAead(key)
+
 	if err != nil {
 		return nil, err
 	}
@@ -229,11 +291,12 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 			return recipientInfo{}, err
 		}
 
+		header := &rawHeader{}
+		header.set(headerIV, newBuffer(parts.iv))
+		header.set(headerTag, newBuffer(parts.tag))
+
 		return recipientInfo{
-			header: &rawHeader{
-				Iv:  newBuffer(parts.iv),
-				Tag: newBuffer(parts.tag),
-			},
+			header:       header,
 			encryptedKey: parts.ciphertext,
 		}, nil
 	case A128KW, A192KW, A256KW:
@@ -258,7 +321,7 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 
 // Decrypt the content encryption key.
 func (ctx *symmetricKeyCipher) decryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	switch KeyAlgorithm(headers.Alg) {
+	switch headers.getAlgorithm() {
 	case DIRECT:
 		cek := make([]byte, len(ctx.key))
 		copy(cek, ctx.key)
@@ -266,10 +329,19 @@ func (ctx *symmetricKeyCipher) decryptKey(headers rawHeader, recipient *recipien
 	case A128GCMKW, A192GCMKW, A256GCMKW:
 		aead := newAESGCM(len(ctx.key))
 
+		iv, err := headers.getIV()
+		if err != nil {
+			return nil, fmt.Errorf("square/go-jose: invalid IV: %v", err)
+		}
+		tag, err := headers.getTag()
+		if err != nil {
+			return nil, fmt.Errorf("square/go-jose: invalid tag: %v", err)
+		}
+
 		parts := &aeadParts{
-			iv:         headers.Iv.bytes(),
+			iv:         iv.bytes(),
 			ciphertext: recipient.encryptedKey,
-			tag:        headers.Tag.bytes(),
+			tag:        tag.bytes(),
 		}
 
 		cek, err := aead.decrypt(ctx.key, []byte{}, parts)

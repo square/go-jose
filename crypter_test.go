@@ -24,7 +24,10 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"io"
+	"reflect"
 	"testing"
+
+	"golang.org/x/crypto/ed25519"
 )
 
 // We generate only a single RSA and EC key for testing, speeds up tests.
@@ -34,13 +37,13 @@ var ecTestKey256, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 var ecTestKey384, _ = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 var ecTestKey521, _ = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 
-func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JsonWebEncryption) (string, error), corrupter func(*JsonWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
-	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
+var ed25519PublicKey, ed25519PrivateKey, _ = ed25519.GenerateKey(rand.Reader)
+
+func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg CompressionAlgorithm, serializer func(*JSONWebEncryption) (string, error), corrupter func(*JSONWebEncryption) bool, aad []byte, encryptionKey interface{}, decryptionKey interface{}) error {
+	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, Key: encryptionKey}, &EncrypterOptions{Compression: compressionAlg})
 	if err != nil {
 		return fmt.Errorf("error on new encrypter: %s", err)
 	}
-
-	enc.SetCompression(compressionAlg)
 
 	input := []byte("Lorem ipsum dolor sit amet")
 	obj, err := enc.EncryptWithAuthData(input, aad)
@@ -88,12 +91,12 @@ func TestRoundtripsJWE(t *testing.T) {
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 	zipAlgs := []CompressionAlgorithm{NONE, DEFLATE}
 
-	serializers := []func(*JsonWebEncryption) (string, error){
-		func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() },
-		func(obj *JsonWebEncryption) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JSONWebEncryption) (string, error){
+		func(obj *JSONWebEncryption) (string, error) { return obj.CompactSerialize() },
+		func(obj *JSONWebEncryption) (string, error) { return obj.FullSerialize(), nil },
 	}
 
-	corrupter := func(obj *JsonWebEncryption) bool { return false }
+	corrupter := func(obj *JSONWebEncryption) bool { return false }
 
 	// Note: can't use AAD with compact serialization
 	aads := [][]byte{
@@ -124,9 +127,9 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 	zipAlgs := []CompressionAlgorithm{NONE, DEFLATE}
 
-	serializers := []func(*JsonWebEncryption) (string, error){
-		func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() },
-		func(obj *JsonWebEncryption) (string, error) { return obj.FullSerialize(), nil },
+	serializers := []func(*JSONWebEncryption) (string, error){
+		func(obj *JSONWebEncryption) (string, error) { return obj.CompactSerialize() },
+		func(obj *JSONWebEncryption) (string, error) { return obj.FullSerialize(), nil },
 	}
 
 	bitflip := func(slice []byte) bool {
@@ -137,26 +140,32 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 		return true
 	}
 
-	corrupters := []func(*JsonWebEncryption) bool{
-		func(obj *JsonWebEncryption) bool {
+	corrupters := []func(*JSONWebEncryption) bool{
+		func(obj *JSONWebEncryption) bool {
 			// Set invalid ciphertext
 			return bitflip(obj.ciphertext)
 		},
-		func(obj *JsonWebEncryption) bool {
+		func(obj *JSONWebEncryption) bool {
 			// Set invalid auth tag
 			return bitflip(obj.tag)
 		},
-		func(obj *JsonWebEncryption) bool {
+		func(obj *JSONWebEncryption) bool {
 			// Set invalid AAD
 			return bitflip(obj.aad)
 		},
-		func(obj *JsonWebEncryption) bool {
+		func(obj *JSONWebEncryption) bool {
 			// Mess with encrypted key
 			return bitflip(obj.recipients[0].encryptedKey)
 		},
-		func(obj *JsonWebEncryption) bool {
+		func(obj *JSONWebEncryption) bool {
 			// Mess with GCM-KW auth tag
-			return bitflip(obj.protected.Tag.bytes())
+			tag, _ := obj.protected.getTag()
+			skip := bitflip(tag.bytes())
+			if skip {
+				return true
+			}
+			obj.protected.set(headerTag, tag)
+			return false
 		},
 	}
 
@@ -186,10 +195,10 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 }
 
 func TestEncrypterWithJWKAndKeyID(t *testing.T) {
-	enc, err := NewEncrypter(A128KW, A128GCM, &JsonWebKey{
+	enc, err := NewEncrypter(A128GCM, Recipient{Algorithm: A128KW, Key: &JSONWebKey{
 		KeyID: "test-id",
 		Key:   []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-	})
+	}}, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -214,8 +223,8 @@ func TestEncrypterWithBrokenRand(t *testing.T) {
 	keyAlgs := []KeyAlgorithm{ECDH_ES_A128KW, A128KW, RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW}
 	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 
-	serializer := func(obj *JsonWebEncryption) (string, error) { return obj.CompactSerialize() }
-	corrupter := func(obj *JsonWebEncryption) bool { return false }
+	serializer := func(obj *JSONWebEncryption) (string, error) { return obj.CompactSerialize() }
+	corrupter := func(obj *JSONWebEncryption) bool { return false }
 
 	// Break rand reader
 	readers := []func() io.Reader{
@@ -243,46 +252,39 @@ func TestEncrypterWithBrokenRand(t *testing.T) {
 }
 
 func TestNewEncrypterErrors(t *testing.T) {
-	_, err := NewEncrypter("XYZ", "XYZ", nil)
+	_, err := NewEncrypter("XYZ", Recipient{}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid cipher")
 	}
 
-	_, err = NewMultiEncrypter("XYZ")
+	_, err = NewMultiEncrypter("XYZ", []Recipient{}, nil)
 	if err == nil {
 		t.Error("was able to instantiate multi-encrypter with invalid cipher")
 	}
 
-	_, err = NewEncrypter(DIRECT, A128GCM, nil)
+	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: DIRECT, Key: nil}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid direct key")
 	}
 
-	_, err = NewEncrypter(ECDH_ES, A128GCM, nil)
+	_, err = NewEncrypter(A128GCM, Recipient{Algorithm: ECDH_ES, Key: nil}, nil)
 	if err == nil {
 		t.Error("was able to instantiate encrypter with invalid EC key")
 	}
 }
 
 func TestMultiRecipientJWE(t *testing.T) {
-	enc, err := NewMultiEncrypter(A128GCM)
-	if err != nil {
-		panic(err)
-	}
-
-	err = enc.AddRecipient(RSA_OAEP, &rsaTestKey.PublicKey)
-	if err != nil {
-		t.Fatal("error when adding RSA recipient", err)
-	}
-
 	sharedKey := []byte{
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 	}
 
-	err = enc.AddRecipient(A256GCMKW, sharedKey)
+	enc, err := NewMultiEncrypter(A128GCM, []Recipient{
+		{Algorithm: RSA_OAEP, Key: &rsaTestKey.PublicKey},
+		{Algorithm: A256GCMKW, Key: sharedKey},
+	}, nil)
 	if err != nil {
-		t.Fatal("error when adding AES recipient: ", err)
+		panic(err)
 	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
@@ -326,30 +328,81 @@ func TestMultiRecipientJWE(t *testing.T) {
 }
 
 func TestMultiRecipientErrors(t *testing.T) {
-	enc, err := NewMultiEncrypter(A128GCM)
+	_, err := NewMultiEncrypter(A128GCM, []Recipient{}, nil)
+	if err == nil {
+		t.Error("should fail to instantiate with zero recipients")
+	}
+}
+
+func TestEncrypterOptions(t *testing.T) {
+	sharedKey := []byte{
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	}
+
+	opts := &EncrypterOptions{
+		Compression: DEFLATE,
+	}
+	opts.WithType("JWT")
+	opts.WithContentType("JWT")
+	enc, err := NewEncrypter(A256GCM, Recipient{Algorithm: A256GCMKW, Key: sharedKey}, opts)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		t.Error("Failed to create encrypter")
+	}
+
+	if !reflect.DeepEqual(*opts, enc.Options()) {
+		t.Error("Encrypter options do not match")
+	}
+}
+
+// Test that extra headers are generated and parsed in a round trip.
+func TestEncrypterExtraHeaderInclusion(t *testing.T) {
+	sharedKey := []byte{
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	}
+
+	opts := &EncrypterOptions{
+		Compression: DEFLATE,
+	}
+	opts.WithType("JWT")
+	opts.WithContentType("JWT")
+	opts.WithHeader(HeaderKey("myCustomHeader"), "xyz")
+	enc, err := NewEncrypter(A256GCM, Recipient{Algorithm: A256GCMKW, Key: sharedKey}, opts)
+	if err != nil {
+		fmt.Println(err)
+		t.Error("Failed to create encrypter")
+	}
+
+	if !reflect.DeepEqual(*opts, enc.Options()) {
+		t.Error("Encrypter options do not match")
 	}
 
 	input := []byte("Lorem ipsum dolor sit amet")
-	_, err = enc.Encrypt(input)
-	if err == nil {
-		t.Error("should fail when encrypting to zero recipients")
+	obj, err := enc.Encrypt(input)
+	if err != nil {
+		t.Fatal("error in encrypt: ", err)
 	}
 
-	err = enc.AddRecipient(DIRECT, nil)
-	if err == nil {
-		t.Error("should reject DIRECT mode when encrypting to multiple recipients")
+	parsed, err := ParseEncrypted(obj.FullSerialize())
+	if err != nil {
+		t.Fatal("error in parse: ", err)
 	}
 
-	err = enc.AddRecipient(ECDH_ES, nil)
-	if err == nil {
-		t.Error("should reject ECDH_ES mode when encrypting to multiple recipients")
+	output, err := parsed.Decrypt(sharedKey)
+	if err != nil {
+		t.Fatal("error on decrypt: ", err)
 	}
 
-	err = enc.AddRecipient(RSA1_5, nil)
-	if err == nil {
-		t.Error("should reject invalid recipient key")
+	if bytes.Compare(input, output) != 0 {
+		t.Fatal("Decrypted output does not match input: ", output, input)
+	}
+
+	if parsed.Header.ExtraHeaders[HeaderType] != "JWT" ||
+		parsed.Header.ExtraHeaders[HeaderContentType] != "JWT" ||
+		parsed.Header.ExtraHeaders[HeaderKey("myCustomHeader")] != "xyz" {
+		t.Fatalf("Mismatch in extra headers: %#v", parsed.Header.ExtraHeaders)
 	}
 }
 
@@ -361,13 +414,13 @@ func symmetricTestKey(size int) []testKey {
 	key, _, _ := randomKeyGenerator{size: size}.genKey()
 
 	return []testKey{
-		testKey{
+		{
 			enc: key,
 			dec: key,
 		},
-		testKey{
-			enc: &JsonWebKey{KeyID: "test", Key: key},
-			dec: &JsonWebKey{KeyID: "test", Key: key},
+		{
+			enc: &JSONWebKey{KeyID: "test", Key: key},
+			dec: &JSONWebKey{KeyID: "test", Key: key},
 		},
 	}
 }
@@ -378,21 +431,21 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 		return symmetricTestKey(getContentCipher(encAlg).keySize())
 	case ECDH_ES, ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW:
 		return []testKey{
-			testKey{
+			{
 				dec: ecTestKey256,
 				enc: &ecTestKey256.PublicKey,
 			},
-			testKey{
+			{
 				dec: ecTestKey384,
 				enc: &ecTestKey384.PublicKey,
 			},
-			testKey{
+			{
 				dec: ecTestKey521,
 				enc: &ecTestKey521.PublicKey,
 			},
-			testKey{
-				dec: &JsonWebKey{KeyID: "test", Key: ecTestKey256},
-				enc: &JsonWebKey{KeyID: "test", Key: &ecTestKey256.PublicKey},
+			{
+				dec: &JSONWebKey{KeyID: "test", Key: ecTestKey256},
+				enc: &JSONWebKey{KeyID: "test", Key: &ecTestKey256.PublicKey},
 			},
 		}
 	case A128GCMKW, A128KW:
@@ -402,7 +455,7 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 	case A256GCMKW, A256KW:
 		return symmetricTestKey(32)
 	case RSA1_5, RSA_OAEP, RSA_OAEP_256:
-		return []testKey{testKey{
+		return []testKey{{
 			dec: rsaTestKey,
 			enc: &rsaTestKey.PublicKey,
 		}}
@@ -412,11 +465,11 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 }
 
 func RunRoundtripsJWE(b *testing.B, alg KeyAlgorithm, enc ContentEncryption, zip CompressionAlgorithm, priv, pub interface{}) {
-	serializer := func(obj *JsonWebEncryption) (string, error) {
+	serializer := func(obj *JSONWebEncryption) (string, error) {
 		return obj.CompactSerialize()
 	}
 
-	corrupter := func(obj *JsonWebEncryption) bool { return false }
+	corrupter := func(obj *JSONWebEncryption) bool { return false }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -777,7 +830,7 @@ func benchDecrypt(chunkKey, primKey string, b *testing.B) {
 }
 
 func mustEncrypter(keyAlg KeyAlgorithm, encAlg ContentEncryption, encryptionKey interface{}) Encrypter {
-	enc, err := NewEncrypter(keyAlg, encAlg, encryptionKey)
+	enc, err := NewEncrypter(encAlg, Recipient{Algorithm: keyAlg, Key: encryptionKey}, nil)
 	if err != nil {
 		panic(err)
 	}
