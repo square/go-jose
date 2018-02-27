@@ -18,8 +18,8 @@
 package jwt
 
 import (
-	"gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/AccelByte/go-jose"
+	"github.com/AccelByte/go-jose/json"
 	"strings"
 )
 

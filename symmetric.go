@@ -29,7 +29,7 @@ import (
 	"hash"
 	"io"
 
-	"gopkg.in/square/go-jose.v2/cipher"
+	"github.com/AccelByte/go-jose/cipher"
 )
 
 // Random reader (stubbed out in tests)
@@ -52,6 +52,13 @@ type aeadParts struct {
 
 // A content cipher based on an AEAD construction
 type aeadContentCipher struct {
+	keyBytes     int
+	authtagBytes int
+	getAead      func(key []byte) (cipher.AEAD, error)
+}
+
+// A content cipher based on an AEAD construction
+type aeadContentCipherDeprecated struct {
 	keyBytes     int
 	authtagBytes int
 	getAead      func(key []byte) (cipher.AEAD, error)
@@ -94,6 +101,17 @@ func newAESCBC(keySize int) contentCipher {
 	}
 }
 
+// Create a new content cipher based on AES-CBC+HMAC
+func newAESCBCDeprecated(keySize int) contentCipher {
+	return &aeadContentCipherDeprecated{
+		keyBytes:     keySize * 2,
+		authtagBytes: 32,
+		getAead: func(key []byte) (cipher.AEAD, error) {
+			return josecipher.NewCBCHMACDeprecated(key, aes.NewCipher)
+		},
+	}
+}
+
 // Get an AEAD cipher object for the given content encryption algorithm
 func getContentCipher(alg ContentEncryption) contentCipher {
 	switch alg {
@@ -105,6 +123,8 @@ func getContentCipher(alg ContentEncryption) contentCipher {
 		return newAESGCM(32)
 	case A128CBC_HS256:
 		return newAESCBC(16)
+	case A128CBC_HS256_DEPRECATED:
+		return newAESCBCDeprecated(16)
 	case A192CBC_HS384:
 		return newAESCBC(24)
 	case A256CBC_HS512:
@@ -163,6 +183,11 @@ func (ctx randomKeyGenerator) keySize() int {
 	return ctx.size
 }
 
+// Get key size for this cipher
+func (ctx aeadContentCipherDeprecated) keySize() int {
+	return ctx.keyBytes
+}
+
 // Generate a static key (for direct mode)
 func (ctx staticKeyGenerator) genKey() ([]byte, rawHeader, error) {
 	cek := make([]byte, len(ctx.key))
@@ -205,9 +230,45 @@ func (ctx aeadContentCipher) encrypt(key, aad, pt []byte) (*aeadParts, error) {
 	}, nil
 }
 
+// Encrypt some data
+func (ctx aeadContentCipherDeprecated) encrypt(key, aad, pt []byte) (*aeadParts, error) {
+	// Get a new AEAD instance
+	aead, err := ctx.getAead(key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize a new nonce
+	iv := make([]byte, aead.NonceSize())
+	_, err = io.ReadFull(randReader, iv)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertextAndTag := aead.Seal(nil, iv, pt, aad)
+	offset := len(ciphertextAndTag) - ctx.authtagBytes
+
+	return &aeadParts{
+		iv:         iv,
+		ciphertext: ciphertextAndTag[:offset],
+		tag:        ciphertextAndTag[offset:],
+	}, nil
+}
+
 // Decrypt some data
 func (ctx aeadContentCipher) decrypt(key, aad []byte, parts *aeadParts) ([]byte, error) {
 	aead, err := ctx.getAead(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return aead.Open(nil, parts.iv, append(parts.ciphertext, parts.tag...), aad)
+}
+
+// Decrypt some data
+func (ctx aeadContentCipherDeprecated) decrypt(key, aad []byte, parts *aeadParts) ([]byte, error) {
+	aead, err := ctx.getAead(key)
+
 	if err != nil {
 		return nil, err
 	}

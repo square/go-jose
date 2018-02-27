@@ -17,13 +17,15 @@
 package jose
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"errors"
 	"fmt"
 	"reflect"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/AccelByte/go-jose/cipher"
+	"github.com/AccelByte/go-jose/json"
 )
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.
@@ -483,11 +485,48 @@ func (obj JSONWebEncryption) DecryptMulti(decryptionKey interface{}) (int, Heade
 		cek, err := decrypter.decryptKey(recipientHeaders, &recipient, generator)
 		if err == nil {
 			// Found a valid CEK -- let's try to decrypt.
-			plaintext, err = cipher.decrypt(cek, authData, parts)
-			if err == nil {
-				index = i
-				headers = recipientHeaders
-				break
+			// add support to A128CBC+H256 algorithm
+			if headers.getEncryption() == A128CBC_HS256_DEPRECATED {
+				cekReader := josecipher.NewConcatKDF(
+					crypto.SHA256,
+					append(cek, []byte{0, 0, 0, 128}...),
+					[]byte(A128CBC_HS256_DEPRECATED),
+					[]byte{0, 0, 0, 0},
+					[]byte{0, 0, 0, 0},
+					[]byte("Encryption"),
+					[]byte{},
+				)
+
+				cikReader := josecipher.NewConcatKDF(
+					crypto.SHA256,
+					append(cek, []byte{0, 0, 0, 128}...),
+					[]byte(A128CBC_HS256_DEPRECATED),
+					[]byte{0, 0, 0, 0},
+					[]byte{0, 0, 0, 0},
+					[]byte("Integration"),
+					[]byte{},
+				)
+
+				decryptedCEK := make([]byte, 16)
+				decryptedCIK := make([]byte, 16)
+				_, _ = cekReader.Read(decryptedCEK)
+				_, _ = cikReader.Read(decryptedCIK)
+
+				combinedKey := append(decryptedCEK, decryptedCIK...)
+
+				plaintext, err = cipher.decrypt(combinedKey, authData, parts)
+				if err == nil {
+					index = i
+					headers = recipientHeaders
+					break
+				}
+			} else {
+				plaintext, err = cipher.decrypt(cek, authData, parts)
+				if err == nil {
+					index = i
+					headers = recipientHeaders
+					break
+				}
 			}
 		}
 	}

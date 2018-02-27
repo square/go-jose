@@ -30,7 +30,7 @@ import (
 	"os"
 
 	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/square/go-jose.v2"
+	"github.com/AccelByte/go-jose"
 )
 
 var (
