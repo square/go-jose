@@ -40,6 +40,13 @@ func TestCompactParseJWS(t *testing.T) {
 		t.Error("Unable to parse valid message:", err)
 	}
 
+	// Should parse (detached signature missing payload)
+	msg = "eyJhbGciOiJYWVoifQ..c2lnbmF0dXJl"
+	_, err = ParseSigned(msg)
+	if err != nil {
+		t.Error("Unable to parse valid message:", err)
+	}
+
 	// Messages that should fail to parse
 	failures := []string{
 		// Not enough parts
@@ -164,6 +171,45 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 	}
 	if string(payload) != "foo\n" {
 		t.Errorf("Payload was incorrect: '%s' should have been 'foo\\n'", string(payload))
+	}
+}
+
+// Test verification of a detached signature
+func TestDetachedVerifyJWS(t *testing.T) {
+	rsaPublicKey, err := x509.ParsePKIXPublicKey(fromBase64Bytes(`
+		MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3aLSGwbeX0ZA2Ha+EvELaIFGzO
+		91+Q15JQc/tdGdCgGW3XAbrh7ZUhDh1XKzbs+UOQxqn3Eq4YOx18IG0WsJSuCaHQIxnDlZ
+		t/GP8WLwjMC0izlJLm2SyfM/EEoNpmTC3w6MQ2dHK7SZ9Zoq+sKijQd+V7CYdr8zHMpDrd
+		NKoEcR0HjmvzzdMoUChhkGH5TaNbZyollULTggepaYUKS8QphqdSDMWiSetKG+g6V87lv6
+		CVYyK1FF6g7Esp5OOj5pNn3/bmF+7V+b7TvK91NCIlURCjE9toRgNoIP4TDnWRn/vvfZ3G
+		zNrtWmlizqz3r5KdvIs71ahWgMUSD4wfazrwIDAQAB`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sampleMessages := []string{
+		"eyJhbGciOiJSUzI1NiJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.YHX849fvekz6wJGeyqnQhFqyHFcUXNJKj3o2w3ddR46YLlsCopUJrlifRU_ZuTWzpYxt5oC--T2eoqMhlCvltSWrE5_1_EumqiMfAYsZULx9E6Jns7q3w7mttonYFSIh7aR3-yg2HMMfTCgoAY1y_AZ4VjXwHDcZ5gu1oZDYgvZF4uXtCmwT6e5YtR1m8abiWPF8BgoTG_BD3KV6ClLj_QQiNFdfdxAMDw7vKVOKG1T7BFtz6cDs2Q3ILS4To5E2IjcVSSYS8mi77EitCrWmrqbK_G3WCdKeUFGnMnyuKXaCDy_7FLpAZ6Z5RomRr5iskXeJZdZqIKcJV8zl4fpsPA",
+		"eyJhbGciOiJSUzM4NCJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ.meyfoOTjAAjXHFYiNlU7EEnsYtbeUYeEglK6BL_cxISEr2YAGLr1Gwnn2HnucTnH6YilyRio7ZC1ohy_ZojzmaljPHqpr8kn1iqNFu9nFE2M16ZPgJi38-PGzppcDNliyzOQO-c7L-eA-v8Gfww5uyRaOJdiWg-hUJmeGBIngPIeLtSVmhJtz8oTeqeNdUOqQv7f7VRCuvagLhW1PcEM91VUS-gS0WEUXoXWZ2lp91No0v1O24izgX3__FKiX_16XhrOfAgJ82F61vjbTIQYwhexHPZyYTlXYt_scNRzFGhSKeGFin4zVdFLOXWJqKWdUd5IrDP5Nya3FSoWbWDXAg",
+	}
+
+	for _, msg := range sampleMessages {
+		obj, err := ParseSigned(msg)
+		if err != nil {
+			t.Error("unable to parse message", msg, err)
+			continue
+		}
+		payload := obj.payload
+		obj.payload = nil
+		err = obj.DetachedVerify(payload, rsaPublicKey)
+		if err != nil {
+			t.Error("unable to verify message", msg, err)
+			continue
+		}
+		idx, _, err := obj.DetachedVerifyMulti(payload, rsaPublicKey)
+		if idx != 0 || err != nil {
+			t.Error("unable to verify message", msg, err)
+			continue
+		}
 	}
 }
 
