@@ -160,15 +160,37 @@ type rawHeader map[HeaderKey]*json.RawMessage
 
 // Header represents the read-only JOSE header for JWE/JWS objects.
 type Header struct {
-	KeyID        string
-	JSONWebKey   *JSONWebKey
-	Algorithm    string
-	Nonce        string
-	Certificates []*x509.Certificate
+	KeyID      string
+	JSONWebKey *JSONWebKey
+	Algorithm  string
+	Nonce      string
 
-	// Any headers not recognised above get unmarshaled from JSON in a generic
-	// manner and placed in this map.
+	// Unverified certificate chain parsed from x5c header.
+	certificates []*x509.Certificate
+
+	// Any headers not recognised above get unmarshaled
+	// from JSON in a generic manner and placed in this map.
 	ExtraHeaders map[HeaderKey]interface{}
+}
+
+// Certificates verifies & returns the certificate chain present
+// in the x5c header field of a message, if one was present. Returns
+// an error if there was no x5c header present or the chain could
+// not be validated with the given verify options.
+func (h Header) Certificates(opts x509.VerifyOptions) ([][]*x509.Certificate, error) {
+	if len(h.certificates) == 0 {
+		return nil, errors.New("square/go-jose: no x5c header present in message")
+	}
+
+	leaf := h.certificates[0]
+	if opts.Intermediates == nil {
+		opts.Intermediates = x509.NewCertPool()
+		for _, intermediate := range h.certificates[1:] {
+			opts.Intermediates.AddCert(intermediate)
+		}
+	}
+
+	return leaf.Verify(opts)
 }
 
 func (parsed rawHeader) set(k HeaderKey, v interface{}) error {
@@ -344,7 +366,7 @@ func (parsed rawHeader) sanitized() (h Header, err error) {
 				err = fmt.Errorf("failed to unmarshal x5c header: %v: %#v", err, string(*v))
 				return
 			}
-			h.Certificates, err = parseCertificateChain(c)
+			h.certificates, err = parseCertificateChain(c)
 			if err != nil {
 				err = fmt.Errorf("failed to unmarshal x5c header: %v: %#v", err, string(*v))
 				return
