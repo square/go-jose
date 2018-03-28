@@ -18,6 +18,8 @@ package jose
 
 import (
 	"crypto/elliptic"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -141,6 +143,7 @@ const (
 	headerEPK = "epk" // *JSONWebKey
 	headerIV  = "iv"  // *byteBuffer
 	headerTag = "tag" // *byteBuffer
+	headerX5c = "x5c" // []*x509.Certificate
 
 	headerJWK   = "jwk"   // *JSONWebKey
 	headerKeyID = "kid"   // string
@@ -157,10 +160,11 @@ type rawHeader map[HeaderKey]*json.RawMessage
 
 // Header represents the read-only JOSE header for JWE/JWS objects.
 type Header struct {
-	KeyID      string
-	JSONWebKey *JSONWebKey
-	Algorithm  string
-	Nonce      string
+	KeyID        string
+	JSONWebKey   *JSONWebKey
+	Algorithm    string
+	Nonce        string
+	Certificates []*x509.Certificate
 
 	// Any headers not recognised above get unmarshaled from JSON in a generic
 	// manner and placed in this map.
@@ -333,6 +337,18 @@ func (parsed rawHeader) sanitized() (h Header, err error) {
 				return
 			}
 			h.Nonce = s
+		case headerX5c:
+			c := []string{}
+			err = json.Unmarshal(*v, &c)
+			if err != nil {
+				err = fmt.Errorf("failed to unmarshal x5c header: %v: %#v", err, string(*v))
+				return
+			}
+			h.Certificates, err = parseCertificateChain(c)
+			if err != nil {
+				err = fmt.Errorf("failed to unmarshal x5c header: %v: %#v", err, string(*v))
+				return
+			}
 		default:
 			if h.ExtraHeaders == nil {
 				h.ExtraHeaders = map[HeaderKey]interface{}{}
@@ -347,6 +363,21 @@ func (parsed rawHeader) sanitized() (h Header, err error) {
 		}
 	}
 	return
+}
+
+func parseCertificateChain(chain []string) ([]*x509.Certificate, error) {
+	out := make([]*x509.Certificate, len(chain))
+	for i, cert := range chain {
+		raw, err := base64.StdEncoding.DecodeString(cert)
+		if err != nil {
+			return nil, err
+		}
+		out[i], err = x509.ParseCertificate(raw)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 func (dst rawHeader) isSet(k HeaderKey) bool {
