@@ -53,6 +53,33 @@ BhiG6T9W7P/NRW4Tqb2tEN1VwU6eP5SEf7c7C1VVaepk0fvc1p5dl67IERqPucPD
 dT2rDsCMBV7SXMUM
 -----END CERTIFICATE-----`
 
+const intermediateCA = `
+-----BEGIN CERTIFICATE-----
+MIIEHTCCAgWgAwIBAgIQXzZsEQv0cvSRLJAkS9FmWTANBgkqhkiG9w0BAQsFADAU
+MRIwEAYDVQQDEwlUcnVzdGVkQ0EwHhcNMTgwMzI4MTg0MzMzWhcNMzgwMzI4MTg0
+MzAzWjAZMRcwFQYDVQQDEw5JbnRlcm1lZGlhdGVDQTCCASIwDQYJKoZIhvcNAQEB
+BQADggEPADCCAQoCggEBAN3aYpH/1yEYf/kHuHWyO3AO4tgwlYYLhCDT2GvaPdaE
+cqhe/VuYiqx3xY7IRDqsW2rau/OXgW6KzLHdRZHogK07hUj1Lfr7X+Oqbp22IV4y
+dyiL7jwK9AtVXvDuuv5ET+oRfV82j0uhyk0ueGD9r6C/h+6NTzHBD+3xo6Yuc0Vk
+BfY5zIyhaFqlm1aRYvupDRjC/63uBgAlrGxy2LyiTMVnYMuxoJM5ahDepz3sqjuN
+WVyPhfGwIezjXuXRdEvlmWX05XLnsTdP4zu4fHq9Z7c3TKWWONM3z64ECAZmGQVf
+MAcEDX7qP0gZX5PCT+0WcvTgTWE4Q+WIh5AmYyxQ04cCAwEAAaNmMGQwDgYDVR0P
+AQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQEwHQYDVR0OBBYEFMAYlq86RZzT
+WxLpYE7KTTM7DHOuMB8GA1UdIwQYMBaAFMvTapNJg0cAubXJjcUNWFjuTAIYMA0G
+CSqGSIb3DQEBCwUAA4ICAQBmYRpQoWEm5g16kwUrpwWrH7OIqqMtUhM1dcskECfk
+i3/hcsV+MQRkGHLIItucYIWqs7oOQIglsyGcohAbnvE1PVtKKojUHC0lfbjgIenD
+Pbvz15QB6A3KLDR82QbQGeGniACy924p66zlfPwHJbkMo5ZaqtNqI//EIa2YCpyy
+okhFXaSFmPWXXrTOCsEEsFJKsoSCH1KUpTcwACGkkilNseg1edZB6/lBDwybxVuY
++dbUlHip3r5tFcP66Co3tKAaEcVY0AsZ/8GKwH+IM2AR6q7jdn9Gp2OX4E1ul9Wy
++hW5GHMmfixkgTVwRowuKgkCPEKV2/Xy3k9rlSpnKr2NpYYq0mu6An9HYt8THQ+e
+wGZHwWufuDFDWuzlu7CxFOjpXLKv8qqVnwSFC91S3HsPAzPKLC9ZMEC+iQs2Vkes
+Os0nFLZeMaMGAO5W6xiyQ5p94oo0bqa1XbmSV1bNp1HWuNEGIiZKrEUDxfYuDc6f
+C6hJZKsjJkMkBeadlQAlLcjIx1rDV171CKLLTxy/dT5kv4p9UrJlnleyMVG6S/3d
+6nX/WLSgZIMYbOwiZVVPlSrobuG38ULJMCSuxndxD0l+HahJaH8vYXuR67A0XT+b
+TEe305AI6A/9MEaRrActBnq6/OviQgBsKAvtTv1FmDbnpZsKeoFuwc3OPdTveQdC
+RA==
+-----END CERTIFICATE-----`
+
 func TestEmbeddedHMAC(t *testing.T) {
 	// protected: {"alg":"HS256", "jwk":{"kty":"oct", "k":"MTEx"}}, aka HMAC key.
 	msg := `{"payload":"TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ","protected":"eyJhbGciOiJIUzI1NiIsICJqd2siOnsia3R5Ijoib2N0IiwgImsiOiJNVEV4In19","signature":"lvo41ZZsuHwQvSh0uJtEXRR3vmuBJ7in6qMoD7p9jyo"}`
@@ -517,42 +544,73 @@ func TestJWSWithCertificateChain(t *testing.T) {
 		Algorithm: RS256,
 	}
 
-	signer, err := NewSigner(signerKey, &SignerOptions{
-		ExtraHeaders: map[HeaderKey]interface{}{
-			HeaderKey("x5c"): []string{
-				// CN=TrustedSigner, signed by IntermediateCA
-				"MIIDLDCCAhSgAwIBAgIQNsV1i7m3kXGugqOQuuC7FzANBgkqhkiG9w0BAQsFADAZMRcwFQYDVQQDEw5JbnRlcm1lZGlhdGVDQTAeFw0xODAzMjgxODQzNDlaFw0zODAzMjgxODQzMDJaMBgxFjAUBgNVBAMTDVRydXN0ZWRTaWduZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDLpvmOEDRxzQJUKHLkLQSsFDo9eGnolSERa6fz1E1F4wmk6nieHqssPd28C6Vb1sHJFne/j93DXNrx7W9Gy9fQvWa+VNHfGuYAodaS2pyV4VUPWMXI2a+qjxW85orq34XtcHzU+qm+ekR5W06ypW+xewbXJW//P9ulrsv3bDoDFaiggHY/u3p5CRSB9mg+Pbpf6E/k/N85sFJUsRE9hzgwg27Kqhh6p3hP3QnA+0WZRcWhwG0gykoD6layRLCPVcxlTSUdpyStDiK8w2whLJQfixCBGLS3/tB/GKb726bxTQK72OLzIMtOo4ZMtTva7bcA2PRgwfRz7bJg4DXz7oHTAgMBAAGjcTBvMA4GA1UdDwEB/wQEAwIDuDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwHQYDVR0OBBYEFCpZEyJGAyK//NsYSSC4xkOqNnh3MB8GA1UdIwQYMBaAFMAYlq86RZzTWxLpYE7KTTM7DHOuMA0GCSqGSIb3DQEBCwUAA4IBAQBSIln6jPFkctPC17le0O+wkCStFOuqUM9cjwPuj4xBQ47RxmC0Pjv52N3TuVH7slmMykITQO/vVqQZguf+N5u4BCh223qWiu1muYBTfBPXCPgJjJ79bUL/dy9QEocOfPiIqTFC6xHKeSUCu6qi5jCPFynOaoVvlNPZEb2MR+QrkKVzg09aDEfk6J+wE6eH9+kNOtwvd/z2a2t2hterURtJEnYt7AQGviEpUf1gbHxCE9f3FW5iJGdgcshrk5ZwUfxvND2x4qFq2fYQRxNBnkO+TSYzwYoAItcGAUvlZFH+rdsq3N+UpRptXRkj5iMq59VlcXFOT675EkkNREgromWn",
-				// CN=IntermediateCA, signed by TrustedCA
-				"MIIEHTCCAgWgAwIBAgIQXzZsEQv0cvSRLJAkS9FmWTANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDEwlUcnVzdGVkQ0EwHhcNMTgwMzI4MTg0MzMzWhcNMzgwMzI4MTg0MzAzWjAZMRcwFQYDVQQDEw5JbnRlcm1lZGlhdGVDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAN3aYpH/1yEYf/kHuHWyO3AO4tgwlYYLhCDT2GvaPdaEcqhe/VuYiqx3xY7IRDqsW2rau/OXgW6KzLHdRZHogK07hUj1Lfr7X+Oqbp22IV4ydyiL7jwK9AtVXvDuuv5ET+oRfV82j0uhyk0ueGD9r6C/h+6NTzHBD+3xo6Yuc0VkBfY5zIyhaFqlm1aRYvupDRjC/63uBgAlrGxy2LyiTMVnYMuxoJM5ahDepz3sqjuNWVyPhfGwIezjXuXRdEvlmWX05XLnsTdP4zu4fHq9Z7c3TKWWONM3z64ECAZmGQVfMAcEDX7qP0gZX5PCT+0WcvTgTWE4Q+WIh5AmYyxQ04cCAwEAAaNmMGQwDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQEwHQYDVR0OBBYEFMAYlq86RZzTWxLpYE7KTTM7DHOuMB8GA1UdIwQYMBaAFMvTapNJg0cAubXJjcUNWFjuTAIYMA0GCSqGSIb3DQEBCwUAA4ICAQBmYRpQoWEm5g16kwUrpwWrH7OIqqMtUhM1dcskECfki3/hcsV+MQRkGHLIItucYIWqs7oOQIglsyGcohAbnvE1PVtKKojUHC0lfbjgIenDPbvz15QB6A3KLDR82QbQGeGniACy924p66zlfPwHJbkMo5ZaqtNqI//EIa2YCpyyokhFXaSFmPWXXrTOCsEEsFJKsoSCH1KUpTcwACGkkilNseg1edZB6/lBDwybxVuY+dbUlHip3r5tFcP66Co3tKAaEcVY0AsZ/8GKwH+IM2AR6q7jdn9Gp2OX4E1ul9Wy+hW5GHMmfixkgTVwRowuKgkCPEKV2/Xy3k9rlSpnKr2NpYYq0mu6An9HYt8THQ+ewGZHwWufuDFDWuzlu7CxFOjpXLKv8qqVnwSFC91S3HsPAzPKLC9ZMEC+iQs2VkesOs0nFLZeMaMGAO5W6xiyQ5p94oo0bqa1XbmSV1bNp1HWuNEGIiZKrEUDxfYuDc6fC6hJZKsjJkMkBeadlQAlLcjIx1rDV171CKLLTxy/dT5kv4p9UrJlnleyMVG6S/3d6nX/WLSgZIMYbOwiZVVPlSrobuG38ULJMCSuxndxD0l+HahJaH8vYXuR67A0XT+bTEe305AI6A/9MEaRrActBnq6/OviQgBsKAvtTv1FmDbnpZsKeoFuwc3OPdTveQdCRA==",
-			},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
+	certs := []string{
+		// CN=TrustedSigner, signed by IntermediateCA
+		"MIIDLDCCAhSgAwIBAgIQNsV1i7m3kXGugqOQuuC7FzANBgkqhkiG9w0BAQsFADAZMRcwFQYDVQQDEw5JbnRlcm1lZGlhdGVDQTAeFw0xODAzMjgxODQzNDlaFw0zODAzMjgxODQzMDJaMBgxFjAUBgNVBAMTDVRydXN0ZWRTaWduZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDLpvmOEDRxzQJUKHLkLQSsFDo9eGnolSERa6fz1E1F4wmk6nieHqssPd28C6Vb1sHJFne/j93DXNrx7W9Gy9fQvWa+VNHfGuYAodaS2pyV4VUPWMXI2a+qjxW85orq34XtcHzU+qm+ekR5W06ypW+xewbXJW//P9ulrsv3bDoDFaiggHY/u3p5CRSB9mg+Pbpf6E/k/N85sFJUsRE9hzgwg27Kqhh6p3hP3QnA+0WZRcWhwG0gykoD6layRLCPVcxlTSUdpyStDiK8w2whLJQfixCBGLS3/tB/GKb726bxTQK72OLzIMtOo4ZMtTva7bcA2PRgwfRz7bJg4DXz7oHTAgMBAAGjcTBvMA4GA1UdDwEB/wQEAwIDuDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwHQYDVR0OBBYEFCpZEyJGAyK//NsYSSC4xkOqNnh3MB8GA1UdIwQYMBaAFMAYlq86RZzTWxLpYE7KTTM7DHOuMA0GCSqGSIb3DQEBCwUAA4IBAQBSIln6jPFkctPC17le0O+wkCStFOuqUM9cjwPuj4xBQ47RxmC0Pjv52N3TuVH7slmMykITQO/vVqQZguf+N5u4BCh223qWiu1muYBTfBPXCPgJjJ79bUL/dy9QEocOfPiIqTFC6xHKeSUCu6qi5jCPFynOaoVvlNPZEb2MR+QrkKVzg09aDEfk6J+wE6eH9+kNOtwvd/z2a2t2hterURtJEnYt7AQGviEpUf1gbHxCE9f3FW5iJGdgcshrk5ZwUfxvND2x4qFq2fYQRxNBnkO+TSYzwYoAItcGAUvlZFH+rdsq3N+UpRptXRkj5iMq59VlcXFOT675EkkNREgromWn",
+		// CN=IntermediateCA, signed by TrustedCA
+		"MIIEHTCCAgWgAwIBAgIQXzZsEQv0cvSRLJAkS9FmWTANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDEwlUcnVzdGVkQ0EwHhcNMTgwMzI4MTg0MzMzWhcNMzgwMzI4MTg0MzAzWjAZMRcwFQYDVQQDEw5JbnRlcm1lZGlhdGVDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAN3aYpH/1yEYf/kHuHWyO3AO4tgwlYYLhCDT2GvaPdaEcqhe/VuYiqx3xY7IRDqsW2rau/OXgW6KzLHdRZHogK07hUj1Lfr7X+Oqbp22IV4ydyiL7jwK9AtVXvDuuv5ET+oRfV82j0uhyk0ueGD9r6C/h+6NTzHBD+3xo6Yuc0VkBfY5zIyhaFqlm1aRYvupDRjC/63uBgAlrGxy2LyiTMVnYMuxoJM5ahDepz3sqjuNWVyPhfGwIezjXuXRdEvlmWX05XLnsTdP4zu4fHq9Z7c3TKWWONM3z64ECAZmGQVfMAcEDX7qP0gZX5PCT+0WcvTgTWE4Q+WIh5AmYyxQ04cCAwEAAaNmMGQwDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQEwHQYDVR0OBBYEFMAYlq86RZzTWxLpYE7KTTM7DHOuMB8GA1UdIwQYMBaAFMvTapNJg0cAubXJjcUNWFjuTAIYMA0GCSqGSIb3DQEBCwUAA4ICAQBmYRpQoWEm5g16kwUrpwWrH7OIqqMtUhM1dcskECfki3/hcsV+MQRkGHLIItucYIWqs7oOQIglsyGcohAbnvE1PVtKKojUHC0lfbjgIenDPbvz15QB6A3KLDR82QbQGeGniACy924p66zlfPwHJbkMo5ZaqtNqI//EIa2YCpyyokhFXaSFmPWXXrTOCsEEsFJKsoSCH1KUpTcwACGkkilNseg1edZB6/lBDwybxVuY+dbUlHip3r5tFcP66Co3tKAaEcVY0AsZ/8GKwH+IM2AR6q7jdn9Gp2OX4E1ul9Wy+hW5GHMmfixkgTVwRowuKgkCPEKV2/Xy3k9rlSpnKr2NpYYq0mu6An9HYt8THQ+ewGZHwWufuDFDWuzlu7CxFOjpXLKv8qqVnwSFC91S3HsPAzPKLC9ZMEC+iQs2VkesOs0nFLZeMaMGAO5W6xiyQ5p94oo0bqa1XbmSV1bNp1HWuNEGIiZKrEUDxfYuDc6fC6hJZKsjJkMkBeadlQAlLcjIx1rDV171CKLLTxy/dT5kv4p9UrJlnleyMVG6S/3d6nX/WLSgZIMYbOwiZVVPlSrobuG38ULJMCSuxndxD0l+HahJaH8vYXuR67A0XT+bTEe305AI6A/9MEaRrActBnq6/OviQgBsKAvtTv1FmDbnpZsKeoFuwc3OPdTveQdCRA==",
 	}
 
-	signed, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
-	if err != nil {
-		t.Fatal(err)
+	testCases := []struct {
+		// Cert chain to embed in message
+		chain []string
+		// Intermediates & root certificate to verify against
+		intermediates []string
+		root          string
+		// Should this test case verify?
+		success bool
+	}{
+		{certs, nil, trustedCA, true},
+		{certs, []string{intermediateCA}, trustedCA, true},
+		{certs[0:1], nil, intermediateCA, true},
+		{certs[0:1], nil, trustedCA, false},
+		{[]string{}, nil, trustedCA, false},
 	}
 
-	parsed, err := ParseSigned(signed.FullSerialize())
-	if err != nil {
-		t.Fatal(err)
-	}
+	for i, testCase := range testCases {
+		signer, err := NewSigner(signerKey, &SignerOptions{
+			ExtraHeaders: map[HeaderKey]interface{}{HeaderKey("x5c"): testCase.chain},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	roots := x509.NewCertPool()
-	ok := roots.AppendCertsFromPEM([]byte(trustedCA))
-	if !ok {
-		t.Fatal("failed to parse trusted root certificate")
-	}
+		signed, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	chains, err := parsed.Signatures[0].Protected.Certificates(x509.VerifyOptions{
-		DNSName: "TrustedSigner",
-		Roots:   roots,
-	})
+		parsed, err := ParseSigned(signed.FullSerialize())
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if len(chains) == 0 || err != nil {
-		t.Fatalf("failed to verify certificate chain: %s", err)
+		opts := x509.VerifyOptions{
+			DNSName: "TrustedSigner",
+			Roots:   x509.NewCertPool(),
+		}
+
+		ok := opts.Roots.AppendCertsFromPEM([]byte(testCase.root))
+		if !ok {
+			t.Fatal("failed to parse trusted root certificate")
+		}
+
+		if len(testCase.intermediates) > 0 {
+			opts.Intermediates = x509.NewCertPool()
+			for _, intermediate := range testCase.intermediates {
+				ok := opts.Intermediates.AppendCertsFromPEM([]byte(intermediate))
+				if !ok {
+					t.Fatal("failed to parse trusted root certificate")
+				}
+			}
+		}
+
+		chains, err := parsed.Signatures[0].Protected.Certificates(opts)
+		if testCase.success && (len(chains) == 0 || err != nil) {
+			t.Fatalf("failed to verify certificate chain for test case %d: %s", i, err)
+		}
+		if !testCase.success && (len(chains) != 0 && err == nil) {
+			t.Fatalf("incorrectly verified certificate chain for test case %d (should fail)", i)
+		}
 	}
 }
