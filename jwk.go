@@ -148,11 +148,11 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 
 	if err == nil {
 		*k = JSONWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use}
-	}
 
-	k.Certificates, err = parseCertificateChain(raw.X5c)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal x5c field: %s", err)
+		k.Certificates, err = parseCertificateChain(raw.X5c)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal x5c field: %s", err)
+		}
 	}
 
 	return
