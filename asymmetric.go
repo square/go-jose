@@ -104,9 +104,9 @@ func newRSASigner(sigAlg SignatureAlgorithm, privateKey *rsa.PrivateKey) (recipi
 
 	return recipientSigInfo{
 		sigAlg: sigAlg,
-		publicKey: &JSONWebKey{
-			Key: &privateKey.PublicKey,
-		},
+		publicKey: staticPublicKey(&JSONWebKey{
+			Key: privateKey.Public(),
+		}),
 		signer: &rsaDecrypterSigner{
 			privateKey: privateKey,
 		},
@@ -123,9 +123,9 @@ func newEd25519Signer(sigAlg SignatureAlgorithm, privateKey ed25519.PrivateKey) 
 	}
 	return recipientSigInfo{
 		sigAlg: sigAlg,
-		publicKey: &JSONWebKey{
+		publicKey: staticPublicKey(&JSONWebKey{
 			Key: privateKey.Public(),
-		},
+		}),
 		signer: &edDecrypterSigner{
 			privateKey: privateKey,
 		},
@@ -168,9 +168,9 @@ func newECDSASigner(sigAlg SignatureAlgorithm, privateKey *ecdsa.PrivateKey) (re
 
 	return recipientSigInfo{
 		sigAlg: sigAlg,
-		publicKey: &JSONWebKey{
-			Key: &privateKey.PublicKey,
-		},
+		publicKey: staticPublicKey(&JSONWebKey{
+			Key: privateKey.Public(),
+		}),
 		signer: &ecDecrypterSigner{
 			privateKey: privateKey,
 		},

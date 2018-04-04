@@ -22,8 +22,6 @@ package jose
 // transparently to the user of this interface.
 type OpaqueSigner interface {
 	// Public returns the public key of the current signing key.
-	//
-	// Unused until recipientSigInfo supports key rotation.
 	Public() *JSONWebKey
 	// Algs returns a list of supported signing algorithms.
 	Algs() []SignatureAlgorithm
@@ -49,9 +47,8 @@ func newOpaqueSigner(alg SignatureAlgorithm, signer OpaqueSigner) (recipientSigI
 	}
 
 	return recipientSigInfo{
-		sigAlg: alg,
-		// TODO: fix recipientSigInfo to support rotation so that an OpaqueSigner
-		// can embedJWKs
+		sigAlg:    alg,
+		publicKey: signer.Public,
 		signer: &opaqueSigner{
 			signer: signer,
 		},
