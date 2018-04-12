@@ -29,8 +29,9 @@ import (
 	"math/big"
 
 	"golang.org/x/crypto/ed25519"
-	"gopkg.in/square/go-jose.v2/cipher"
-	"gopkg.in/square/go-jose.v2/json"
+	"gopkg.in/NeilMadden/go-jose.v2/cipher"
+	"gopkg.in/NeilMadden/go-jose.v2/json"
+	"encoding/base64"
 )
 
 // A generic RSA-based encrypter/verifier
@@ -54,9 +55,11 @@ type edEncrypterVerifier struct {
 
 // A key generator for ECDH-ES
 type ecKeyGenerator struct {
-	size      int
-	algID     string
-	publicKey *ecdsa.PublicKey
+	size               int
+	algID              string
+	publicKey          *ecdsa.PublicKey
+	partyInfoGenerator PartyInfoGenerator
+	customKeyGenerator CustomKeyGenerator
 }
 
 // A generic EC-based decrypter/signer
@@ -388,12 +391,25 @@ func (ctx ecKeyGenerator) keySize() int {
 
 // Get a content encryption key for ECDH-ES
 func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
-	priv, err := ecdsa.GenerateKey(ctx.publicKey.Curve, randReader)
+	var priv *ecdsa.PrivateKey
+	var err error
+	if ctx.customKeyGenerator != nil {
+		priv, err = ctx.customKeyGenerator(ctx.publicKey.Curve)
+	} else {
+		priv, err = ecdsa.GenerateKey(ctx.publicKey.Curve, randReader)
+	}
 	if err != nil {
 		return nil, rawHeader{}, err
 	}
 
-	out := josecipher.DeriveECDHES(ctx.algID, []byte{}, []byte{}, priv, ctx.publicKey, ctx.size)
+	var apu, apv []byte
+	if ctx.partyInfoGenerator != nil {
+		ourPubKey := &JSONWebKey{Key: priv.Public()}
+		theirPubKey := &JSONWebKey{Key: ctx.publicKey}
+		apu, apv = ctx.partyInfoGenerator(ourPubKey, theirPubKey)
+	}
+
+	out := josecipher.DeriveECDHES(ctx.algID, apu, apv, priv, ctx.publicKey, ctx.size)
 
 	b, err := json.Marshal(&JSONWebKey{
 		Key: &priv.PublicKey,
@@ -404,6 +420,8 @@ func (ctx ecKeyGenerator) genKey() ([]byte, rawHeader, error) {
 
 	headers := rawHeader{
 		headerEPK: makeRawMessage(b),
+		headerAPU: makeRawMessage([]byte("\"" + base64.URLEncoding.EncodeToString(apu) + "\"")),
+		headerAPV: makeRawMessage([]byte("\"" + base64.URLEncoding.EncodeToString(apv) + "\"")),
 	}
 
 	return out, headers, nil

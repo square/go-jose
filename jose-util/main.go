@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/NeilMadden/go-jose.v2"
 )
 
 var (

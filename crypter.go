@@ -23,7 +23,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"gopkg.in/NeilMadden/go-jose.v2/json"
+	"crypto/elliptic"
 )
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.
@@ -32,6 +33,12 @@ type Encrypter interface {
 	EncryptWithAuthData(plaintext []byte, aad []byte) (*JSONWebEncryption, error)
 	Options() EncrypterOptions
 }
+
+// PartyInfoGenerator generates the apu and apv values from the public key values
+type PartyInfoGenerator func(ourPublicKey, theirPublicKey *JSONWebKey) (apu, apv []byte)
+
+// KeyGenerator generates the ephemeral key pair for ECDH-ES
+type CustomKeyGenerator func(curve elliptic.Curve) (*ecdsa.PrivateKey, error)
 
 // A generic content cipher
 type contentCipher interface {
@@ -80,6 +87,12 @@ type EncrypterOptions struct {
 	// of a JWS object. Some specifications which make use of JWS like to insert
 	// additional values here. All values must be JSON-serializable.
 	ExtraHeaders map[HeaderKey]interface{}
+
+	// For ECDH-ES this is an optional function to generate the apu and apv claim values
+	partyInfoGenerator PartyInfoGenerator
+
+	// For ECDH-ES this is an optional function to generate the private key
+	customKeyGenerator CustomKeyGenerator
 }
 
 // WithHeader adds an arbitrary value to the ExtraHeaders map, initializing it
@@ -101,6 +114,18 @@ func (eo *EncrypterOptions) WithContentType(contentType ContentType) *EncrypterO
 // WithType adds a type ("typ") header and returns the updated EncrypterOptions.
 func (eo *EncrypterOptions) WithType(typ ContentType) *EncrypterOptions {
 	return eo.WithHeader(HeaderType, typ)
+}
+
+// WithPartyInfoGenerator sets the function used to calculate the apu and apv PartyInfo elements during ECDH key derivation
+func (eo *EncrypterOptions) WithPartyInfoGenerator(gen PartyInfoGenerator) *EncrypterOptions {
+	eo.partyInfoGenerator = gen
+	return eo
+}
+
+// WithCustomKeyGenerator sets the function used to generate the ephemeral private key during ECDH key derivation
+func (eo *EncrypterOptions) WithCustomKeyGenerator(gen CustomKeyGenerator) *EncrypterOptions {
+	eo.customKeyGenerator = gen
+	return eo
 }
 
 // Recipient represents an algorithm/key to encrypt messages to.
@@ -159,10 +184,20 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 		if typeOf != reflect.TypeOf(&ecdsa.PublicKey{}) {
 			return nil, ErrUnsupportedKeyType
 		}
+		var partyInfoGenerator PartyInfoGenerator
+		if opts != nil && opts.partyInfoGenerator != nil {
+			partyInfoGenerator = opts.partyInfoGenerator
+		}
+		var customKeyGenerator CustomKeyGenerator
+		if opts != nil && opts.customKeyGenerator != nil {
+			customKeyGenerator = opts.customKeyGenerator
+		}
 		encrypter.keyGenerator = ecKeyGenerator{
-			size:      encrypter.cipher.keySize(),
-			algID:     string(enc),
-			publicKey: rawKey.(*ecdsa.PublicKey),
+			size:               encrypter.cipher.keySize(),
+			algID:              string(enc),
+			publicKey:          rawKey.(*ecdsa.PublicKey),
+			partyInfoGenerator: partyInfoGenerator,
+			customKeyGenerator: customKeyGenerator,
 		}
 		recipientInfo, _ := newECDHRecipient(rcpt.Algorithm, rawKey.(*ecdsa.PublicKey))
 		recipientInfo.keyID = keyID
