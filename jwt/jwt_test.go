@@ -40,6 +40,30 @@ type customClaims struct {
 	Scopes []string `json:"scopes,omitempty"`
 }
 
+func TestGetClaimsInvalid(t *testing.T) {
+	tok, err := ParseSigned(hmacSignedToken)
+	if assert.NoError(t, err, "Error parsing signed token.") {
+		c := &Claims{}
+		c2 := &customClaims{}
+
+		err := tok.Claims(nil, c, c2)
+		if err == nil {
+			t.Errorf("Error expected")
+		}
+		assert.Equal(t, "subject", c.Subject)
+		assert.Equal(t, "issuer", c.Issuer)
+		assert.Equal(t, []string{"s1", "s2"}, c2.Scopes)
+
+		err = tok.Claims([]byte("wrongkey"), c, c2)
+		if err == nil {
+			t.Errorf("Error expected")
+		}
+		assert.Equal(t, "subject", c.Subject)
+		assert.Equal(t, "issuer", c.Issuer)
+		assert.Equal(t, []string{"s1", "s2"}, c2.Scopes)
+	}
+}
+
 func TestDecodeToken(t *testing.T) {
 	tok, err := ParseSigned(hmacSignedToken)
 	if assert.NoError(t, err, "Error parsing signed token.") {

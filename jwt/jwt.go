@@ -37,9 +37,6 @@ type NestedJSONWebToken struct {
 // Claims deserializes a JSONWebToken into dest using the provided key.
 func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
 	b, err := t.payload(key)
-	if err != nil {
-		return err
-	}
 
 	for _, d := range dest {
 		if err := json.Unmarshal(b, d); err != nil {
@@ -47,7 +44,7 @@ func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
 		}
 	}
 
-	return nil
+	return err
 }
 
 func (t *NestedJSONWebToken) Decrypt(decryptionKey interface{}) (*JSONWebToken, error) {
