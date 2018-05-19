@@ -290,14 +290,18 @@ func (ctx *genericSigner) Options() SignerOptions {
 // payload header. You cannot assume that the key received in a payload is
 // trusted.
 func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) {
-	if verificationKey == nil {
-		return obj.payload, errors.New("square/go-jose: cannot verify without a key")
-	}
 	err := obj.DetachedVerify(obj.payload, verificationKey)
 	if err != nil {
-		return obj.payload, err
+		return nil, err
 	}
 	return obj.payload, nil
+}
+
+// UnsafePayloadWithoutVerification returns the payload without
+// verifying it. The content returned from this function cannot be
+// trusted.
+func (obj JSONWebSignature) UnsafePayloadWithoutVerification() []byte {
+	return obj.payload
 }
 
 // DetachedVerify validates a detached signature on the given payload. In
