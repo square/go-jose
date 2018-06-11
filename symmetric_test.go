@@ -84,11 +84,17 @@ func TestStaticKeyGen(t *testing.T) {
 }
 
 func TestAeadInvalidInput(t *testing.T) {
-	aead := newAESGCM(16).(*aeadContentCipher)
-	key := []byte("1234567890123456")
-	_, err := aead.decrypt(key, []byte{}, &aeadParts{[]byte{}, []byte{}, []byte{}})
-	if err != ErrCryptoFailure {
-		t.Error("should handle aead failure")
+	sample := []byte("1234567890123456")
+	tt := []aeadParts{
+		{},
+		{iv: sample, tag: sample},
+	}
+	for _, tc := range tt {
+		aead := newAESGCM(16).(*aeadContentCipher)
+		_, err := aead.decrypt(sample, []byte{}, &tc)
+		if err != ErrCryptoFailure {
+			t.Error("should handle aead failure")
+		}
 	}
 }
 

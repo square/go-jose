@@ -212,7 +212,7 @@ func (ctx aeadContentCipher) decrypt(key, aad []byte, parts *aeadParts) ([]byte,
 		return nil, err
 	}
 
-	if len(parts.iv) < aead.NonceSize() || len(parts.tag) < ctx.authtagBytes {
+	if len(parts.iv) != aead.NonceSize() || len(parts.tag) < ctx.authtagBytes {
 		return nil, ErrCryptoFailure
 	}
 

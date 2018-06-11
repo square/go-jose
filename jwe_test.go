@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"math/big"
+	"regexp"
 	"testing"
 )
 
@@ -539,5 +540,28 @@ func TestSampleJose4jJWEMessagesECDH(t *testing.T) {
 		if string(plaintext) != "Lorem ipsum dolor sit amet." {
 			t.Error("plaintext is not what we expected for msg", msg)
 		}
+	}
+}
+
+func TestTamperedJWE(t *testing.T) {
+	key := []byte("1234567890123456")
+
+	encrypter, _ := NewEncrypter(A128GCM,
+		Recipient{Algorithm: DIRECT, Key: key}, nil)
+
+	var plaintext = []byte("Lorem ipsum dolor sit amet")
+	object, _ := encrypter.Encrypt(plaintext)
+
+	serialized := object.FullSerialize()
+
+	// Inject a longer iv
+	serialized = regexp.MustCompile(`"iv":"[^"]+"`).
+		ReplaceAllString(serialized, `"iv":"UotNnfiavtNOOSZAcfI03i"`)
+
+	object, _ = ParseEncrypted(serialized)
+
+	_, err := object.Decrypt(key)
+	if err == nil {
+		t.Error("Decrypt() on invalid object should fail")
 	}
 }
