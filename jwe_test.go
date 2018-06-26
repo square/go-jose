@@ -541,3 +541,9 @@ func TestSampleJose4jJWEMessagesECDH(t *testing.T) {
 		}
 	}
 }
+
+func TestJWEWithNullAlg(t *testing.T) {
+	// {"alg":null,"enc":"A128GCM"}
+	serialized := `{"protected":"eyJhbGciOm51bGwsImVuYyI6IkExMjhHQ00ifQ"}`
+	ParseEncrypted(serialized)
+}
