@@ -108,6 +108,8 @@ type Recipient struct {
 	Algorithm KeyAlgorithm
 	Key       interface{}
 	KeyID     string
+	P2C       int
+	P2S       []byte
 }
 
 // NewEncrypter creates an appropriate encrypter based on the key type
@@ -226,6 +228,14 @@ func (ctx *genericEncrypter) addRecipient(recipient Recipient) (err error) {
 	recipientInfo, err = makeJWERecipient(recipient.Algorithm, recipient.Key)
 	if recipient.KeyID != "" {
 		recipientInfo.keyID = recipient.KeyID
+	}
+
+	switch recipient.Algorithm {
+	case PBES2_HS256_A128KW, PBES2_HS384_A192KW, PBES2_HS512_A256KW:
+		if sr, ok := recipientInfo.keyEncrypter.(*symmetricKeyCipher); ok {
+			sr.p2c = recipient.P2C
+			sr.p2s = recipient.P2S
+		}
 	}
 
 	if err == nil {
