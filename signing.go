@@ -21,8 +21,6 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
-	"crypto"
-	"io"
 )
 
 // NonceSource represents a source of random nonces to go into JWS objects
@@ -135,70 +133,8 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipient
 		recipient.keyID = signingKey.KeyID
 		return recipient, nil
 	default:
-		if _, ok := signingKey.(GenericKey);ok{
-			return newGenericSigner(alg, signingKey.(GenericKey))
-		}
 		return recipientSigInfo{}, ErrUnsupportedKeyType
 	}
-}
-
-type SigningOptions uint
-
-const (
-	HashFunc SigningOptions = 1 + iota
-)
-
-type SignerOpts map[interface{}]interface{}
-
-func (opts SignerOpts) HashFunc () crypto.Hash {
-	if hf, ok := opts[HashFunc]; ok {
-		if hf, ok := hf.(crypto.Hash); ok {
-			return hf
-		}
-	}
-	return crypto.Hash(0)
-}
-
-type GenericKey interface {
-	RandReader() io.Reader
-	PublicKey() *JsonWebKey
-	SignPayload(rand io.Reader, digest []byte, opts SignerOpts) (signature []byte, err error)
-}
-
-type genericSigningKey struct{
-	genericKey GenericKey
-}
-
-func (key *genericSigningKey)signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error) {
-	signature := Signature{protected:&rawHeader{}}
-	var err error
-	signingOpts := SignerOpts{}
-	switch alg {
-	case HS256, RS256, ES256, PS256:
-		signingOpts[HashFunc] = crypto.SHA256
-	case HS384, RS384, ES384, PS384:
-		signingOpts[HashFunc] = crypto.SHA384
-	case HS512, RS512, ES512, PS512:
-		signingOpts[HashFunc] = crypto.SHA512
-	default:
-		return signature, ErrUnsupportedAlgorithm
-	}
-	hasher := signingOpts.HashFunc().New()
-	if _, err = hasher.Write(payload); err != nil {
-		return signature, err
-	}
-	digest := hasher.Sum(nil)
-	if signature.Signature, err = key.genericKey.SignPayload(key.genericKey.RandReader(), digest, signingOpts); err != nil{
-		return signature, err
-	}
-	return signature, nil
-}
-func newGenericSigner(sigAlg SignatureAlgorithm, signingKey GenericKey) (recipientSigInfo, error) {
-	return recipientSigInfo{
-		sigAlg: sigAlg,
-		publicKey: signingKey.PublicKey(),
-		signer: &genericSigningKey{genericKey:signingKey},
-	}, nil
 }
 
 func (ctx *genericSigner) Sign(payload []byte) (*JsonWebSignature, error) {
