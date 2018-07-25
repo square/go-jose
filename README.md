@@ -41,7 +41,7 @@ libraries in other languages.
 We use [gopkg.in](https://gopkg.in) for versioning.
 
 [Version 2](https://gopkg.in/square/go-jose.v2)
-([branch](https://github.com/square/go-jose/tree/v1),
+([branch](https://github.com/square/go-jose/tree/v2),
 [doc](https://godoc.org/gopkg.in/square/go-jose.v2)) is the current version:
 
     import "gopkg.in/square/go-jose.v2"
@@ -49,11 +49,9 @@ We use [gopkg.in](https://gopkg.in) for versioning.
 The old `v1` branch ([go-jose.v1](https://gopkg.in/square/go-jose.v1)) will
 still receive backported bug fixes and security fixes, but otherwise
 development is frozen. All new feature development takes place on the `v2`
-branch.
-
-New in [go-jose.v2](https://gopkg.in/square/go-jose.v2) is a
-[jwt](https://godoc.org/gopkg.in/square/go-jose.v2/jwt) sub-package contributed
-by [@shaxbee](https://github.com/shaxbee).
+branch. Version 2 also contains additional sub-packages such as the
+[jwt](https://godoc.org/gopkg.in/square/go-jose.v2/jwt) implementation
+contributed by [@shaxbee](https://github.com/shaxbee).
 
 ### Supported algorithms
 
