@@ -302,6 +302,13 @@ func TestVectorsJWE(t *testing.T) {
 	}
 }
 
+func TestJWENilProtected(t *testing.T) {
+	key := []byte("1234567890123456")
+	serialized := `{"unprotected":{"alg":"dir","enc":"A128GCM"}}`
+	jwe, _ := ParseEncrypted(serialized)
+	jwe.Decrypt(key)
+}
+
 func TestVectorsJWECorrupt(t *testing.T) {
 	priv := &rsa.PrivateKey{
 		PublicKey: rsa.PublicKey{
@@ -540,4 +547,10 @@ func TestSampleJose4jJWEMessagesECDH(t *testing.T) {
 			t.Error("plaintext is not what we expected for msg", msg)
 		}
 	}
+}
+
+func TestJWEWithNullAlg(t *testing.T) {
+	// {"alg":null,"enc":"A128GCM"}
+	serialized := `{"protected":"eyJhbGciOm51bGwsImVuYyI6IkExMjhHQ00ifQ"}`
+	ParseEncrypted(serialized)
 }
