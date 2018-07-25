@@ -103,6 +103,9 @@ func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
 	case *JsonWebKey:
 		return newVerifier(verificationKey.Key)
 	default:
+		if av, ok := verificationKey.(AbstractVerifier); ok {
+			return newAbstractVerifier(av)
+		}
 		return nil, ErrUnsupportedKeyType
 	}
 }
@@ -133,6 +136,9 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipient
 		recipient.keyID = signingKey.KeyID
 		return recipient, nil
 	default:
+		if as, ok := signingKey.(AbstractSigner); ok {
+			return newAbstractSigner(as.(AbstractSigner), alg)
+		}
 		return recipientSigInfo{}, ErrUnsupportedKeyType
 	}
 }
