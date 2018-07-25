@@ -18,9 +18,10 @@ package jose
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"strings"
+
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // rawJSONWebEncryption represents a raw JWE JSON object. Used for parsing/serializing.
