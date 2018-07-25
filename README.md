@@ -40,25 +40,20 @@ libraries in other languages.
 
 We use [gopkg.in](https://gopkg.in) for versioning.
 
-[Version 1](https://gopkg.in/square/go-jose.v1) is the old stable version:
-
-    import "gopkg.in/square/go-jose.v1"
-
-[Version 2](https://gopkg.in/square/go-jose.v2) is for new development:
+[Version 2](https://gopkg.in/square/go-jose.v2)
+([branch](https://github.com/square/go-jose/tree/v1),
+[doc](https://godoc.org/gopkg.in/square/go-jose.v2)) is the current version:
 
     import "gopkg.in/square/go-jose.v2"
 
-The interface for [go-jose.v1](https://gopkg.in/square/go-jose.v1) will remain
-backwards compatible. No new feature development will take place on the `v1` branch,
-however bug fixes and security fixes will be backported.
-
-The interface for [go-jose.v2](https://gopkg.in/square/go-jose.v2) is mostly 
-stable, but we suggest pinning to a particular revision for now as we still reserve
-the right to make changes. New feature development happens on this branch.
+The old `v1` branch ([go-jose.v1](https://gopkg.in/square/go-jose.v1)) will
+still receive backported bug fixes and security fixes, but otherwise
+development is frozen. All new feature development takes place on the `v2`
+branch.
 
 New in [go-jose.v2](https://gopkg.in/square/go-jose.v2) is a
-[jwt](https://godoc.org/gopkg.in/square/go-jose.v2/jwt) sub-package
-contributed by [@shaxbee](https://github.com/shaxbee).
+[jwt](https://godoc.org/gopkg.in/square/go-jose.v2/jwt) sub-package contributed
+by [@shaxbee](https://github.com/shaxbee).
 
 ### Supported algorithms
 
