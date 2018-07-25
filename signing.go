@@ -137,7 +137,7 @@ func makeJWSRecipient(alg SignatureAlgorithm, signingKey interface{}) (recipient
 		return recipient, nil
 	default:
 		if as, ok := signingKey.(AbstractSigner); ok {
-			return newAbstractSigner(as.(AbstractSigner), alg)
+			return newAbstractSigner(as, alg)
 		}
 		return recipientSigInfo{}, ErrUnsupportedKeyType
 	}
