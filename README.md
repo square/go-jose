@@ -87,6 +87,7 @@ standard where possible. The Godoc reference has a list of constants.
  DEFLATE (RFC 1951)         | DEF
 
 <sup>1. Not supported in multi-recipient mode</sup>
+
 <sup>2. Only available in version 2 of the package</sup>
 
 ### Supported key types
