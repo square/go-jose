@@ -69,6 +69,8 @@ standard where possible. The Godoc reference has a list of constants.
  ECDH-ES (direct)           | ECDH-ES<sup>1</sup>
  Direct encryption          | dir<sup>1</sup>
 
+<sup>1. Not supported in multi-recipient mode</sup>
+
  Signing / MAC              | Algorithm identifier(s)
  :------------------------- | :------------------------------
  RSASSA-PKCS#1v1.5          | RS256, RS384, RS512
@@ -76,6 +78,8 @@ standard where possible. The Godoc reference has a list of constants.
  HMAC                       | HS256, HS384, HS512
  ECDSA                      | ES256, ES384, ES512
  Ed25519                    | EdDSA<sup>2</sup>
+
+<sup>2. Only available in version 2 of the package</sup>
 
  Content encryption         | Algorithm identifier(s)
  :------------------------- | :------------------------------
@@ -85,10 +89,6 @@ standard where possible. The Godoc reference has a list of constants.
  Compression                | Algorithm identifiers(s)
  :------------------------- | -------------------------------
  DEFLATE (RFC 1951)         | DEF
-
-<sup>1. Not supported in multi-recipient mode</sup>
-
-<sup>2. Only available in version 2 of the package</sup>
 
 ### Supported key types
 
@@ -101,8 +101,8 @@ allows attaching a key id.
  :------------------------- | -------------------------------
  RSA                        | *[rsa.PublicKey](http://golang.org/pkg/crypto/rsa/#PublicKey), *[rsa.PrivateKey](http://golang.org/pkg/crypto/rsa/#PrivateKey)
  ECDH, ECDSA                | *[ecdsa.PublicKey](http://golang.org/pkg/crypto/ecdsa/#PublicKey), *[ecdsa.PrivateKey](http://golang.org/pkg/crypto/ecdsa/#PrivateKey)
+ EdDSA<sup>1</sup>          | [ed25519.PublicKey](https://godoc.org/golang.org/x/crypto/ed25519#PublicKey), [ed25519.PrivateKey](https://godoc.org/golang.org/x/crypto/ed25519#PrivateKey)
  AES, HMAC                  | []byte
- EdDSA<sup>1</sup>            | [ed25519.PublicKey](https://godoc.org/golang.org/x/crypto/ed25519#PublicKey), [ed25519.PrivateKey](https://godoc.org/golang.org/x/crypto/ed25519#PrivateKey)
 
 <sup>1. Only available in version 2 of the package</sup>
 
