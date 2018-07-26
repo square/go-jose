@@ -46,7 +46,7 @@ func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg 
 	switch keyAlg {
 	case PBES2_HS256_A128KW, PBES2_HS384_A192KW, PBES2_HS512_A256KW:
 		// use 1k iterations instead of 100k to reduce computational cost
-		rcpt = Recipient{Algorithm: keyAlg, Key: encryptionKey, P2C: 1000}
+		rcpt = Recipient{Algorithm: keyAlg, Key: encryptionKey, PBES2Count: 1000}
 	default:
 		rcpt = Recipient{Algorithm: keyAlg, Key: encryptionKey}
 	}
@@ -505,10 +505,10 @@ func TestPBES2JWKEncryption(t *testing.T) {
 	serializationReference = r.ReplaceAllString(serializationReference, "")
 
 	rcpt := Recipient{
-		Algorithm: PBES2_HS256_A128KW,
-		Key:       passphrase,
-		P2C:       4096,
-		P2S: []byte{
+		Algorithm:  PBES2_HS256_A128KW,
+		Key:        passphrase,
+		PBES2Count: 4096,
+		PBES2Salt: []byte{
 			217, 96, 147, 112, 150, 117, 70,
 			247, 127, 8, 155, 137, 174, 42, 80, 215,
 		},
@@ -568,39 +568,43 @@ func TestEncrypterWithPBES2(t *testing.T) {
 		PBES2_HS256_A128KW, PBES2_HS384_A192KW, PBES2_HS512_A256KW,
 	}
 
-	for _, alg := range algs {
-		enc, err := NewEncrypter(A128GCM, Recipient{Algorithm: alg, Key: &JSONWebKey{
-			KeyID: "test-id",
-			Key:   []byte("password"),
-		}}, nil)
-		if err != nil {
-			t.Error(err)
-		}
+	// Check with both strings and []byte
+	recipientKeys := []interface{}{"password", []byte("password")}
+	for _, key := range recipientKeys {
+		for _, alg := range algs {
+			enc, err := NewEncrypter(A128GCM, Recipient{Algorithm: alg, Key: &JSONWebKey{
+				KeyID: "test-id",
+				Key:   key,
+			}}, nil)
+			if err != nil {
+				t.Error(err)
+			}
 
-		ciphertext, _ := enc.Encrypt(expected)
+			ciphertext, _ := enc.Encrypt(expected)
 
-		serialized1, _ := ciphertext.CompactSerialize()
-		serialized2 := ciphertext.FullSerialize()
+			serialized1, _ := ciphertext.CompactSerialize()
+			serialized2 := ciphertext.FullSerialize()
 
-		parsed1, _ := ParseEncrypted(serialized1)
-		parsed2, _ := ParseEncrypted(serialized2)
+			parsed1, _ := ParseEncrypted(serialized1)
+			parsed2, _ := ParseEncrypted(serialized2)
 
-		actual1, err := parsed1.Decrypt([]byte("password"))
-		if err != nil {
-			t.Fatal("error on Decrypt:", err)
-		}
+			actual1, err := parsed1.Decrypt("password")
+			if err != nil {
+				t.Fatal("error on Decrypt:", err)
+			}
 
-		actual2, err := parsed2.Decrypt([]byte("password"))
-		if err != nil {
-			t.Fatal("error on Decrypt:", err)
-		}
+			actual2, err := parsed2.Decrypt([]byte("password"))
+			if err != nil {
+				t.Fatal("error on Decrypt:", err)
+			}
 
-		if bytes.Compare(actual1, expected) != 0 {
-			t.Errorf("error comparing decrypted message (%s) and expected (%s)", actual1, expected)
-		}
+			if bytes.Compare(actual1, expected) != 0 {
+				t.Errorf("error comparing decrypted message (%s) and expected (%s)", actual1, expected)
+			}
 
-		if bytes.Compare(actual2, expected) != 0 {
-			t.Errorf("error comparing decrypted message (%s) and expected (%s)", actual2, expected)
+			if bytes.Compare(actual2, expected) != 0 {
+				t.Errorf("error comparing decrypted message (%s) and expected (%s)", actual2, expected)
+			}
 		}
 	}
 }
