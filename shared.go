@@ -148,6 +148,10 @@ const (
 	headerJWK   = "jwk"   // *JSONWebKey
 	headerKeyID = "kid"   // string
 	headerNonce = "nonce" // string
+
+	headerP2C = "p2c" // *byteBuffer (int)
+	headerP2S = "p2s" // *byteBuffer ([]byte)
+
 )
 
 // rawHeader represents the JOSE header for JWE/JWS objects (used for parsing).
@@ -318,6 +322,26 @@ func (parsed rawHeader) getCritical() ([]string, error) {
 		return nil, err
 	}
 	return q, nil
+}
+
+// getS2C extracts parsed "p2c" from the raw JSON.
+func (parsed rawHeader) getP2C() (int, error) {
+	v := parsed[headerP2C]
+	if v == nil {
+		return 0, nil
+	}
+
+	var p2c int
+	err := json.Unmarshal(*v, &p2c)
+	if err != nil {
+		return 0, err
+	}
+	return p2c, nil
+}
+
+// getS2S extracts parsed "p2s" from the raw JSON.
+func (parsed rawHeader) getP2S() (*byteBuffer, error) {
+	return parsed.getByteBuffer(headerP2S)
 }
 
 // sanitized produces a cleaned-up header object from the raw JSON.
