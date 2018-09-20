@@ -48,12 +48,12 @@ func (e Expected) WithTime(t time.Time) Expected {
 // Validate checks claims in a token against expected values.
 // A default leeway value of one minute is used to compare time values.
 //
-// The leeway will cause the token to be deemed valid until one minute
-// after the expiration time. If you're a server application that
+// The default leeway will cause the token to be deemed valid until one
+// minute after the expiration time. If you're a server application that
 // wants to give an extra minute to client tokens, use this
 // function. If you're a client application wondering if the server
 // will accept your token, use ValidateWithLeeway with a leeway <=0,
-// otherwise this function will make you think a token is valid when
+// otherwise this function might make you think a token is valid when
 // it is not.
 func (c Claims) Validate(e Expected) error {
 	return c.ValidateWithLeeway(e, DefaultLeeway)
@@ -72,7 +72,7 @@ func (c Claims) Validate(e Expected) error {
 // token, because it will think the token is valid even after it
 // expires. So if you're a client validating if the token is valid to
 // be submitted to a server, use leeway <=0, if you're a server
-// validation a token, use leeway >=0
+// validation a token, use leeway >=0.
 func (c Claims) ValidateWithLeeway(e Expected, leeway time.Duration) error {
 	if e.Issuer != "" && e.Issuer != c.Issuer {
 		return ErrInvalidIssuer
