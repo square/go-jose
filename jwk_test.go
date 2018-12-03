@@ -221,7 +221,7 @@ func TestRoundtripEcPrivate(t *testing.T) {
 
 		ec2, err := jwk.ecPrivateKey()
 		if err != nil {
-			t.Errorf("problem converting ECDSA private -> JWK for %#v: %s", ecTestKey, err)
+			t.Fatalf("problem converting ECDSA private -> JWK for %#v: %s", ecTestKey, err)
 		}
 
 		if !reflect.DeepEqual(ec2.Curve, ecTestKey.Curve) {
@@ -255,7 +255,7 @@ func TestRoundtripX5C(t *testing.T) {
 	var jwk2 JSONWebKey
 	err = jwk2.UnmarshalJSON(jsonbar)
 	if err != nil {
-		t.Error("problem unmarshalling", err)
+		t.Fatal("problem unmarshalling", err)
 	}
 
 	if !reflect.DeepEqual(testCertificates, jwk2.Certificates) {
@@ -289,12 +289,12 @@ func TestMarshalUnmarshal(t *testing.T) {
 			var jwk2 JSONWebKey
 			err = jwk2.UnmarshalJSON(jsonbar)
 			if err != nil {
-				t.Error("problem unmarshalling", i, err)
+				t.Fatal("problem unmarshalling", i, err)
 			}
 
 			jsonbar2, err := jwk2.MarshalJSON()
 			if err != nil {
-				t.Error("problem marshaling", i, err)
+				t.Fatal("problem marshaling", i, err)
 			}
 
 			if !bytes.Equal(jsonbar, jsonbar2) {
@@ -594,11 +594,11 @@ func TestMarshalUnmarshalJWKSet(t *testing.T) {
 	var set2 JSONWebKeySet
 	err = json.Unmarshal(jsonbar, &set2)
 	if err != nil {
-		t.Error("problem unmarshalling set", err)
+		t.Fatal("problem unmarshalling set", err)
 	}
 	jsonbar2, err := json.Marshal(&set2)
 	if err != nil {
-		t.Error("problem marshalling set", err)
+		t.Fatal("problem marshalling set", err)
 	}
 	if !bytes.Equal(jsonbar, jsonbar2) {
 		t.Error("roundtrip should not lose information")
