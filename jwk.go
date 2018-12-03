@@ -353,6 +353,14 @@ func (key rawJSONWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 		return nil, errors.New("square/go-jose: invalid EC key, missing x/y values")
 	}
 
+	if curveSize(curve) != len(key.X.data) {
+		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for x")
+	}
+
+	if curveSize(curve) != len(key.Y.data) {
+		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for y")
+	}
+
 	x := key.X.bigInt()
 	y := key.Y.bigInt()
 
@@ -517,6 +525,18 @@ func (key rawJSONWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 
 	if key.X == nil || key.Y == nil || key.D == nil {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key, missing x/y/d values")
+	}
+
+	if curveSize(curve) != len(key.X.data) {
+		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for x")
+	}
+
+	if curveSize(curve) != len(key.Y.data) {
+		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for y")
+	}
+
+	if curveSize(curve) != len(key.D.data) {
+		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for d")
 	}
 
 	x := key.X.bigInt()
