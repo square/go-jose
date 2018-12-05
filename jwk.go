@@ -353,6 +353,9 @@ func (key rawJSONWebKey) ecPublicKey() (*ecdsa.PublicKey, error) {
 		return nil, errors.New("square/go-jose: invalid EC key, missing x/y values")
 	}
 
+	// The length of this octet string MUST be the full size of a coordinate for
+	// the curve specified in the "crv" parameter.
+	// https://tools.ietf.org/html/rfc7518#section-6.2.1.2
 	if curveSize(curve) != len(key.X.data) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for x")
 	}
@@ -527,6 +530,9 @@ func (key rawJSONWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key, missing x/y/d values")
 	}
 
+	// The length of this octet string MUST be the full size of a coordinate for
+	// the curve specified in the "crv" parameter.
+	// https://tools.ietf.org/html/rfc7518#section-6.2.1.2
 	if curveSize(curve) != len(key.X.data) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for x")
 	}
@@ -535,7 +541,8 @@ func (key rawJSONWebKey) ecPrivateKey() (*ecdsa.PrivateKey, error) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for y")
 	}
 
-	if curveSize(curve) != len(key.D.data) {
+	// https://tools.ietf.org/html/rfc7518#section-6.2.2.1
+	if dSize(curve) != len(key.D.data) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key, wrong length for d")
 	}
 
@@ -566,19 +573,24 @@ func fromEcPrivateKey(ec *ecdsa.PrivateKey) (*rawJSONWebKey, error) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key")
 	}
 
-	// Calculating the size of D:
-	// The length of this octet string MUST be ceiling(log-base-2(n)/8)
-	// octets (where n is the order of the curve).
-	// https://tools.ietf.org/html/rfc7518#section-6.2.2.1
-	order := ec.PublicKey.Curve.Params().P
+	raw.D = newFixedSizeBuffer(ec.D.Bytes(), dSize(ec.PublicKey.Curve))
+
+	return raw, nil
+}
+
+// dSize returns the size in octets for the "d" member of an elliptic curve
+// private key.
+// The length of this octet string MUST be ceiling(log-base-2(n)/8)
+// octets (where n is the order of the curve).
+// https://tools.ietf.org/html/rfc7518#section-6.2.2.1
+func dSize(curve elliptic.Curve) int {
+	order := curve.Params().P
 	bitLen := order.BitLen()
 	size := bitLen / 8
 	if bitLen%8 != 0 {
 		size = size + 1
 	}
-	raw.D = newFixedSizeBuffer(ec.D.Bytes(), size)
-
-	return raw, nil
+	return size
 }
 
 func fromSymmetricKey(key []byte) (*rawJSONWebKey, error) {
