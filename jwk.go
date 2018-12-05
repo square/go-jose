@@ -566,7 +566,17 @@ func fromEcPrivateKey(ec *ecdsa.PrivateKey) (*rawJSONWebKey, error) {
 		return nil, fmt.Errorf("square/go-jose: invalid EC private key")
 	}
 
-	raw.D = newBuffer(ec.D.Bytes())
+	// Calculating the size of D:
+	// The length of this octet string MUST be ceiling(log-base-2(n)/8)
+	// octets (where n is the order of the curve).
+	// https://tools.ietf.org/html/rfc7518#section-6.2.2.1
+	order := ec.PublicKey.Curve.Params().P
+	bitLen := order.BitLen()
+	size := bitLen / 8
+	if bitLen%8 != 0 {
+		size = size + 1
+	}
+	raw.D = newFixedSizeBuffer(ec.D.Bytes(), size)
 
 	return raw, nil
 }
