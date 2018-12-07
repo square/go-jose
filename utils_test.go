@@ -26,7 +26,7 @@ import (
 
 // Reset random reader to original value
 func resetRandReader() {
-	randReader = rand.Reader
+	RandReader = rand.Reader
 }
 
 // Build big int from hex-encoded string. Strips whitespace (for testing).

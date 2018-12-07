@@ -270,7 +270,7 @@ func TestVectorsJWE(t *testing.T) {
 		"tag":"XFBoMYUZodetZdvTiFvSkQ" }`)
 
 	// Mock random reader
-	randReader = bytes.NewReader([]byte{
+	RandReader = bytes.NewReader([]byte{
 		// Encryption key
 		177, 161, 244, 128, 84, 143, 225, 115, 63, 180, 3, 255, 107, 154,
 		212, 246, 138, 7, 110, 91, 112, 46, 34, 105, 47, 130, 203, 46, 122,
