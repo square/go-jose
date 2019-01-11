@@ -78,3 +78,12 @@ func TestDecodeClaims(t *testing.T) {
 		assert.Equal(t, v.Err, json.Unmarshal([]byte(v.Raw), &c))
 	}
 }
+
+func TestTime(t *testing.T) {
+	zeroDate := NumericDate(0)
+	assert.True(t, time.Time{}.Equal(zeroDate.Time()), "Expected derived time to be time.Time{}")
+
+	nonZeroDate := NumericDate(1547232324)
+	expected := time.Date(2019, 1, 11, 18, 45, 24, 0, time.UTC)
+	assert.Truef(t, expected.Equal(nonZeroDate.Time()), "Expected derived time to be %s", expected)
+}

@@ -73,6 +73,11 @@ func (n *NumericDate) UnmarshalJSON(b []byte) error {
 
 // Time returns time.Time representation of NumericDate.
 func (n NumericDate) Time() time.Time {
+	if n == NumericDate(0) {
+		// time.Unix(0,0) != time.Time{} (it should, but it doesn't).
+		// This is a workaround.
+		return time.Time{}
+	}
 	return time.Unix(int64(n), 0)
 }
 
