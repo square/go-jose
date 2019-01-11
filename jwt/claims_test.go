@@ -79,11 +79,37 @@ func TestDecodeClaims(t *testing.T) {
 	}
 }
 
-func TestTime(t *testing.T) {
-	zeroDate := NumericDate(0)
+func TestNumericDate(t *testing.T) {
+	zeroDate := NewNumericDate(time.Time{})
 	assert.True(t, time.Time{}.Equal(zeroDate.Time()), "Expected derived time to be time.Time{}")
 
-	nonZeroDate := NumericDate(1547232324)
-	expected := time.Date(2019, 1, 11, 18, 45, 24, 0, time.UTC)
+	zeroDate2 := (*NumericDate)(nil)
+	assert.True(t, time.Time{}.Equal(zeroDate2.Time()), "Expected derived time to be time.Time{}")
+
+	nonZeroDate := NewNumericDate(time.Unix(0, 0))
+	expected := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	assert.Truef(t, expected.Equal(nonZeroDate.Time()), "Expected derived time to be %s", expected)
+}
+
+func TestEncodeClaimsTimeValues(t *testing.T) {
+	now := time.Date(2016, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	c := Claims{
+		NotBefore: NewNumericDate(time.Time{}),
+		IssuedAt:  NewNumericDate(time.Unix(0, 0)),
+		Expiry:    NewNumericDate(now),
+	}
+
+	b, err := json.Marshal(c)
+	assert.NoError(t, err)
+
+	expected := `{"exp":1451606400,"iat":0}`
+	assert.Equal(t, expected, string(b))
+
+	c2 := Claims{}
+	if err := json.Unmarshal(b, &c2); assert.NoError(t, err) {
+		assert.True(t, c.NotBefore.Time().Equal(c2.NotBefore.Time()))
+		assert.True(t, c.IssuedAt.Time().Equal(c2.IssuedAt.Time()))
+		assert.True(t, c.Expiry.Time().Equal(c2.Expiry.Time()))
+	}
 }
