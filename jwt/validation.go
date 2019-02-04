@@ -102,5 +102,11 @@ func (c Claims) ValidateWithLeeway(e Expected, leeway time.Duration) error {
 		return ErrExpired
 	}
 
+	// IssuedAt is optional but cannot be in the future. This is not required by the RFC, but
+	// something is misconfigured if this happens and we should not trust it.
+	if !e.Time.IsZero() && e.Time.Add(leeway).Before(c.IssuedAt.Time()) {
+		return ErrIssuedInTheFuture
+	}
+
 	return nil
 }
