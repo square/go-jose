@@ -19,9 +19,10 @@ package jwt
 
 import (
 	"fmt"
-	"gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/json"
 	"strings"
+
+	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 // JSONWebToken represents a JSON Web Token (as specified in RFC7519).
@@ -38,6 +39,8 @@ type NestedJSONWebToken struct {
 
 // Claims deserializes a JSONWebToken into dest using the provided key.
 func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
+	tryJWKS(t.Headers, &key)
+
 	b, err := t.payload(key)
 	if err != nil {
 		return err
@@ -69,6 +72,8 @@ func (t *JSONWebToken) UnsafeClaimsWithoutVerification(dest ...interface{}) erro
 }
 
 func (t *NestedJSONWebToken) Decrypt(decryptionKey interface{}) (*JSONWebToken, error) {
+	tryJWKS(t.Headers, &decryptionKey)
+
 	b, err := t.enc.Decrypt(decryptionKey)
 	if err != nil {
 		return nil, err
@@ -129,4 +134,30 @@ func ParseSignedAndEncrypted(s string) (*NestedJSONWebToken, error) {
 		enc:     enc,
 		Headers: []jose.Header{enc.Header},
 	}, nil
+}
+
+func tryJWKS(headers []jose.Header, key *interface{}) {
+	jwks, ok := (*key).(*jose.JSONWebKeySet)
+	if !ok {
+		return
+	}
+
+	var kid string
+	for _, header := range headers {
+		if header.KeyID != "" {
+			kid = header.KeyID
+			break
+		}
+	}
+
+	if kid == "" {
+		return
+	}
+
+	keys := jwks.Key(kid)
+	if len(keys) == 0 {
+		return
+	}
+
+	*key = keys[0].Key
 }
