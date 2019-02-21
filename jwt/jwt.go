@@ -39,9 +39,9 @@ type NestedJSONWebToken struct {
 
 // Claims deserializes a JSONWebToken into dest using the provided key.
 func (t *JSONWebToken) Claims(key interface{}, dest ...interface{}) error {
-	tryJWKS(t.Headers, &key)
+	payloadKey := tryJWKS(t.Headers, key)
 
-	b, err := t.payload(key)
+	b, err := t.payload(payloadKey)
 	if err != nil {
 		return err
 	}
@@ -72,9 +72,9 @@ func (t *JSONWebToken) UnsafeClaimsWithoutVerification(dest ...interface{}) erro
 }
 
 func (t *NestedJSONWebToken) Decrypt(decryptionKey interface{}) (*JSONWebToken, error) {
-	tryJWKS(t.Headers, &decryptionKey)
+	key := tryJWKS(t.Headers, decryptionKey)
 
-	b, err := t.enc.Decrypt(decryptionKey)
+	b, err := t.enc.Decrypt(key)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +136,10 @@ func ParseSignedAndEncrypted(s string) (*NestedJSONWebToken, error) {
 	}, nil
 }
 
-func tryJWKS(headers []jose.Header, key *interface{}) {
-	jwks, ok := (*key).(*jose.JSONWebKeySet)
+func tryJWKS(headers []jose.Header, key interface{}) interface{} {
+	jwks, ok := key.(*jose.JSONWebKeySet)
 	if !ok {
-		return
+		return key
 	}
 
 	var kid string
@@ -151,13 +151,13 @@ func tryJWKS(headers []jose.Header, key *interface{}) {
 	}
 
 	if kid == "" {
-		return
+		return key
 	}
 
 	keys := jwks.Key(kid)
 	if len(keys) == 0 {
-		return
+		return key
 	}
 
-	*key = keys[0].Key
+	return keys[0].Key
 }
