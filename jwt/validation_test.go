@@ -126,3 +126,42 @@ func TestIssuedInFuture(t *testing.T) {
 		assert.Equal(t, err, ErrIssuedInTheFuture)
 	}
 }
+
+func TestOptionalDateClaims(t *testing.T) {
+	var epoch time.Time
+
+	testCases := []struct {
+		name  string
+		claim Claims
+		want  error
+	}{
+		{
+			"no claims",
+			Claims{},
+			nil,
+		},
+		{
+			"fail nbf",
+			Claims{NotBefore: NewNumericDate(time.Now())},
+			ErrNotValidYet,
+		},
+		{
+			"fail exp",
+			Claims{Expiry: NewNumericDate(epoch.Add(-7 * 24 * time.Hour))},
+			ErrExpired,
+		},
+		{
+			"fail iat",
+			Claims{IssuedAt: NewNumericDate(time.Now())},
+			ErrIssuedInTheFuture,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			expect := Expected{}.WithTime(epoch.Add(-24 * time.Hour))
+			err := tc.claim.Validate(expect)
+			assert.Equal(t, tc.want, err)
+		})
+	}
+}
