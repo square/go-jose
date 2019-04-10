@@ -29,6 +29,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/ed25519"
 
 	"gopkg.in/square/go-jose.v2/json"
@@ -558,6 +559,20 @@ func TestWebKeyVectorsValid(t *testing.T) {
 			t.Error("unable to parse valid key:", key, err)
 		}
 	}
+}
+
+func TestEd25519Serialization(t *testing.T) {
+	jwk := JSONWebKey{
+		Key: ed25519PrivateKey,
+	}
+	serialized, _ := json.Marshal(jwk)
+
+	var jwk2 JSONWebKey
+	json.Unmarshal(serialized, &jwk2)
+
+	assert.True(t, bytes.Equal(
+		[]byte(jwk.Key.(ed25519.PrivateKey).Public().(ed25519.PublicKey)),
+		[]byte(jwk2.Key.(ed25519.PrivateKey).Public().(ed25519.PublicKey))))
 }
 
 func TestThumbprint(t *testing.T) {
