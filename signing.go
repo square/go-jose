@@ -233,7 +233,10 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 			if ctx.embedJWK {
 				protected[headerJWK] = recipient.publicKey()
 			} else {
-				protected[headerKeyID] = recipient.publicKey().KeyID
+				keyID := recipient.publicKey().KeyID
+				if keyID != "" {
+					protected[headerKeyID] = keyID
+				}
 			}
 		}
 
