@@ -521,3 +521,41 @@ func TestSignerExtraHeaderInclusion(t *testing.T) {
 		t.Errorf("Mismatch in extra headers: %#v", object.Signatures[0].Header.ExtraHeaders)
 	}
 }
+
+func TestSignerB64(t *testing.T) {
+	signingKey, verificationKey := GenerateSigningTestKey(RS256)
+
+	opts := &SignerOptions{
+		ExtraHeaders: map[HeaderKey]interface{}{
+			"b64": false,
+		},
+	}
+
+	signer, err := NewSigner(SigningKey{Algorithm: RS256, Key: signingKey}, opts)
+	if err != nil {
+		t.Error("Failed to create signer")
+	}
+
+	input := []byte("Lorem ipsum dolor sit amet")
+
+	obj, err := signer.Sign(input)
+	if err != nil {
+		t.Error("Failed to sign first payload")
+	}
+
+	msg := obj.FullSerialize()
+
+	parsed, err := ParseSigned(msg)
+	if err != nil {
+		t.Errorf("Error on parse: %s", err)
+	}
+
+	output, err := parsed.Verify(verificationKey)
+	if err != nil {
+		t.Errorf("Error on verify: %s", err)
+	}
+
+	if bytes.Compare(output, input) != 0 {
+		t.Errorf("Input/output do not match, got '%s', expected '%s'", output, input)
+	}
+}

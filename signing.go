@@ -17,6 +17,7 @@
 package jose
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"encoding/base64"
@@ -254,11 +255,27 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 
 		serializedProtected := mustSerializeJSON(protected)
 
-		input := []byte(fmt.Sprintf("%s.%s",
-			base64.RawURLEncoding.EncodeToString(serializedProtected),
-			base64.RawURLEncoding.EncodeToString(payload)))
+		var (
+			enc   bool = true
+			input bytes.Buffer
+		)
 
-		signatureInfo, err := recipient.signer.signPayload(input, recipient.sigAlg)
+		input.WriteString(base64.RawURLEncoding.EncodeToString(serializedProtected))
+		input.WriteByte('.')
+
+		if b64, ok := protected[headerB64]; ok {
+			if enc, ok = b64.(bool); !ok {
+				return nil, errors.New("square/go-jose: Invalid b64 header parameter")
+			}
+		}
+
+		if enc {
+			input.WriteString(base64.RawURLEncoding.EncodeToString(payload))
+		} else {
+			input.Write(payload)
+		}
+
+		signatureInfo, err := recipient.signer.signPayload(input.Bytes(), recipient.sigAlg)
 		if err != nil {
 			return nil, err
 		}
