@@ -255,13 +255,12 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 
 		serializedProtected := mustSerializeJSON(protected)
 
-		var (
-			enc   bool = true
-			input bytes.Buffer
-		)
+		var input bytes.Buffer
 
 		input.WriteString(base64.RawURLEncoding.EncodeToString(serializedProtected))
 		input.WriteByte('.')
+
+		enc := true
 
 		if b64, ok := protected[headerB64]; ok {
 			if enc, ok = b64.(bool); !ok {

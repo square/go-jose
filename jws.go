@@ -95,15 +95,12 @@ func (sig Signature) mergedHeaders() rawHeader {
 
 // Compute data to be signed
 func (obj JSONWebSignature) computeAuthData(payload []byte, signature *Signature) []byte {
-	var (
-		buf bytes.Buffer
-		enc = true
-		err error
-		pro = new(rawHeader)
-	)
+	var buf bytes.Buffer
+
+	pro := new(rawHeader)
 
 	if signature.original != nil && signature.original.Protected != nil {
-		if err = json.Unmarshal(signature.original.Protected.bytes(), pro); err != nil {
+		if err := json.Unmarshal(signature.original.Protected.bytes(), pro); err != nil {
 			panic(err)
 		}
 		buf.WriteString(signature.original.Protected.base64())
@@ -112,7 +109,10 @@ func (obj JSONWebSignature) computeAuthData(payload []byte, signature *Signature
 		buf.WriteString(base64.RawURLEncoding.EncodeToString(mustSerializeJSON(pro)))
 	}
 
+	enc := true
+
 	if pro != nil {
+		var err error
 		if enc, err = pro.getB64(); err != nil {
 			enc = true
 		}

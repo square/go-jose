@@ -540,12 +540,10 @@ func TestSignerB64(t *testing.T) {
 
 	obj, err := signer.Sign(input)
 	if err != nil {
-		t.Error("Failed to sign first payload")
+		t.Error("Failed to sign payload")
 	}
 
-	msg := obj.FullSerialize()
-
-	parsed, err := ParseSigned(msg)
+	parsed, err := ParseSigned(obj.FullSerialize())
 	if err != nil {
 		t.Errorf("Error on parse: %s", err)
 	}
