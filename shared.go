@@ -160,6 +160,11 @@ const (
 
 )
 
+// supportedCritical is the set of supported extensions that are understood and processed.
+var supportedCritical = map[string]bool{
+	headerB64: true,
+}
+
 // rawHeader represents the JOSE header for JWE/JWS objects (used for parsing).
 //
 // The decoding of the constituent items is deferred because we want to marshal

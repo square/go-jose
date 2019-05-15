@@ -95,38 +95,38 @@ func (sig Signature) mergedHeaders() rawHeader {
 
 // Compute data to be signed
 func (obj JSONWebSignature) computeAuthData(payload []byte, signature *Signature) []byte {
-	var buf bytes.Buffer
+	var authData bytes.Buffer
 
-	pro := new(rawHeader)
+	protectedHeader := new(rawHeader)
 
 	if signature.original != nil && signature.original.Protected != nil {
-		if err := json.Unmarshal(signature.original.Protected.bytes(), pro); err != nil {
+		if err := json.Unmarshal(signature.original.Protected.bytes(), protectedHeader); err != nil {
 			panic(err)
 		}
-		buf.WriteString(signature.original.Protected.base64())
+		authData.WriteString(signature.original.Protected.base64())
 	} else if signature.protected != nil {
-		pro = signature.protected
-		buf.WriteString(base64.RawURLEncoding.EncodeToString(mustSerializeJSON(pro)))
+		protectedHeader = signature.protected
+		authData.WriteString(base64.RawURLEncoding.EncodeToString(mustSerializeJSON(protectedHeader)))
 	}
 
-	enc := true
+	needsBase64 := true
 
-	if pro != nil {
+	if protectedHeader != nil {
 		var err error
-		if enc, err = pro.getB64(); err != nil {
-			enc = true
+		if needsBase64, err = protectedHeader.getB64(); err != nil {
+			needsBase64 = true
 		}
 	}
 
-	buf.WriteByte('.')
+	authData.WriteByte('.')
 
-	if enc {
-		buf.WriteString(base64.RawURLEncoding.EncodeToString(payload))
+	if needsBase64 {
+		authData.WriteString(base64.RawURLEncoding.EncodeToString(payload))
 	} else {
-		buf.Write(payload)
+		authData.Write(payload)
 	}
 
-	return buf.Bytes()
+	return authData.Bytes()
 }
 
 // parseSignedFull parses a message in full format.
