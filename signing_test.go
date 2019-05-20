@@ -521,3 +521,52 @@ func TestSignerExtraHeaderInclusion(t *testing.T) {
 		t.Errorf("Mismatch in extra headers: %#v", object.Signatures[0].Header.ExtraHeaders)
 	}
 }
+
+func TestSignerB64(t *testing.T) {
+	const exp = "eyJhbGciOiJIUzI1NiIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19.JC4wMg.A5dxf2s96_n5FLueVuW1Z_vh161FwXZC4YLPff6dmDY"
+
+	key := []byte{
+		0x03, 0x23, 0x35, 0x4b, 0x2b, 0x0f, 0xa5, 0xbc, 0x83, 0x7e, 0x06, 0x65, 0x77, 0x7b, 0xa6, 0x8f,
+		0x5a, 0xb3, 0x28, 0xe6, 0xf0, 0x54, 0xc9, 0x28, 0xa9, 0x0f, 0x84, 0xb2, 0xd2, 0x50, 0x2e, 0xbf,
+		0xd3, 0xfb, 0x5a, 0x92, 0xd2, 0x06, 0x47, 0xef, 0x96, 0x8a, 0xb4, 0xc3, 0x77, 0x62, 0x3d, 0x22,
+		0x3d, 0x2e, 0x21, 0x72, 0x05, 0x2e, 0x4f, 0x08, 0xc0, 0xcd, 0x9a, 0xf5, 0x67, 0xd0, 0x80, 0xa3,
+	}
+
+	opts := new(SignerOptions)
+	opts.WithBase64(false)
+
+	signer, err := NewSigner(SigningKey{Algorithm: HS256, Key: key}, opts)
+	if err != nil {
+		t.Error("Failed to create signer")
+	}
+
+	input := []byte("$.02")
+
+	obj, err := signer.Sign(input)
+	if err != nil {
+		t.Error("Failed to sign payload")
+	}
+
+	msg, err := obj.CompactSerialize()
+	if err != nil {
+		t.Error("Failed to serialize")
+	}
+
+	if msg != exp {
+		t.Errorf("Invalid serialization, got '%s', expected '%s'", msg, exp)
+	}
+
+	parsed, err := ParseSigned(msg)
+	if err != nil {
+		t.Errorf("Error on parse: %s", err)
+	}
+
+	output, err := parsed.Verify(key)
+	if err != nil {
+		t.Errorf("Error on verify: %s", err)
+	}
+
+	if bytes.Compare(output, input) != 0 {
+		t.Errorf("Input/output do not match, got '%s', expected '%s'", output, input)
+	}
+}

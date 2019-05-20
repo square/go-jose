@@ -17,6 +17,7 @@
 package jose
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -94,19 +95,38 @@ func (sig Signature) mergedHeaders() rawHeader {
 
 // Compute data to be signed
 func (obj JSONWebSignature) computeAuthData(payload []byte, signature *Signature) []byte {
-	var serializedProtected string
+	var authData bytes.Buffer
+
+	protectedHeader := new(rawHeader)
 
 	if signature.original != nil && signature.original.Protected != nil {
-		serializedProtected = signature.original.Protected.base64()
+		if err := json.Unmarshal(signature.original.Protected.bytes(), protectedHeader); err != nil {
+			panic(err)
+		}
+		authData.WriteString(signature.original.Protected.base64())
 	} else if signature.protected != nil {
-		serializedProtected = base64.RawURLEncoding.EncodeToString(mustSerializeJSON(signature.protected))
-	} else {
-		serializedProtected = ""
+		protectedHeader = signature.protected
+		authData.WriteString(base64.RawURLEncoding.EncodeToString(mustSerializeJSON(protectedHeader)))
 	}
 
-	return []byte(fmt.Sprintf("%s.%s",
-		serializedProtected,
-		base64.RawURLEncoding.EncodeToString(payload)))
+	needsBase64 := true
+
+	if protectedHeader != nil {
+		var err error
+		if needsBase64, err = protectedHeader.getB64(); err != nil {
+			needsBase64 = true
+		}
+	}
+
+	authData.WriteByte('.')
+
+	if needsBase64 {
+		authData.WriteString(base64.RawURLEncoding.EncodeToString(payload))
+	} else {
+		authData.Write(payload)
+	}
+
+	return authData.Bytes()
 }
 
 // parseSignedFull parses a message in full format.
