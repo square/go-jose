@@ -82,7 +82,12 @@ func ParseSigned(input string) (*JSONWebSignature, error) {
 		return parseSignedFull(input)
 	}
 
-	return parseSignedCompact(input)
+	return parseSignedCompact(input, nil)
+}
+
+// ParseDetached parses a signed message in compact serialization format with detached payload.
+func ParseDetached(input string, payload []byte) (*JSONWebSignature, error) {
+	return parseSignedCompact(stripWhitespace(input), payload)
 }
 
 // Get a header value
@@ -266,10 +271,14 @@ func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
 }
 
 // parseSignedCompact parses a message in compact format.
-func parseSignedCompact(input string) (*JSONWebSignature, error) {
+func parseSignedCompact(input string, payload []byte) (*JSONWebSignature, error) {
 	parts := strings.Split(input, ".")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("square/go-jose: compact JWS format must have three parts")
+	}
+
+	if parts[1] != "" && payload != nil {
+		return nil, fmt.Errorf("square/go-jose: payload is not detached")
 	}
 
 	rawProtected, err := base64.RawURLEncoding.DecodeString(parts[0])
@@ -277,9 +286,11 @@ func parseSignedCompact(input string) (*JSONWebSignature, error) {
 		return nil, err
 	}
 
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, err
+	if payload == nil {
+		payload, err = base64.RawURLEncoding.DecodeString(parts[1])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
@@ -295,19 +306,30 @@ func parseSignedCompact(input string) (*JSONWebSignature, error) {
 	return raw.sanitized()
 }
 
-// CompactSerialize serializes an object using the compact serialization format.
-func (obj JSONWebSignature) CompactSerialize() (string, error) {
+func (obj JSONWebSignature) compactSerialize(detached bool) (string, error) {
 	if len(obj.Signatures) != 1 || obj.Signatures[0].header != nil || obj.Signatures[0].protected == nil {
 		return "", ErrNotSupported
 	}
 
-	serializedProtected := mustSerializeJSON(obj.Signatures[0].protected)
+	serializedProtected := base64.RawURLEncoding.EncodeToString(mustSerializeJSON(obj.Signatures[0].protected))
+	payload := ""
+	signature := base64.RawURLEncoding.EncodeToString(obj.Signatures[0].Signature)
 
-	return fmt.Sprintf(
-		"%s.%s.%s",
-		base64.RawURLEncoding.EncodeToString(serializedProtected),
-		base64.RawURLEncoding.EncodeToString(obj.payload),
-		base64.RawURLEncoding.EncodeToString(obj.Signatures[0].Signature)), nil
+	if !detached {
+		payload = base64.RawURLEncoding.EncodeToString(obj.payload)
+	}
+
+	return fmt.Sprintf("%s.%s.%s", serializedProtected, payload, signature), nil
+}
+
+// CompactSerialize serializes an object using the compact serialization format.
+func (obj JSONWebSignature) CompactSerialize() (string, error) {
+	return obj.compactSerialize(false)
+}
+
+// DetachedCompactSerialize serializes an object using the compact serialization format with detached payload.
+func (obj JSONWebSignature) DetachedCompactSerialize() (string, error) {
+	return obj.compactSerialize(true)
 }
 
 // FullSerialize serializes an object using the full JSON serialization format.

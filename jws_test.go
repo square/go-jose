@@ -614,3 +614,36 @@ func TestJWSWithCertificateChain(t *testing.T) {
 		}
 	}
 }
+
+func TestDetachedCompactSerialization(t *testing.T) {
+	msg := "eyJhbGciOiJSUzI1NiJ9.JC4wMg.W5tc_EUhxexcvLYEEOckyyvdb__M5DQIVpg6Nmk1XGM"
+	exp := "eyJhbGciOiJSUzI1NiJ9..W5tc_EUhxexcvLYEEOckyyvdb__M5DQIVpg6Nmk1XGM"
+
+	obj, err := ParseSigned(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ser, err := obj.DetachedCompactSerialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ser != exp {
+		t.Fatalf("got '%s', expected '%s'", ser, exp)
+	}
+
+	obj, err = ParseDetached(ser, []byte("$.02"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ser, err = obj.CompactSerialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ser != msg {
+		t.Fatalf("got '%s', expected '%s'", ser, msg)
+	}
+}
