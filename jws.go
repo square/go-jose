@@ -76,18 +76,21 @@ type Signature struct {
 }
 
 // ParseSigned parses a signed message in compact or full serialization format.
-func ParseSigned(input string) (*JSONWebSignature, error) {
-	input = stripWhitespace(input)
-	if strings.HasPrefix(input, "{") {
-		return parseSignedFull(input)
+func ParseSigned(signature string) (*JSONWebSignature, error) {
+	signature = stripWhitespace(signature)
+	if strings.HasPrefix(signature, "{") {
+		return parseSignedFull(signature)
 	}
 
-	return parseSignedCompact(input, nil)
+	return parseSignedCompact(signature, nil)
 }
 
 // ParseDetached parses a signed message in compact serialization format with detached payload.
-func ParseDetached(input string, payload []byte) (*JSONWebSignature, error) {
-	return parseSignedCompact(stripWhitespace(input), payload)
+func ParseDetached(signature string, payload []byte) (*JSONWebSignature, error) {
+	if payload == nil {
+		return nil, errors.New("square/go-jose: nil payload")
+	}
+	return parseSignedCompact(stripWhitespace(signature), payload)
 }
 
 // Get a header value
