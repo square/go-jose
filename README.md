@@ -1,7 +1,7 @@
 # Go JOSE 
 
-[![godoc](http://img.shields.io/badge/godoc-version_1-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v1)
-[![godoc](http://img.shields.io/badge/godoc-version_2-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
+[![godoc](http://img.shields.io/badge/godoc-main-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
+[![godoc](http://img.shields.io/badge/godoc-jwt-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2/jwt)
 [![license](http://img.shields.io/badge/license-apache_2.0-blue.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE)
 [![build](https://travis-ci.org/square/go-jose.svg?branch=v2)](https://travis-ci.org/square/go-jose)
 [![coverage](https://coveralls.io/repos/github/square/go-jose/badge.svg?branch=v2)](https://coveralls.io/r/square/go-jose)
@@ -38,20 +38,23 @@ libraries in other languages.
 
 ### Versions
 
-We use [gopkg.in](https://gopkg.in) for versioning.
-
 [Version 2](https://gopkg.in/square/go-jose.v2)
 ([branch](https://github.com/square/go-jose/tree/v2),
-[doc](https://godoc.org/gopkg.in/square/go-jose.v2)) is the current version:
+[doc](https://godoc.org/gopkg.in/square/go-jose.v2)) is the current stable version:
 
     import "gopkg.in/square/go-jose.v2"
 
-The old `v1` branch ([go-jose.v1](https://gopkg.in/square/go-jose.v1)) will
-still receive backported bug fixes and security fixes, but otherwise
-development is frozen. All new feature development takes place on the `v2`
-branch. Version 2 also contains additional sub-packages such as the
-[jwt](https://godoc.org/gopkg.in/square/go-jose.v2/jwt) implementation
-contributed by [@shaxbee](https://github.com/shaxbee).
+[Version 3](https://github.com/square/go-jose)
+([branch](https://github.com/square/go-jose/tree/master),
+[doc](https://godoc.org/github.com/square/go-jose)) is the under development/unstable version:
+
+    import "github.com/square/go-jose/v3"
+
+All new feature development takes place on the `master` branch, which we are
+preparing to release as version 3 soon. Note that starting with version 3 we
+are using Go modules for versioning instead of `gopkg.in` as before.
+
+Version 1 (on the `v1` branch) is frozen and not supported anymore.
 
 ### Supported algorithms
 
