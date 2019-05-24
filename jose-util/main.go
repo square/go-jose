@@ -17,36 +17,48 @@
 package main
 
 import (
+	"bufio"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
-	"gopkg.in/alecthomas/kingpin.v2"
-	"github.com/square/go-jose"
+	jose "github.com/square/go-jose"
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	app = kingpin.New("jose-util", "A command-line utility for dealing with JOSE objects.")
+	app = kingpin.New("jose-util", "A command-line utility for dealing with JOSE objects")
 
+	// Util-wide flags
 	keyFile = app.Flag("key", "Path to key file (PEM or DER-encoded)").ExistingFile()
 	inFile  = app.Flag("in", "Path to input file (stdin if missing)").ExistingFile()
 	outFile = app.Flag("out", "Path to output file (stdout if missing)").ExistingFile()
 
-	encryptCommand = app.Command("encrypt", "Encrypt a plaintext, output ciphertext.")
-	algFlag        = encryptCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
-	encFlag        = encryptCommand.Flag("enc", "Content encryption algorithm (e.g. A128GCM)").Required().String()
+	// Encrypt
+	encCommand  = app.Command("encrypt", "Encrypt a plaintext, output ciphertext")
+	encAlgFlag  = encCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
+	encFlag     = encCommand.Flag("enc", "Content encryption algorithm (e.g. A128GCM)").Required().String()
+	encFullFlag = encCommand.Flag("full", "Use full serialization format (instead of compact)").Bool()
 
-	decryptCommand = app.Command("decrypt", "Decrypt a ciphertext, output plaintext.")
+	// Decrypt
+	decryptCommand = app.Command("decrypt", "Decrypt a ciphertext, output plaintext")
 
-	signCommand = app.Command("sign", "Sign a payload, output signed message.")
-	sigAlgFlag  = signCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
+	// Sign
+	signCommand  = app.Command("sign", "Sign a payload, output signed message")
+	signAlgFlag  = signCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
+	signFullFlag = signCommand.Flag("full", "Use full serialization format (instead of compact)").Bool()
 
-	verifyCommand = app.Command("verify", "Verify a signed message, output payload.")
+	// Verify
+	verifyCommand = app.Command("verify", "Verify a signed message, output payload")
 
-	expandCommand = app.Command("expand", "Expand JOSE object to full serialization format.")
-	formatFlag    = expandCommand.Flag("format", "Type of message to expand (JWS or JWE, defaults to JWE)").String()
+	// Expand
+	expandCommand    = app.Command("expand", "Expand JOSE object to full serialization format")
+	expandFormatFlag = expandCommand.Flag("format", "Type of message to expand (JWS or JWE, defaults to JWE)").String()
 
-	full = app.Flag("full", "Use full serialization format (instead of compact)").Bool()
+	// Base64-decode
+	b64DecodeCommand = app.Command("b64decode", "Decode a base64-encoded payload (auto-selects standard/url-safe)")
 )
 
 func main() {
@@ -66,7 +78,7 @@ func main() {
 		pub, err := LoadPublicKey(keyBytes)
 		exitOnError(err, "unable to read public key")
 
-		alg := jose.KeyAlgorithm(*algFlag)
+		alg := jose.KeyAlgorithm(*encAlgFlag)
 		enc := jose.ContentEncryption(*encFlag)
 
 		crypter, err := jose.NewEncrypter(enc, jose.Recipient{Algorithm: alg, Key: pub}, nil)
@@ -76,7 +88,7 @@ func main() {
 		exitOnError(err, "unable to encrypt")
 
 		var msg string
-		if *full {
+		if *encFullFlag {
 			msg = obj.FullSerialize()
 		} else {
 			msg, err = obj.CompactSerialize()
@@ -99,7 +111,7 @@ func main() {
 		signingKey, err := LoadPrivateKey(keyBytes)
 		exitOnError(err, "unable to read private key")
 
-		alg := jose.SignatureAlgorithm(*sigAlgFlag)
+		alg := jose.SignatureAlgorithm(*signAlgFlag)
 		signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: signingKey}, nil)
 		exitOnError(err, "unable to make signer")
 
@@ -107,7 +119,7 @@ func main() {
 		exitOnError(err, "unable to sign")
 
 		var msg string
-		if *full {
+		if *signFullFlag {
 			msg = obj.FullSerialize()
 		} else {
 			msg, err = obj.CompactSerialize()
@@ -131,7 +143,7 @@ func main() {
 
 		var serialized string
 		var err error
-		switch *formatFlag {
+		switch *expandFormatFlag {
 		case "", "JWE":
 			var jwe *jose.JSONWebEncryption
 			jwe, err = jose.ParseEncrypted(input)
@@ -149,6 +161,12 @@ func main() {
 		exitOnError(err, "unable to expand message")
 		writeOutput(*outFile, []byte(serialized))
 		writeOutput(*outFile, []byte("\n"))
+	case "b64decode":
+		in := bufio.NewReader(inputStream(*inFile))
+		io.Copy(outputStream(*outFile), base64.NewDecoder(base64.RawStdEncoding, in))
+	default:
+		fmt.Fprintf(os.Stderr, "invalid command: %s\n", command)
+		os.Exit(1)
 	}
 }
 
@@ -175,6 +193,21 @@ func readInput(path string) []byte {
 	return bytes
 }
 
+// Get input stream from file or stdin
+func inputStream(path string) *os.File {
+	var file *os.File
+	var err error
+
+	if path != "" {
+		file, err = os.Open(path)
+	} else {
+		file = os.Stdin
+	}
+
+	exitOnError(err, "unable to read input")
+	return file
+}
+
 // Write output to file or stdin
 func writeOutput(path string, data []byte) {
 	var err error
@@ -186,4 +219,19 @@ func writeOutput(path string, data []byte) {
 	}
 
 	exitOnError(err, "unable to write output")
+}
+
+// Get output stream for file or stdout
+func outputStream(path string) *os.File {
+	var file *os.File
+	var err error
+
+	if path != "" {
+		file, err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	} else {
+		file = os.Stdout
+	}
+
+	exitOnError(err, "unable to write output")
+	return file
 }
