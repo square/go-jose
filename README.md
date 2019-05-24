@@ -3,8 +3,8 @@
 [![godoc](http://img.shields.io/badge/godoc-jose_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
 [![godoc](http://img.shields.io/badge/godoc-jwt_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2/jwt)
 [![license](http://img.shields.io/badge/license-apache_2.0-blue.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE)
-[![build](https://travis-ci.org/square/go-jose.svg?branch=v2)](https://travis-ci.org/square/go-jose)
-[![coverage](https://coveralls.io/repos/github/square/go-jose/badge.svg?branch=v2)](https://coveralls.io/r/square/go-jose)
+[![build](https://travis-ci.org/square/go-jose.svg?branch=master)](https://travis-ci.org/square/go-jose)
+[![coverage](https://coveralls.io/repos/github/square/go-jose/badge.svg?branch=master)](https://coveralls.io/r/square/go-jose)
 
 Package jose aims to provide an implementation of the Javascript Object Signing
 and Encryption set of standards. This includes support for JSON Web Encryption,
@@ -27,7 +27,7 @@ The implementation follows the
 Tables of supported algorithms are shown below. The library supports both
 the compact and full serialization formats, and has optional support for
 multiple recipients. It also comes with a small command-line utility
-([`jose-util`](https://github.com/square/go-jose/tree/v2/jose-util))
+([`jose-util`](https://github.com/square/go-jose/tree/master/jose-util))
 for dealing with JOSE messages in a shell.
 
 **Note**: We use a forked version of the `encoding/json` package from the Go
