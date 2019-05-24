@@ -1,5 +1,5 @@
 /*-
- * Copyright 2014 Square Inc.
+ * Copyright 2019 Square Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 
 	jose "github.com/square/go-jose"
 )
@@ -100,38 +99,4 @@ func LoadPrivateKey(data []byte) (interface{}, error) {
 	}
 
 	return nil, fmt.Errorf("square/go-jose: parse error, got '%s', '%s', '%s' and '%s'", err0, err1, err2, err3)
-}
-
-// Base64Reader wraps an input stream consisting of either standard or url-safe
-// base64 data, and maps it to a raw (unpadded) standard encoding. This can be used
-// to read any base64-encoded data as input, whether padded, unpadded, standard or
-// url-safe.
-type Base64Reader struct {
-	in io.Reader
-}
-
-func (r Base64Reader) Read(p []byte) (n int, err error) {
-	n, err = r.in.Read(p)
-
-	for i := 0; i < n; i++ {
-		switch p[i] {
-		// Map - to +
-		case 0x2D:
-			p[i] = 0x2B
-		// Map _ to /
-		case 0x5F:
-			p[i] = 0x2F
-		// Strip =
-		case 0x3D:
-			n = i
-			break
-		default:
-		}
-	}
-
-	if n == 0 {
-		err = io.EOF
-	}
-
-	return
 }
