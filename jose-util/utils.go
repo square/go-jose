@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"fmt"
 
 	jose "github.com/square/go-jose"
 )
@@ -65,7 +64,7 @@ func LoadPublicKey(data []byte) (interface{}, error) {
 		return jwk, nil
 	}
 
-	return nil, fmt.Errorf("square/go-jose: parse error, got '%s', '%s' and '%s'", err0, err1, err2)
+	return nil, errors.New("parse error, invalid public key")
 }
 
 // LoadPrivateKey loads a private key from PEM/DER/JWK-encoded data.
@@ -98,5 +97,5 @@ func LoadPrivateKey(data []byte) (interface{}, error) {
 		return jwk, nil
 	}
 
-	return nil, fmt.Errorf("square/go-jose: parse error, got '%s', '%s', '%s' and '%s'", err0, err1, err2, err3)
+	return nil, errors.New("parse error, invalid private key")
 }

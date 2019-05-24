@@ -31,7 +31,7 @@ var (
 	app = kingpin.New("jose-util", "A command-line utility for dealing with JOSE objects")
 
 	// Util-wide flags
-	keyFile = app.Flag("key", "Path to key file (if applicable, PEM or DER-encoded)").ExistingFile()
+	keyFile = app.Flag("key", "Path to key file (if applicable, PEM, DER or JWK format)").ExistingFile()
 	inFile  = app.Flag("in", "Path to input file (if applicable, stdin if missing)").ExistingFile()
 	outFile = app.Flag("out", "Path to output file (if applicable, stdout if missing)").ExistingFile()
 
