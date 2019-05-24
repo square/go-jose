@@ -1,7 +1,7 @@
 # Go JOSE 
 
-[![godoc](http://img.shields.io/badge/godoc-main-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
-[![godoc](http://img.shields.io/badge/godoc-jwt-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2/jwt)
+[![godoc](http://img.shields.io/badge/godoc-jose_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
+[![godoc](http://img.shields.io/badge/godoc-jwt_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2/jwt)
 [![license](http://img.shields.io/badge/license-apache_2.0-blue.svg?style=flat)](https://raw.githubusercontent.com/square/go-jose/master/LICENSE)
 [![build](https://travis-ci.org/square/go-jose.svg?branch=v2)](https://travis-ci.org/square/go-jose)
 [![coverage](https://coveralls.io/repos/github/square/go-jose/badge.svg?branch=v2)](https://coveralls.io/r/square/go-jose)
@@ -46,13 +46,14 @@ libraries in other languages.
 
 [Version 3](https://github.com/square/go-jose)
 ([branch](https://github.com/square/go-jose/tree/master),
-[doc](https://godoc.org/github.com/square/go-jose)) is the under development/unstable version:
+[doc](https://godoc.org/github.com/square/go-jose)) is the under development/unstable version (not released yet):
 
     import "github.com/square/go-jose/v3"
 
 All new feature development takes place on the `master` branch, which we are
-preparing to release as version 3 soon. Note that starting with version 3 we
-are using Go modules for versioning instead of `gopkg.in` as before.
+preparing to release as version 3 soon. Version 2 will continue to receive
+critical bug and security fixes. Note that starting with version 3 we are
+using Go modules for versioning instead of `gopkg.in` as before.
 
 Version 1 (on the `v1` branch) is frozen and not supported anymore.
 
@@ -107,15 +108,15 @@ allows attaching a key id.
  EdDSA<sup>1</sup>          | [ed25519.PublicKey](https://godoc.org/golang.org/x/crypto/ed25519#PublicKey), [ed25519.PrivateKey](https://godoc.org/golang.org/x/crypto/ed25519#PrivateKey)
  AES, HMAC                  | []byte
 
-<sup>1. Only available in version 2 of the package</sup>
+<sup>1. Only available in version 2 or later of the package</sup>
 
 ## Examples
 
-[![godoc](http://img.shields.io/badge/godoc-version_1-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v1)
-[![godoc](http://img.shields.io/badge/godoc-version_2-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
+[![godoc](http://img.shields.io/badge/godoc-jose_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
+[![godoc](http://img.shields.io/badge/godoc-jwt_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2/jwt)
 
 Examples can be found in the Godoc
 reference for this package. The
-[`jose-util`](https://github.com/square/go-jose/tree/v2/jose-util)
+[`jose-util`](https://github.com/square/go-jose/tree/master/jose-util)
 subdirectory also contains a small command-line utility which might be useful
-as an example.
+as an example as well.
