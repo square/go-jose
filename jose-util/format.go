@@ -38,7 +38,7 @@ func expand() {
 		}
 	}
 
-	exitOnError(err, "unable to expand message")
+	app.FatalIfError(err, "unable to expand message")
 	writeOutput(*outFile, []byte(serialized))
 	writeOutput(*outFile, []byte("\n"))
 }

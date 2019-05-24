@@ -20,23 +20,23 @@ import jose "github.com/square/go-jose"
 
 func encrypt() {
 	pub, err := LoadPublicKey(keyBytes())
-	exitOnError(err, "unable to read public key")
+	app.FatalIfError(err, "unable to read public key")
 
 	alg := jose.KeyAlgorithm(*encryptAlgFlag)
 	enc := jose.ContentEncryption(*encryptEncFlag)
 
 	crypter, err := jose.NewEncrypter(enc, jose.Recipient{Algorithm: alg, Key: pub}, nil)
-	exitOnError(err, "unable to instantiate encrypter")
+	app.FatalIfError(err, "unable to instantiate encrypter")
 
 	obj, err := crypter.Encrypt(readInput(*inFile))
-	exitOnError(err, "unable to encrypt")
+	app.FatalIfError(err, "unable to encrypt")
 
 	var msg string
 	if *encryptFullFlag {
 		msg = obj.FullSerialize()
 	} else {
 		msg, err = obj.CompactSerialize()
-		exitOnError(err, "unable to serialize message")
+		app.FatalIfError(err, "unable to serialize message")
 	}
 
 	writeOutput(*outFile, []byte(msg))
@@ -44,34 +44,34 @@ func encrypt() {
 
 func decrypt() {
 	priv, err := LoadPrivateKey(keyBytes())
-	exitOnError(err, "unable to read private key")
+	app.FatalIfError(err, "unable to read private key")
 
 	obj, err := jose.ParseEncrypted(string(readInput(*inFile)))
-	exitOnError(err, "unable to parse message")
+	app.FatalIfError(err, "unable to parse message")
 
 	plaintext, err := obj.Decrypt(priv)
-	exitOnError(err, "unable to decrypt message")
+	app.FatalIfError(err, "unable to decrypt message")
 
 	writeOutput(*outFile, plaintext)
 }
 
 func sign() {
 	signingKey, err := LoadPrivateKey(keyBytes())
-	exitOnError(err, "unable to read private key")
+	app.FatalIfError(err, "unable to read private key")
 
 	alg := jose.SignatureAlgorithm(*signAlgFlag)
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: signingKey}, nil)
-	exitOnError(err, "unable to make signer")
+	app.FatalIfError(err, "unable to make signer")
 
 	obj, err := signer.Sign(readInput(*inFile))
-	exitOnError(err, "unable to sign")
+	app.FatalIfError(err, "unable to sign")
 
 	var msg string
 	if *signFullFlag {
 		msg = obj.FullSerialize()
 	} else {
 		msg, err = obj.CompactSerialize()
-		exitOnError(err, "unable to serialize message")
+		app.FatalIfError(err, "unable to serialize message")
 	}
 
 	writeOutput(*outFile, []byte(msg))
@@ -79,13 +79,13 @@ func sign() {
 
 func verify() {
 	verificationKey, err := LoadPublicKey(keyBytes())
-	exitOnError(err, "unable to read public key")
+	app.FatalIfError(err, "unable to read public key")
 
 	obj, err := jose.ParseSigned(string(readInput(*inFile)))
-	exitOnError(err, "unable to parse message")
+	app.FatalIfError(err, "unable to parse message")
 
 	plaintext, err := obj.Verify(verificationKey)
-	exitOnError(err, "invalid signature")
+	app.FatalIfError(err, "invalid signature")
 
 	writeOutput(*outFile, plaintext)
 }

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 )
@@ -32,7 +33,7 @@ func readInput(path string) []byte {
 		bytes, err = ioutil.ReadAll(os.Stdin)
 	}
 
-	exitOnError(err, "unable to read input")
+	app.FatalIfError(err, "unable to read input")
 	return bytes
 }
 
@@ -47,7 +48,7 @@ func inputStream(path string) *os.File {
 		file = os.Stdin
 	}
 
-	exitOnError(err, "unable to read input")
+	app.FatalIfError(err, "unable to read input")
 	return file
 }
 
@@ -61,7 +62,7 @@ func writeOutput(path string, data []byte) {
 		_, err = os.Stdout.Write(data)
 	}
 
-	exitOnError(err, "unable to write output")
+	app.FatalIfError(err, "unable to write output")
 }
 
 // Get output stream for file or stdout
@@ -75,12 +76,29 @@ func outputStream(path string) *os.File {
 		file = os.Stdout
 	}
 
-	exitOnError(err, "unable to write output")
+	app.FatalIfError(err, "unable to write output")
 	return file
 }
 
+// Byte contents of key file
 func keyBytes() []byte {
 	keyBytes, err := ioutil.ReadFile(*keyFile)
-	exitOnError(err, "unable to read key file")
+	app.FatalIfError(err, "unable to read key file")
 	return keyBytes
+}
+
+// Write new file to current dir
+func writeNewFile(filename string, data []byte, perm os.FileMode) error {
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+	if err != nil {
+		return err
+	}
+	n, err := f.Write(data)
+	if err == nil && n < len(data) {
+		err = io.ErrShortWrite
+	}
+	if err1 := f.Close(); err == nil {
+		err = err1
+	}
+	return err
 }

@@ -1,4 +1,4 @@
-Set up test keys.
+Set up static test keys.
 
   $ cat > rsa.pub <<EOF
   > -----BEGIN PUBLIC KEY-----
@@ -92,6 +92,16 @@ Expand a compact message to full format.
   $ echo "eyJhbGciOiJFUzM4NCJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQK.QPU35XY913Im7ZEaN2yHykfbtPqjHZvYp-lV8OcTAJZs67bJFSdTSkQhQWE9ch6tvYrj_7py6HKaWVFLll_s_Rm6bmwq3JszsHrIvFFm1NydruYHhvAnx7rjYiqwOu0W" |
   > jose-util expand --format JWS
   {"payload":"TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQK","protected":"eyJhbGciOiJFUzM4NCJ9","signature":"QPU35XY913Im7ZEaN2yHykfbtPqjHZvYp-lV8OcTAJZs67bJFSdTSkQhQWE9ch6tvYrj_7py6HKaWVFLll_s_Rm6bmwq3JszsHrIvFFm1NydruYHhvAnx7rjYiqwOu0W"}
+
+Generate signing keys in JWK format.
+
+  $ jose-util generate-key --use enc --alg RSA-OAEP --kid test && ls jwk-enc-test-*.json
+  jwk-enc-test-priv.json
+  jwk-enc-test-pub.json
+
+  $ jose-util generate-key --use sig --alg RS256 --kid test && ls jwk-sig-test-*.json
+  jwk-sig-test-priv.json
+  jwk-sig-test-pub.json
 
 Base64-decode data in various formats (padded, unpadded, standard, url-safe).
 

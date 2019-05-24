@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 
+	jose "github.com/square/go-jose"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -30,9 +31,9 @@ var (
 	app = kingpin.New("jose-util", "A command-line utility for dealing with JOSE objects")
 
 	// Util-wide flags
-	keyFile = app.Flag("key", "Path to key file (PEM or DER-encoded)").ExistingFile()
-	inFile  = app.Flag("in", "Path to input file (stdin if missing)").ExistingFile()
-	outFile = app.Flag("out", "Path to output file (stdout if missing)").ExistingFile()
+	keyFile = app.Flag("key", "Path to key file (if applicable, PEM or DER-encoded)").ExistingFile()
+	inFile  = app.Flag("in", "Path to input file (if applicable, stdin if missing)").ExistingFile()
+	outFile = app.Flag("out", "Path to output file (if applicable, stdout if missing)").ExistingFile()
 
 	// Encrypt
 	encryptCommand  = app.Command("encrypt", "Encrypt a plaintext, output ciphertext")
@@ -57,10 +58,28 @@ var (
 
 	// Base64-decode
 	base64DecodeCommand = app.Command("b64decode", "Decode a base64-encoded payload (auto-selects standard/url-safe)")
+
+	// Generate key
+	generateCommand = app.Command("generate-key", "Generate a public/private key pair in JWK format")
+	generateUseFlag = generateCommand.Flag("use", "Desired public key usage (use header), one of [enc sig]").Required().Enum("enc", "sig")
+	generateAlgFlag = generateCommand.Flag("alg", "Desired key pair algorithm (alg header)").Required().Enum(
+		// For signing
+		string(jose.EdDSA),
+		string(jose.ES256), string(jose.ES384), string(jose.ES512),
+		string(jose.RS256), string(jose.RS384), string(jose.RS512),
+		string(jose.PS256), string(jose.PS384), string(jose.PS512),
+		// For encryption
+		string(jose.RSA1_5), string(jose.RSA_OAEP), string(jose.RSA_OAEP_256),
+		string(jose.ECDH_ES), string(jose.ECDH_ES_A128KW), string(jose.ECDH_ES_A192KW), string(jose.ECDH_ES_A256KW),
+	)
+	generateKeySizeFlag  = generateCommand.Flag("size", "Key size in bits (e.g. 2048 if generating an RSA key)").Int()
+	generateKeyIdentFlag = generateCommand.Flag("kid", "Optional Key ID (kid header, generate random kid if not set)").String()
 )
 
 func main() {
 	app.Version("v3")
+	app.UsageTemplate(kingpin.LongHelpTemplate)
+
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	switch command {
@@ -74,6 +93,8 @@ func main() {
 		verify()
 	case expandCommand.FullCommand():
 		expand()
+	case generateCommand.FullCommand():
+		generate()
 	case base64DecodeCommand.FullCommand():
 		in := inputStream(*inFile)
 		out := outputStream(*outFile)
@@ -82,14 +103,6 @@ func main() {
 		defer out.Close()
 	default:
 		fmt.Fprintf(os.Stderr, "invalid command: %s\n", command)
-		os.Exit(1)
-	}
-}
-
-// Exit and print error message if we encountered a problem
-func exitOnError(err error, msg string) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, err)
 		os.Exit(1)
 	}
 }
