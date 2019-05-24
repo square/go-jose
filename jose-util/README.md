@@ -22,34 +22,66 @@ message, but it's possible to get the full serialization by supplying the
 `--full` flag.
 
 Keys are specified via the `--key` flag. Supported key types are naked RSA/EC
-keys and X.509 certificates with embedded RSA/EC keys. Keys must be in PEM
-or DER formats.
+keys and X.509 certificates with embedded RSA/EC keys. Keys must be in PEM,
+DER or JWK formats.
 
 ## Examples
+
+## Generate key pair
+
+Generates a key pair, either for signing/verification or encryption/decryption.
+
+    # Generate keys for signing (for RSA-PSS)
+    jose-util generate-key --use sig --alg RS256
+
+    # Generate keys for signing (for EdDSA)
+    jose-util generate-key --use sig --alg EdDSA
+
+    # Generate keys for encryption (for RSA-OAEP)
+    jose-util generate-key --use enc --alg RSA-OAEP
+
+    # Generate keys for encryption (for ECDH-ES)
+    jose-util generate-key --use enc --alg ECDH-ES+A128KW
 
 ### Encrypt
 
 Takes a plaintext as input, encrypts, and prints the encrypted message.
 
-    echo 'test message' | jose-util encrypt --key public-key.pem --alg RSA-OAEP --enc A128GCM
+    # From stdin, to stdout
+    jose-util encrypt --key public-key.pem --alg RSA-OAEP --enc A128GCM
+
+    # Operating on files
+    jose-util encrypt --key public-key.pem --alg RSA-OAEP --enc A128GCM --in plaintext.txt --out ciphertext.txt
 
 ### Decrypt
 
 Takes an encrypted message (JWE) as input, decrypts, and prints the plaintext.
 
+    # From stdin, to stdout
     jose-util decrypt --key private-key.pem
+
+    # Operating on files
+    jose-util decrypt --key private-key.pem --in ciphertext.txt --out plaintext.txt
 
 ### Sign
 
 Takes a payload as input, signs it, and prints the signed message with the embedded payload.
 
+    # From stdin, to stdout
     jose-util sign --key private-key.pem --alg PS256
+
+    # Operating on files
+    jose-util sign --key private-key.pem --alg PS256 --in message.txt --out signed-message.txt
 
 ### Verify
 
 Reads a signed message (JWS), verifies it, and extracts the payload.
 
+    # From stdin, to stdout
     jose-util verify --key public-key.pem
+
+    # Operating on files
+    jose-util verify --key public-key.pem --in signed-message.txt --out message.txt
 
 ### Expand
 
@@ -57,3 +89,11 @@ Expands a compact message to the full serialization format.
 
     jose-util expand --format JWE   # Expands a compact JWE to full format
     jose-util expand --format JWS   # Expands a compact JWS to full format
+
+## Decode base64
+
+The JOSE format uses url-safe base64 in payloads, but the `base64` utility that ships with
+most Linux distributions (or macOS) only supports the standard base64 encoding. Therefore
+a `b64decode` command is supported in `jose-util` that can decode url-safe base64 data.
+
+    echo "8J-Ukgo" | jose-util b64decode
