@@ -62,7 +62,7 @@ var (
 )
 
 func main() {
-	app.Version("v2")
+	app.Version("v3")
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
