@@ -140,10 +140,10 @@ func TestVectorsAESGCM(t *testing.T) {
 		return
 	}
 
-	if bytes.Compare(out.ciphertext, expectedCiphertext) != 0 {
+	if !bytes.Equal(out.ciphertext, expectedCiphertext) {
 		t.Error("Ciphertext did not match")
 	}
-	if bytes.Compare(out.tag, expectedAuthtag) != 0 {
+	if !bytes.Equal(out.tag, expectedAuthtag) {
 		t.Error("Auth tag did not match")
 	}
 }
@@ -181,7 +181,7 @@ func TestVectorPBES2_HS256A_128KW(t *testing.T) {
 		246, 158, 161, 177, 20, 33, 245, 57, 59, 4}
 
 	derivedKey := pbkdf2.Key(cipher.key, salt, cipher.p2c, 16, sha256.New)
-	if bytes.Compare(derivedKey, expectedDerivedKey) != 0 {
+	if !bytes.Equal(derivedKey, expectedDerivedKey) {
 		t.Error("Derived key did not match")
 	}
 
@@ -190,7 +190,7 @@ func TestVectorPBES2_HS256A_128KW(t *testing.T) {
 		t.Fatal("Unable to encrypt:", err)
 	}
 
-	if bytes.Compare(encryptedKey.encryptedKey, expectedEncryptedKey) != 0 {
+	if !bytes.Equal(encryptedKey.encryptedKey, expectedEncryptedKey) {
 		t.Error("Encrypted key did not match")
 	}
 }

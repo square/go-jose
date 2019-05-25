@@ -28,7 +28,7 @@ import (
 	"github.com/square/go-jose/json"
 )
 
-var stripWhitespaceRegex = regexp.MustCompile("\\s")
+var stripWhitespaceRegex = regexp.MustCompile(`\s`)
 
 // Helper function to serialize known-good objects.
 // Precondition: value is not a nil pointer.

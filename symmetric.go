@@ -30,8 +30,8 @@ import (
 	"hash"
 	"io"
 
-	"golang.org/x/crypto/pbkdf2"
 	"github.com/square/go-jose/cipher"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // Random reader (stubbed out in tests)
@@ -278,8 +278,14 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 		}
 
 		header := &rawHeader{}
-		header.set(headerIV, newBuffer(parts.iv))
-		header.set(headerTag, newBuffer(parts.tag))
+
+		if err = header.set(headerIV, newBuffer(parts.iv)); err != nil {
+			return recipientInfo{}, err
+		}
+
+		if err = header.set(headerTag, newBuffer(parts.tag)); err != nil {
+			return recipientInfo{}, err
+		}
 
 		return recipientInfo{
 			header:       header,
@@ -332,8 +338,14 @@ func (ctx *symmetricKeyCipher) encryptKey(cek []byte, alg KeyAlgorithm) (recipie
 		}
 
 		header := &rawHeader{}
-		header.set(headerP2C, ctx.p2c)
-		header.set(headerP2S, newBuffer(ctx.p2s))
+
+		if err = header.set(headerP2C, ctx.p2c); err != nil {
+			return recipientInfo{}, err
+		}
+
+		if err = header.set(headerP2S, newBuffer(ctx.p2s)); err != nil {
+			return recipientInfo{}, err
+		}
 
 		return recipientInfo{
 			encryptedKey: jek,

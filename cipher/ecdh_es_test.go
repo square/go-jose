@@ -62,7 +62,7 @@ func TestVectorECDHES(t *testing.T) {
 
 	output := DeriveECDHES("A128GCM", apuData, apvData, bobKey, &aliceKey.PublicKey, 16)
 
-	if bytes.Compare(output, expected) != 0 {
+	if !bytes.Equal(output, expected) {
 		t.Error("output did not match what we expect, got", output, "wanted", expected)
 	}
 }
