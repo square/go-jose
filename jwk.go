@@ -58,6 +58,12 @@ type rawJSONWebKey struct {
 	Qi *byteBuffer `json:"qi,omitempty"`
 	// Certificates
 	X5c []string `json:"x5c,omitempty"`
+
+	// The "x5u" (X.509 URL) parameter is a URI [RFC3986] that refers to a
+	// resource for an X.509 public key certificate or certificate chain.
+	// While it is no mandatory, the x5u parameter may improve interoperability for
+	// applications that do not handle PKIX certificates [RFC5280].
+	X5u string `json:"x5u,omitempty"`
 }
 
 // JSONWebKey represents a public or private key in JWK format.
