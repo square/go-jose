@@ -85,7 +85,7 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JSONWebSignature) 
 		}
 	}
 
-	if bytes.Compare(output, input) != 0 {
+	if !bytes.Equal(output, input) {
 		return fmt.Errorf("input/output do not match, got '%s', expected '%s'", output, input)
 	}
 
@@ -265,7 +265,7 @@ func TestMultiRecipientJWS(t *testing.T) {
 		t.Fatal("signature index should be 0 for RSA key")
 	}
 
-	if bytes.Compare(output, input) != 0 {
+	if !bytes.Equal(output, input) {
 		t.Fatal("input/output do not match", output, input)
 	}
 
@@ -278,7 +278,7 @@ func TestMultiRecipientJWS(t *testing.T) {
 		t.Fatal("signature index should be 1 for EC key")
 	}
 
-	if bytes.Compare(output, input) != 0 {
+	if !bytes.Equal(output, input) {
 		t.Fatal("input/output do not match", output, input)
 	}
 }
@@ -399,7 +399,7 @@ func TestSignerKid(t *testing.T) {
 		t.Error("KeyID did not survive trip")
 	}
 
-	signer, err = NewSigner(SigningKey{ES256, jwk}, nil)
+	_, err = NewSigner(SigningKey{ES256, jwk}, nil)
 	if err != nil {
 		t.Error("problem creating signer with JSONWebKey", err)
 	}
@@ -566,7 +566,7 @@ func TestSignerB64(t *testing.T) {
 		t.Errorf("Error on verify: %s", err)
 	}
 
-	if bytes.Compare(output, input) != 0 {
+	if !bytes.Equal(output, input) {
 		t.Errorf("Input/output do not match, got '%s', expected '%s'", output, input)
 	}
 }

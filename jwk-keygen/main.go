@@ -29,8 +29,8 @@ import (
 	"io"
 	"os"
 
-	"gopkg.in/alecthomas/kingpin.v2"
 	"github.com/square/go-jose"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (

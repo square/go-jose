@@ -199,7 +199,7 @@ func NewMultiEncrypter(enc ContentEncryption, rcpts []Recipient, opts *Encrypter
 	if cipher == nil {
 		return nil, ErrUnsupportedAlgorithm
 	}
-	if rcpts == nil || len(rcpts) == 0 {
+	if len(rcpts) == 0 {
 		return nil, fmt.Errorf("square/go-jose: recipients is nil or empty")
 	}
 
@@ -517,13 +517,13 @@ func (obj JSONWebEncryption) DecryptMulti(decryptionKey interface{}) (int, Heade
 		}
 	}
 
-	if plaintext == nil || err != nil {
+	if plaintext == nil {
 		return -1, Header{}, nil, ErrCryptoFailure
 	}
 
 	// The "zip" header parameter may only be present in the protected header.
 	if comp := obj.protected.getCompression(); comp != "" {
-		plaintext, err = decompress(comp, plaintext)
+		plaintext, _ = decompress(comp, plaintext)
 	}
 
 	sanitized, err := headers.sanitized()

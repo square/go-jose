@@ -111,10 +111,10 @@ func TestVectorsAESCBC128(t *testing.T) {
 		return
 	}
 
-	if bytes.Compare(out[:len(out)-16], expectedCiphertext) != 0 {
+	if !bytes.Equal(out[:len(out)-16], expectedCiphertext) {
 		t.Error("Ciphertext did not match")
 	}
-	if bytes.Compare(out[len(out)-16:], expectedAuthtag) != 0 {
+	if !bytes.Equal(out[len(out)-16:], expectedAuthtag) {
 		t.Error("Auth tag did not match")
 	}
 }
@@ -167,10 +167,10 @@ func TestVectorsAESCBC256(t *testing.T) {
 		return
 	}
 
-	if bytes.Compare(out[:len(out)-32], expectedCiphertext) != 0 {
+	if !bytes.Equal(out[:len(out)-32], expectedCiphertext) {
 		t.Error("Ciphertext did not match, got", out[:len(out)-32], "wanted", expectedCiphertext)
 	}
-	if bytes.Compare(out[len(out)-32:], expectedAuthtag) != 0 {
+	if !bytes.Equal(out[len(out)-32:], expectedAuthtag) {
 		t.Error("Auth tag did not match, got", out[len(out)-32:], "wanted", expectedAuthtag)
 	}
 }
@@ -215,7 +215,7 @@ func RunRoundtrip(t *testing.T, key, nonce []byte) {
 	aad := []byte{4, 3, 2, 1}
 
 	result := aead.Seal(dst, nonce, plaintext, aad)
-	if bytes.Compare(dst, result[:4]) != 0 {
+	if !bytes.Equal(dst, result[:4]) {
 		t.Error("Existing data in dst not preserved")
 	}
 
@@ -226,7 +226,7 @@ func RunRoundtrip(t *testing.T, key, nonce []byte) {
 		panic(err)
 	}
 
-	if bytes.Compare(result, plaintext) != 0 {
+	if !bytes.Equal(result, plaintext) {
 		t.Error("Plaintext does not match output")
 	}
 }
@@ -359,7 +359,7 @@ func TestInvalidPadding(t *testing.T) {
 
 func TestZeroLengthPadding(t *testing.T) {
 	data := make([]byte, 16)
-	data, err := unpadBuffer(data, 16)
+	_, err := unpadBuffer(data, 16)
 	if err == nil {
 		t.Error("padding with 0x00 should never be valid")
 	}

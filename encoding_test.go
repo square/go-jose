@@ -35,7 +35,7 @@ func TestDeflateRoundtrip(t *testing.T) {
 		panic(err)
 	}
 
-	if bytes.Compare(output, original) != 0 {
+	if !bytes.Equal(output, original) {
 		t.Error("Input and output do not match")
 	}
 }

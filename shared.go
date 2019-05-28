@@ -133,8 +133,8 @@ const (
 type HeaderKey string
 
 const (
-	HeaderType        HeaderKey = "typ" // string
-	HeaderContentType           = "cty" // string
+	HeaderType        = "typ" // string
+	HeaderContentType = "cty" // string
 
 	// These are set by go-jose and shouldn't need to be set by consumers of the
 	// library.
