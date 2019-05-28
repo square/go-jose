@@ -90,7 +90,7 @@ Expands a compact message to the full serialization format.
     jose-util expand --format JWE   # Expands a compact JWE to full format
     jose-util expand --format JWS   # Expands a compact JWS to full format
 
-## Decode base64
+### Decode base64
 
 The JOSE format uses url-safe base64 in payloads, but the `base64` utility that ships with
 most Linux distributions (or macOS) only supports the standard base64 encoding. Therefore
