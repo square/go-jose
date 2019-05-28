@@ -217,7 +217,7 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 
 	jws, err := ParseSigned(input)
 	if err != nil {
-		t.Error("Unable to parse valid message.")
+		t.Fatal("Unable to parse valid message", err)
 	}
 	if len(jws.Signatures) != 1 {
 		t.Error("Too many or too few signatures.")
