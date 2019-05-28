@@ -26,8 +26,8 @@ import (
 	"fmt"
 	"testing"
 
-	"golang.org/x/crypto/ed25519"
 	"github.com/square/go-jose"
+	"golang.org/x/crypto/ed25519"
 )
 
 func TestRoundtripsJWSCryptoSigner(t *testing.T) {
@@ -103,7 +103,7 @@ func roundtripJWS(sigAlg jose.SignatureAlgorithm, serializer func(*jose.JSONWebS
 		}
 	}
 
-	if bytes.Compare(output, input) != 0 {
+	if !bytes.Equal(output, input) {
 		return fmt.Errorf("input/output do not match, got '%s', expected '%s'", output, input)
 	}
 

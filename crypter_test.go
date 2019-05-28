@@ -77,7 +77,7 @@ func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg 
 		return fmt.Errorf("corrupter indicated message should be skipped")
 	}
 
-	if bytes.Compare(parsed.GetAuthData(), aad) != 0 {
+	if !bytes.Equal(parsed.GetAuthData(), aad) {
 		return fmt.Errorf("auth data in parsed object does not match")
 	}
 
@@ -86,7 +86,7 @@ func RoundtripJWE(keyAlg KeyAlgorithm, encAlg ContentEncryption, compressionAlg 
 		return fmt.Errorf("error on decrypt: %s", err)
 	}
 
-	if bytes.Compare(input, output) != 0 {
+	if !bytes.Equal(input, output) {
 		return fmt.Errorf("Decrypted output does not match input, got '%s' but wanted '%s'", output, input)
 	}
 
@@ -321,7 +321,7 @@ func TestMultiRecipientJWE(t *testing.T) {
 		t.Fatal("recipient index should be 0 for RSA key")
 	}
 
-	if bytes.Compare(input, output) != 0 {
+	if !bytes.Equal(input, output) {
 		t.Fatal("Decrypted output does not match input: ", output, input)
 	}
 
@@ -334,7 +334,7 @@ func TestMultiRecipientJWE(t *testing.T) {
 		t.Fatal("recipient index should be 1 for shared key")
 	}
 
-	if bytes.Compare(input, output) != 0 {
+	if !bytes.Equal(input, output) {
 		t.Fatal("Decrypted output does not match input", output, input)
 	}
 }
@@ -407,7 +407,7 @@ func TestEncrypterExtraHeaderInclusion(t *testing.T) {
 		t.Fatal("error on decrypt: ", err)
 	}
 
-	if bytes.Compare(input, output) != 0 {
+	if !bytes.Equal(input, output) {
 		t.Fatal("Decrypted output does not match input: ", output, input)
 	}
 
@@ -549,15 +549,15 @@ func TestPBES2JWKEncryption(t *testing.T) {
 		t.Fatal("error in Decrypt reference:", err)
 	}
 
-	if bytes.Compare(original1, original2) != 0 {
+	if !bytes.Equal(original1, original2) {
 		t.Error("decryption does not match reference decryption")
 	}
 
-	if bytes.Compare(plaintext, original1) != 0 {
+	if !bytes.Equal(plaintext, original1) {
 		t.Error("decryption does not match plaintext")
 	}
 
-	if bytes.Compare(plaintext, original2) != 0 {
+	if !bytes.Equal(plaintext, original2) {
 		t.Error("reference decryption does not match plaintext")
 	}
 }
@@ -598,11 +598,11 @@ func TestEncrypterWithPBES2(t *testing.T) {
 				t.Fatal("error on Decrypt:", err)
 			}
 
-			if bytes.Compare(actual1, expected) != 0 {
+			if !bytes.Equal(actual1, expected) {
 				t.Errorf("error comparing decrypted message (%s) and expected (%s)", actual1, expected)
 			}
 
-			if bytes.Compare(actual2, expected) != 0 {
+			if !bytes.Equal(actual2, expected) {
 				t.Errorf("error comparing decrypted message (%s) and expected (%s)", actual2, expected)
 			}
 		}

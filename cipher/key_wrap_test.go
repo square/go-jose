@@ -48,15 +48,15 @@ func TestAesKeyWrap(t *testing.T) {
 	out1, _ := KeyWrap(block1, cek1)
 	out2, _ := KeyWrap(block2, cek2)
 
-	if bytes.Compare(out0, expected0) != 0 {
+	if !bytes.Equal(out0, expected0) {
 		t.Error("output 0 not as expected, got", out0, "wanted", expected0)
 	}
 
-	if bytes.Compare(out1, expected1) != 0 {
+	if !bytes.Equal(out1, expected1) {
 		t.Error("output 1 not as expected, got", out1, "wanted", expected1)
 	}
 
-	if bytes.Compare(out2, expected2) != 0 {
+	if !bytes.Equal(out2, expected2) {
 		t.Error("output 2 not as expected, got", out2, "wanted", expected2)
 	}
 
@@ -64,15 +64,15 @@ func TestAesKeyWrap(t *testing.T) {
 	unwrap1, _ := KeyUnwrap(block1, out1)
 	unwrap2, _ := KeyUnwrap(block2, out2)
 
-	if bytes.Compare(unwrap0, cek0) != 0 {
+	if !bytes.Equal(unwrap0, cek0) {
 		t.Error("key unwrap did not return original input, got", unwrap0, "wanted", cek0)
 	}
 
-	if bytes.Compare(unwrap1, cek1) != 0 {
+	if !bytes.Equal(unwrap1, cek1) {
 		t.Error("key unwrap did not return original input, got", unwrap1, "wanted", cek1)
 	}
 
-	if bytes.Compare(unwrap2, cek2) != 0 {
+	if !bytes.Equal(unwrap2, cek2) {
 		t.Error("key unwrap did not return original input, got", unwrap2, "wanted", cek2)
 	}
 }

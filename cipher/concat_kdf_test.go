@@ -66,7 +66,7 @@ func TestVectorConcatKDF(t *testing.T) {
 	out = append(out, out0...)
 	out = append(out, out1...)
 
-	if bytes.Compare(out, expected) != 0 {
+	if !bytes.Equal(out, expected) {
 		t.Error("did not receive expected output from concat kdf reader")
 		return
 	}
@@ -103,7 +103,7 @@ func TestCache(t *testing.T) {
 	}
 
 	for i := range outputs {
-		if bytes.Compare(outputs[i], outputs[(i+1)%len(outputs)]) != 0 {
+		if !bytes.Equal(outputs[i], outputs[(i+1)%len(outputs)]) {
 			t.Error("not all outputs from KDF matched")
 		}
 	}

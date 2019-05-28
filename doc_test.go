@@ -70,7 +70,7 @@ func Example_jWE() {
 		panic(err)
 	}
 
-	fmt.Printf(string(decrypted))
+	fmt.Print(string(decrypted))
 	// output: Lorem ipsum dolor sit amet
 }
 
@@ -116,7 +116,7 @@ func Example_jWS() {
 		panic(err)
 	}
 
-	fmt.Printf(string(output))
+	fmt.Print(string(output))
 	// output: Lorem ipsum dolor sit amet
 }
 
