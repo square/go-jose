@@ -123,7 +123,11 @@ func TestFullParseJWE(t *testing.T) {
 
 func TestMissingInvalidHeaders(t *testing.T) {
 	protected := &rawHeader{}
-	protected.set(headerEncryption, A128GCM)
+
+	err := protected.set(headerEncryption, A128GCM)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	obj := &JSONWebEncryption{
 		protected:   protected,
@@ -133,21 +137,32 @@ func TestMissingInvalidHeaders(t *testing.T) {
 		},
 	}
 
-	_, err := obj.Decrypt(nil)
+	_, err = obj.Decrypt(nil)
 	if err != ErrUnsupportedKeyType {
 		t.Error("should detect invalid key")
 	}
 
-	obj.unprotected.set(headerCritical, []string{"1", "2"})
+	err = obj.unprotected.set(headerCritical, []string{"1", "2"})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = obj.Decrypt(nil)
 	if err == nil {
 		t.Error("should reject message with crit header")
 	}
 
-	obj.unprotected.set(headerCritical, nil)
+	err = obj.unprotected.set(headerCritical, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	obj.protected = &rawHeader{}
-	obj.protected.set(headerAlgorithm, RSA1_5)
+
+	err = obj.protected.set(headerAlgorithm, RSA1_5)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = obj.Decrypt(rsaTestKey)
 	if err == nil || err == ErrCryptoFailure {
@@ -220,9 +235,13 @@ func TestCompactSerialize(t *testing.T) {
 	obj := &JSONWebEncryption{
 		unprotected: &rawHeader{},
 	}
-	obj.unprotected.set(headerAlgorithm, "XYZ")
 
-	_, err := obj.CompactSerialize()
+	err := obj.unprotected.set(headerAlgorithm, "XYZ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = obj.CompactSerialize()
 	if err == nil {
 		t.Error("Object with unprotected headers can't be compact serialized")
 	}
@@ -284,15 +303,18 @@ func TestVectorsJWE(t *testing.T) {
 	// Encrypt with a dummy key
 	encrypter, err := NewEncrypter(A256GCM, Recipient{Algorithm: RSA_OAEP, Key: publicKey}, nil)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	object, err := encrypter.Encrypt(plaintext)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	serialized, err := object.CompactSerialize()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if serialized != expectedCompact {
 		t.Error("Compact serialization is not what we expected", serialized, expectedCompact)
 	}
@@ -307,7 +329,9 @@ func TestJWENilProtected(t *testing.T) {
 	key := []byte("1234567890123456")
 	serialized := `{"unprotected":{"alg":"dir","enc":"A128GCM"}}`
 	jwe, _ := ParseEncrypted(serialized)
-	jwe.Decrypt(key)
+	if _, err := jwe.Decrypt(key); err == nil {
+		t.Error(err)
+	}
 }
 
 func TestVectorsJWECorrupt(t *testing.T) {
@@ -615,5 +639,7 @@ func TestTamperedJWE(t *testing.T) {
 func TestJWEWithNullAlg(t *testing.T) {
 	// {"alg":null,"enc":"A128GCM"}
 	serialized := `{"protected":"eyJhbGciOm51bGwsImVuYyI6IkExMjhHQ00ifQ"}`
-	ParseEncrypted(serialized)
+	if _, err := ParseEncrypted(serialized); err == nil {
+		t.Error(err)
+	}
 }

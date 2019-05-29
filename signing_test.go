@@ -328,12 +328,18 @@ func TestInvalidSignerAlg(t *testing.T) {
 func TestInvalidJWS(t *testing.T) {
 	signer, err := NewSigner(SigningKey{PS256, rsaTestKey}, nil)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	obj.Signatures[0].header = &rawHeader{}
-	obj.Signatures[0].header.set(headerCritical, []string{"TEST"})
+
+	if err = obj.Signatures[0].header.set(headerCritical, []string{"TEST"}); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = obj.Verify(&rsaTestKey.PublicKey)
 	if err == nil {
@@ -386,7 +392,11 @@ func TestSignerKid(t *testing.T) {
 	if err != nil {
 		t.Error("problem creating signer with *JSONWebKey", err)
 	}
+
 	signed, err := signer.Sign(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	serialized := signed.FullSerialize()
 
@@ -434,6 +444,9 @@ func TestEmbedJwk(t *testing.T) {
 
 	// This time, sign and do not embed JWK in message
 	signer, err = NewSigner(SigningKey{ES256, key}, &SignerOptions{EmbedJWK: false})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	object, err = signer.Sign(payload)
 	if err != nil {

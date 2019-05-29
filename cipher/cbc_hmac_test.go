@@ -271,12 +271,17 @@ func TestTruncatedCiphertext(t *testing.T) {
 	nonce := make([]byte, 16)
 	data := make([]byte, 32)
 
-	io.ReadFull(rand.Reader, key)
-	io.ReadFull(rand.Reader, nonce)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		t.Fatal(err)
+	}
 
 	aead, err := NewCBCHMAC(key, aes.NewCipher)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	ctx := aead.(*cbcAEAD)
@@ -301,8 +306,13 @@ func TestInvalidPaddingOpen(t *testing.T) {
 	plaintext := padBuffer(make([]byte, 28), aes.BlockSize)
 	plaintext[len(plaintext)-1] = 0xFF
 
-	io.ReadFull(rand.Reader, key)
-	io.ReadFull(rand.Reader, nonce)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		t.Fatal(err)
+	}
 
 	block, _ := aes.NewCipher(key)
 	cbc := cipher.NewCBCEncrypter(block, nonce)
@@ -369,14 +379,19 @@ func benchEncryptCBCHMAC(b *testing.B, keySize, chunkSize int) {
 	key := make([]byte, keySize*2)
 	nonce := make([]byte, 16)
 
-	io.ReadFull(rand.Reader, key)
-	io.ReadFull(rand.Reader, nonce)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		b.Fatal(err)
+	}
+
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		b.Fatal(err)
+	}
 
 	chunk := make([]byte, chunkSize)
 
 	aead, err := NewCBCHMAC(key, aes.NewCipher)
 	if err != nil {
-		panic(err)
+		b.Fatal(err)
 	}
 
 	b.SetBytes(int64(chunkSize))
@@ -390,14 +405,19 @@ func benchDecryptCBCHMAC(b *testing.B, keySize, chunkSize int) {
 	key := make([]byte, keySize*2)
 	nonce := make([]byte, 16)
 
-	io.ReadFull(rand.Reader, key)
-	io.ReadFull(rand.Reader, nonce)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		b.Fatal(err)
+	}
+
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		b.Fatal(err)
+	}
 
 	chunk := make([]byte, chunkSize)
 
 	aead, err := NewCBCHMAC(key, aes.NewCipher)
 	if err != nil {
-		panic(err)
+		b.Fatal(err)
 	}
 
 	out := aead.Seal(nil, nonce, chunk, nil)
@@ -405,7 +425,9 @@ func benchDecryptCBCHMAC(b *testing.B, keySize, chunkSize int) {
 	b.SetBytes(int64(chunkSize))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		aead.Open(nil, nonce, out, nil)
+		if _, err = aead.Open(nil, nonce, out, nil); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 

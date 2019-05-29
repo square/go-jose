@@ -165,18 +165,21 @@ func TestInvalidECDecrypt(t *testing.T) {
 
 	// Missing epk header
 	headers := rawHeader{}
-	headers.set(headerAlgorithm, ECDH_ES)
 
-	_, err := dec.decryptKey(headers, nil, generator)
-	if err == nil {
+	if err := headers.set(headerAlgorithm, ECDH_ES); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := dec.decryptKey(headers, nil, generator); err == nil {
 		t.Error("ec decrypter accepted object with missing epk header")
 	}
 
 	// Invalid epk header
-	headers.set(headerEPK, &JSONWebKey{})
+	if err := headers.set(headerEPK, &JSONWebKey{}); err == nil {
+		t.Fatal("epk header should be invalid")
+	}
 
-	_, err = dec.decryptKey(headers, nil, generator)
-	if err == nil {
+	if _, err := dec.decryptKey(headers, nil, generator); err == nil {
 		t.Error("ec decrypter accepted object with invalid epk header")
 	}
 }
@@ -353,7 +356,7 @@ func TestInvalidEllipticCurve(t *testing.T) {
 	}
 }
 
-func estInvalidECPublicKey(t *testing.T) {
+func TestInvalidECPublicKey(t *testing.T) {
 	// Invalid key
 	invalid := &ecdsa.PrivateKey{
 		PublicKey: ecdsa.PublicKey{
@@ -365,17 +368,20 @@ func estInvalidECPublicKey(t *testing.T) {
 	}
 
 	headers := rawHeader{}
-	headers.set(headerAlgorithm, ECDH_ES)
-	headers.set(headerEPK, &JSONWebKey{
-		Key: &invalid.PublicKey,
-	})
+
+	if err := headers.set(headerAlgorithm, ECDH_ES); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := headers.set(headerEPK, &JSONWebKey{Key: &invalid.PublicKey}); err != nil {
+		t.Fatal(err)
+	}
 
 	dec := ecDecrypterSigner{
 		privateKey: ecTestKey256,
 	}
 
-	_, err := dec.decryptKey(headers, nil, randomKeyGenerator{size: 16})
-	if err == nil {
+	if _, err := dec.decryptKey(headers, nil, randomKeyGenerator{size: 16}); err == nil {
 		t.Fatal("decrypter accepted JWS with invalid ECDH public key")
 	}
 }

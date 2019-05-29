@@ -68,7 +68,11 @@ func TestVectorECDHES(t *testing.T) {
 }
 
 func TestInvalidECPublicKey(t *testing.T) {
-	defer func() { recover() }()
+	defer func() {
+		if r := recover(); r == nil {
+			panic("panic expected")
+		}
+	}()
 
 	// Invalid key
 	invalid := &ecdsa.PrivateKey{

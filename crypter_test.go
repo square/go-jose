@@ -176,7 +176,9 @@ func TestRoundtripsJWECorrupted(t *testing.T) {
 			if skip {
 				return true
 			}
-			obj.protected.set(headerTag, tag)
+			if err := obj.protected.set(headerTag, tag); err != nil {
+				t.Fatal(err)
+			}
 			return false
 		},
 	}
@@ -694,22 +696,6 @@ func generateTestKeys(keyAlg KeyAlgorithm, encAlg ContentEncryption) []testKey {
 	panic("Must update test case")
 }
 
-func RunRoundtripsJWE(b *testing.B, alg KeyAlgorithm, enc ContentEncryption, zip CompressionAlgorithm, priv, pub interface{}) {
-	serializer := func(obj *JSONWebEncryption) (string, error) {
-		return obj.CompactSerialize()
-	}
-
-	corrupter := func(obj *JSONWebEncryption) bool { return false }
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err := RoundtripJWE(alg, enc, zip, serializer, corrupter, nil, pub, priv)
-		if err != nil {
-			b.Error(err)
-		}
-	}
-}
-
 var (
 	chunks = map[string][]byte{
 		"1B":   make([]byte, 1),
@@ -881,7 +867,9 @@ func benchEncrypt(chunkKey, primKey string, b *testing.B) {
 
 	b.SetBytes(int64(len(data)))
 	for i := 0; i < b.N; i++ {
-		enc.Encrypt(data)
+		if _, err := enc.Encrypt(data); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -1057,7 +1045,9 @@ func benchDecrypt(chunkKey, primKey string, b *testing.B) {
 	b.SetBytes(int64(len(chunk)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data.Decrypt(dec)
+		if _, err := data.Decrypt(dec); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 

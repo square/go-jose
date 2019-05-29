@@ -473,7 +473,9 @@ func TestNullHeaderValue(t *testing.T) {
 			t.Errorf("ParseSigned panic'd when parsing a message with a null protected header value")
 		}
 	}()
-	ParseSigned(msg)
+	if _, err := ParseSigned(msg); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // Test for bug:
