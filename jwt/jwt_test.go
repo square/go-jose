@@ -206,12 +206,16 @@ func TestTamperedJWT(t *testing.T) {
 
 func BenchmarkDecodeSignedToken(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		ParseSigned(hmacSignedToken)
+		if _, err := ParseSigned(hmacSignedToken); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
 func BenchmarkDecodeEncryptedHMACToken(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		ParseEncrypted(hmacEncryptedToken)
+		if _, err := ParseEncrypted(hmacEncryptedToken); err != nil {
+			b.Fatal(err)
+		}
 	}
 }

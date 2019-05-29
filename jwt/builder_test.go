@@ -72,7 +72,14 @@ func TestIntegerAndFloatsNormalize(t *testing.T) {
 	}
 
 	ni, err := (normalized["int"].(json.Number)).Int64()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	nf, err := (normalized["float"].(json.Number)).Float64()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if ni != c.Int {
 		t.Error(fmt.Sprintf("normalize failed to preserve int64 (got %v, wanted %v, type %s)", normalized["int"], c.Int, reflect.TypeOf(normalized["int"])))
@@ -403,7 +410,9 @@ func BenchmarkSignedCompactSerializeRSA(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tb.CompactSerialize()
+		if _, err := tb.CompactSerialize(); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -412,7 +421,9 @@ func BenchmarkSignedCompactSerializeSHA(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tb.CompactSerialize()
+		if _, err := tb.CompactSerialize(); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 

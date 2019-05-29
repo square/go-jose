@@ -70,7 +70,9 @@ func TestInvalidKey(t *testing.T) {
 
 func TestStaticKeyGen(t *testing.T) {
 	key := make([]byte, 32)
-	io.ReadFull(rand.Reader, key)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		t.Fatal(err)
+	}
 
 	gen := &staticKeyGenerator{key: key}
 	if gen.keySize() != len(key) {
