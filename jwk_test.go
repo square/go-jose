@@ -22,6 +22,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"math/big"
@@ -240,12 +242,17 @@ func TestRoundtripEcPrivate(t *testing.T) {
 	}
 }
 
-func TestRoundtripX5C(t *testing.T) {
+func TestRoundtripX509(t *testing.T) {
+	x5tSHA1 := sha1.Sum(testCertificates[0].Raw)
+	x5tSHA256 := sha256.Sum256(testCertificates[0].Raw)
+
 	jwk := JSONWebKey{
-		Key:          rsaTestKey,
-		KeyID:        "bar",
-		Algorithm:    "foo",
-		Certificates: testCertificates,
+		Key:                         testCertificates[0].PublicKey,
+		KeyID:                       "bar",
+		Algorithm:                   "foo",
+		Certificates:                testCertificates,
+		CertificateThumbprintSHA1:   x5tSHA1[:],
+		CertificateThumbprintSHA256: x5tSHA256[:],
 	}
 
 	jsonbar, err := jwk.MarshalJSON()
@@ -272,10 +279,136 @@ func TestRoundtripX5C(t *testing.T) {
 	}
 }
 
+func TestInvalidThumbprintsX509(t *testing.T) {
+	// Too short
+	jwk := JSONWebKey{
+		Key:                         rsaTestKey,
+		KeyID:                       "bar",
+		Algorithm:                   "foo",
+		Certificates:                testCertificates,
+		CertificateThumbprintSHA1:   []byte{0x01}, // invalid length
+		CertificateThumbprintSHA256: []byte{0x02}, // invalid length
+	}
+
+	_, err := jwk.MarshalJSON()
+	if err == nil {
+		t.Error("should not marshal JWK with too short thumbprints")
+	}
+
+	// Mismatched (leaf has different sum)
+	sha1sum := sha1.Sum(nil)
+	jwk.CertificateThumbprintSHA1 = sha1sum[:]
+	sha256sum := sha256.Sum256(nil)
+	jwk.CertificateThumbprintSHA256 = sha256sum[:]
+
+	_, err = jwk.MarshalJSON()
+	if err == nil {
+		t.Error("should not marshal JWK with mismatched thumbprints")
+	}
+
+	// Too short
+	shortThumbprints := []byte(`{
+  "kty": "RSA",
+  "kid": "bar",
+  "alg": "foo",
+  "n": "wN3v274Fr7grvZdXirEGkHlhYKh72gP-46MxQilMgANi6EaX2m0mYiMC60X1UmOhQNoVW0ItthMME-CGh7haA_Jeou_L6-EVOz-7lGu_J06VRl-mgkQZO0sYSkRY8Rsu7TW-pgnWWwZjSdgxN2gq7DvjjC4RLroV94Lgrb2Qwx6J5bZNOfj3pHmEWZ_eRFEH73Ct5RxwUKtNKx_XAmodZn9oFXBlN7F2Js-4DO-8UgbS7ALkTmhDzClT1GPfdLMusmXw4BXyV72vBOWrbUTdwk4pG8ahPQ0cGQ1ubaAmro_k3Bxg06voWPhXx7ALrpzmZCzr6YY-c5Y5rku4qXh-HQ",
+  "e": "AQAB",
+  "d": "RRM3xMvZ3YVopQ5_G_0rDLNsXOH6-apUr9LS4Y9JBtAvrGEcIe7VwHApq3ny0v870a5J19Vr6boIqVXQ2Or90kwL-O9JacHDiOTamd29KKbMb9fyGtWo88OBf5fbAv9pXyvQjEcZrqArD1eOyPlV5iXM6XfWT5X2KB-HuLIcFsVJSEb0yw943dEhZKkv2fySlVtKEhji2CfkMWP438G8auxwFPNIXmuvA1xvcAepOiI9I1Wy17txLOQg8MYBl98F7mxPUMpL3jm8-CSuxpknucFuFIrqIsbGmukSNp14APcu7bN0cJW5uVW-XtGbuioJkPjU2YJgfhIeMI8kuny5QQ",
+  "p": "yRNzbsreZK9MqJgbVsbl7SX2MyyJW_JnFKGdyrXzMqCtzRS7XJ9L3SwdDG_ERgSCkT9PP2dax9fS7RghHNJIU_NlPnJqzBPvPyzbjho7hcGYGDU2UO8E3SBP1WKm1SnlYhm1uHwrHudAO0D5jhVYQfRwem-zX3QibrsxEyxSELM",
+  "q": "9Yx0zzrhSxdE8ubryZfOyOw6cSbUdyCMgY3IFmEdb_UDZOQNMDCFj2RS1g6yFGKuaFqnL9ZRnmprikf20w-mu-LtLU_l0eK4U7pbAoB--pxFP_O6Yk3ZBu_YJ3FpimyX1v4OVZT-JOU_caKiTrPnlw3P7KbEc9iu_bOc8dE-_e8",
+  "dp": "GwiFbXDS44B58vS4QDtvcCm5Zvnm4bi-SRTNbRJ3Rug5Vagi5Hn6LhsfMKvaHHvAvhxf4CtaFiIbFos28HQJC1he1T12xEct1DWIsxstw3bapu6IhesMoVoVwZ-IxIHkeALy3oG7HmWCyjSbGJIgEoX1lVBtMjkf4_lAyM4dnmc",
+  "dq": "XYtXyMbOo3PG8Z6lfxRVU9gi346CbKu6u3RPIK94rnkyBNKYb55ck2cN47yPfRKnDNxUSvYj--zg8To_PuL8iyGFZ7jDffUYcdVR7J8VQNYdz6JDhEXSA0GGIGilY3XBVsdMoK_1Lgsj41-o48DH3pUFfEuAFf4blE1D4h_sFoM",
+  "qi": "CN3q5TMZO06DlK4onrJ687bPp2GE-fynd7ADPdf1ek3cXbeaFApVNp4w-i8zr7IVugQohn01i_jnkymw4UN-acoIzX2sGYhgDm6le1jyfv28bQ_Z5hT0rFNlPfGyK0kkPYUTxZ4ZCKpCYJT9C1nH58Yu4xFk4VR1zhULegjCCd4",
+  "x5c": [
+    "MIIDfDCCAmSgAwIBAgIJANWAkzF7PA8/MA0GCSqGSIb3DQEBCwUAMFUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJDQTEQMA4GA1UEChMHY2VydGlnbzEQMA4GA1UECxMHZXhhbXBsZTEVMBMGA1UEAxMMZXhhbXBsZS1sZWFmMB4XDTE2MDYxMDIyMTQxMVoXDTIzMDQxNTIyMTQxMVowVTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNBMRAwDgYDVQQKEwdjZXJ0aWdvMRAwDgYDVQQLEwdleGFtcGxlMRUwEwYDVQQDEwxleGFtcGxlLWxlYWYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC7stSvfQyGuHw3v34fisqIdDXberrFoFk9ht/WdXgYzX2uLNKdsR/J5sbWSl8K/5djpzj31eIzqU69w8v7SChM5x9bouDsABHz3kZucx5cSafEgJojysBkcrq3VY+aJanzbL+qErYX+lhRpPcZK6JMWIwar8Y3B2la4yWwieecw2/WfEVvG0M/DOYKnR8QHFsfl3US1dnBM84czKPyt9r40gDk2XiH/lGts5a94rAGvbr8IMCtq0mA5aH3Fx3mDSi3+4MZwygCAHrF5O5iSV9rEI+m2+7j2S+jHDUnvV+nqcpb9m6ENECnYX8FD2KcqlOjTmw8smDy09N2Np6i464lAgMBAAGjTzBNMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDATAsBgNVHREEJTAjhwR/AAABhxAAAAAAAAAAAAAAAAAAAAABgglsb2NhbGhvc3QwDQYJKoZIhvcNAQELBQADggEBAGM4aa/qrURUweZBIwZYv8O9b2+r4l0HjGAh982/B9sMlM05kojyDCUGvj86z18Lm8mKr4/y+i0nJ+vDIksEvfDuzw5ALAXGcBzPJKtICUf7LstA/n9NNpshWz0kld9ylnB5mbUzSFDncVyeXkEf5sGQXdIIZT9ChRBoiloSaa7dvBVCcsX1LGP2LWqKtD+7nUnw5qCwtyAVT8pthEUxFTpywoiJS5ZdzeEx8MNGvUeLFj2kleqPF78EioEQlSOxViCuctEtnQuPcDLHNFr10byTZY9roObiqdsJLMVvb2XliJjAqaPa9AkYwGE6xHw2ispwg64Rse0+AtKups19WIU="
+  ],
+  "x5t": "BhJU_fcg8sDkvT8zOaL-U1C",
+  "x5t#S256": "IDJKS5LxImjvmuAl_Vx50Vj_dFdACSGW6DU8ADF"
+}`)
+
+	// Mismatched (leaf has different sum)
+	mismatchedThumbprints := []byte(`{
+  "kty": "RSA",
+  "kid": "bar",
+  "alg": "foo",
+  "n": "wN3v274Fr7grvZdXirEGkHlhYKh72gP-46MxQilMgANi6EaX2m0mYiMC60X1UmOhQNoVW0ItthMME-CGh7haA_Jeou_L6-EVOz-7lGu_J06VRl-mgkQZO0sYSkRY8Rsu7TW-pgnWWwZjSdgxN2gq7DvjjC4RLroV94Lgrb2Qwx6J5bZNOfj3pHmEWZ_eRFEH73Ct5RxwUKtNKx_XAmodZn9oFXBlN7F2Js-4DO-8UgbS7ALkTmhDzClT1GPfdLMusmXw4BXyV72vBOWrbUTdwk4pG8ahPQ0cGQ1ubaAmro_k3Bxg06voWPhXx7ALrpzmZCzr6YY-c5Y5rku4qXh-HQ",
+  "e": "AQAB",
+  "d": "RRM3xMvZ3YVopQ5_G_0rDLNsXOH6-apUr9LS4Y9JBtAvrGEcIe7VwHApq3ny0v870a5J19Vr6boIqVXQ2Or90kwL-O9JacHDiOTamd29KKbMb9fyGtWo88OBf5fbAv9pXyvQjEcZrqArD1eOyPlV5iXM6XfWT5X2KB-HuLIcFsVJSEb0yw943dEhZKkv2fySlVtKEhji2CfkMWP438G8auxwFPNIXmuvA1xvcAepOiI9I1Wy17txLOQg8MYBl98F7mxPUMpL3jm8-CSuxpknucFuFIrqIsbGmukSNp14APcu7bN0cJW5uVW-XtGbuioJkPjU2YJgfhIeMI8kuny5QQ",
+  "p": "yRNzbsreZK9MqJgbVsbl7SX2MyyJW_JnFKGdyrXzMqCtzRS7XJ9L3SwdDG_ERgSCkT9PP2dax9fS7RghHNJIU_NlPnJqzBPvPyzbjho7hcGYGDU2UO8E3SBP1WKm1SnlYhm1uHwrHudAO0D5jhVYQfRwem-zX3QibrsxEyxSELM",
+  "q": "9Yx0zzrhSxdE8ubryZfOyOw6cSbUdyCMgY3IFmEdb_UDZOQNMDCFj2RS1g6yFGKuaFqnL9ZRnmprikf20w-mu-LtLU_l0eK4U7pbAoB--pxFP_O6Yk3ZBu_YJ3FpimyX1v4OVZT-JOU_caKiTrPnlw3P7KbEc9iu_bOc8dE-_e8",
+  "dp": "GwiFbXDS44B58vS4QDtvcCm5Zvnm4bi-SRTNbRJ3Rug5Vagi5Hn6LhsfMKvaHHvAvhxf4CtaFiIbFos28HQJC1he1T12xEct1DWIsxstw3bapu6IhesMoVoVwZ-IxIHkeALy3oG7HmWCyjSbGJIgEoX1lVBtMjkf4_lAyM4dnmc",
+  "dq": "XYtXyMbOo3PG8Z6lfxRVU9gi346CbKu6u3RPIK94rnkyBNKYb55ck2cN47yPfRKnDNxUSvYj--zg8To_PuL8iyGFZ7jDffUYcdVR7J8VQNYdz6JDhEXSA0GGIGilY3XBVsdMoK_1Lgsj41-o48DH3pUFfEuAFf4blE1D4h_sFoM",
+  "qi": "CN3q5TMZO06DlK4onrJ687bPp2GE-fynd7ADPdf1ek3cXbeaFApVNp4w-i8zr7IVugQohn01i_jnkymw4UN-acoIzX2sGYhgDm6le1jyfv28bQ_Z5hT0rFNlPfGyK0kkPYUTxZ4ZCKpCYJT9C1nH58Yu4xFk4VR1zhULegjCCd4",
+  "x5c": [
+    "MIIDfDCCAmSgAwIBAgIJANWAkzF7PA8/MA0GCSqGSIb3DQEBCwUAMFUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJDQTEQMA4GA1UEChMHY2VydGlnbzEQMA4GA1UECxMHZXhhbXBsZTEVMBMGA1UEAxMMZXhhbXBsZS1sZWFmMB4XDTE2MDYxMDIyMTQxMVoXDTIzMDQxNTIyMTQxMVowVTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNBMRAwDgYDVQQKEwdjZXJ0aWdvMRAwDgYDVQQLEwdleGFtcGxlMRUwEwYDVQQDEwxleGFtcGxlLWxlYWYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC7stSvfQyGuHw3v34fisqIdDXberrFoFk9ht/WdXgYzX2uLNKdsR/J5sbWSl8K/5djpzj31eIzqU69w8v7SChM5x9bouDsABHz3kZucx5cSafEgJojysBkcrq3VY+aJanzbL+qErYX+lhRpPcZK6JMWIwar8Y3B2la4yWwieecw2/WfEVvG0M/DOYKnR8QHFsfl3US1dnBM84czKPyt9r40gDk2XiH/lGts5a94rAGvbr8IMCtq0mA5aH3Fx3mDSi3+4MZwygCAHrF5O5iSV9rEI+m2+7j2S+jHDUnvV+nqcpb9m6ENECnYX8FD2KcqlOjTmw8smDy09N2Np6i464lAgMBAAGjTzBNMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDATAsBgNVHREEJTAjhwR/AAABhxAAAAAAAAAAAAAAAAAAAAABgglsb2NhbGhvc3QwDQYJKoZIhvcNAQELBQADggEBAGM4aa/qrURUweZBIwZYv8O9b2+r4l0HjGAh982/B9sMlM05kojyDCUGvj86z18Lm8mKr4/y+i0nJ+vDIksEvfDuzw5ALAXGcBzPJKtICUf7LstA/n9NNpshWz0kld9ylnB5mbUzSFDncVyeXkEf5sGQXdIIZT9ChRBoiloSaa7dvBVCcsX1LGP2LWqKtD+7nUnw5qCwtyAVT8pthEUxFTpywoiJS5ZdzeEx8MNGvUeLFj2kleqPF78EioEQlSOxViCuctEtnQuPcDLHNFr10byTZY9roObiqdsJLMVvb2XliJjAqaPa9AkYwGE6xHw2ispwg64Rse0+AtKups19WIU="
+  ],
+  "x5t": "BhJU_fcg8sDkvT8zOaL-U1ChXeX",
+  "x5t#S256": "IDJKS5LxImjvmuAl_Vx50Vj_dFdACSGW6DU8ADFRdRX"
+}`)
+
+	var jwk2 JSONWebKey
+	err = jwk2.UnmarshalJSON(mismatchedThumbprints)
+	if err == nil {
+		t.Error("should not unmarshal JWK with mismatched thumbprints")
+	}
+
+	err = jwk2.UnmarshalJSON(shortThumbprints)
+	if err == nil {
+		t.Error("should not unmarshal JWK with too short thumbprints")
+	}
+}
+
+func TestKeyMismatchX509(t *testing.T) {
+	x5tSHA1 := sha1.Sum(testCertificates[0].Raw)
+	x5tSHA256 := sha256.Sum256(testCertificates[0].Raw)
+
+	jwk := JSONWebKey{
+		KeyID:                       "bar",
+		Algorithm:                   "foo",
+		Certificates:                testCertificates,
+		CertificateThumbprintSHA1:   x5tSHA1[:],
+		CertificateThumbprintSHA256: x5tSHA256[:],
+	}
+
+	for _, key := range []interface{}{
+		// None of these keys should match what's in the cert, so parsing should always fail.
+		ecTestKey256,
+		ecTestKey256.Public(),
+		ecTestKey384,
+		ecTestKey384.Public(),
+		ecTestKey521,
+		ecTestKey521.Public(),
+		rsaTestKey,
+		rsaTestKey.Public(),
+		ed25519PrivateKey,
+		ed25519PrivateKey.Public(),
+	} {
+		jwk.Key = key
+		raw, _ := jwk.MarshalJSON()
+
+		var jwk2 JSONWebKey
+		err := jwk2.UnmarshalJSON(raw)
+		if err == nil {
+			t.Error("should not unmarshal JWK with key/cert mismatch")
+		}
+	}
+}
+
 func TestMarshalUnmarshal(t *testing.T) {
 	kid := "DEADBEEF"
 
-	for i, key := range []interface{}{ecTestKey256, ecTestKey384, ecTestKey521, rsaTestKey, ed25519PrivateKey} {
+	for i, key := range []interface{}{
+		ecTestKey256,
+		ecTestKey256.Public(),
+		ecTestKey384,
+		ecTestKey384.Public(),
+		ecTestKey521,
+		ecTestKey521.Public(),
+		rsaTestKey,
+		rsaTestKey.Public(),
+		ed25519PrivateKey,
+		ed25519PrivateKey.Public(),
+	} {
 		for _, use := range []string{"", "sig", "enc"} {
 			jwk := JSONWebKey{Key: key, KeyID: kid, Algorithm: "foo"}
 			if use != "" {
