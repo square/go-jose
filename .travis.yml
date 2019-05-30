@@ -13,6 +13,9 @@ go:
   - "1.12.x"
   - tip
 
+env:
+  - GO111MODULE=on
+
 before_script:
   - export PATH=$HOME/.local/bin:$PATH
 
@@ -22,11 +25,11 @@ before_install:
   - pip install cram --user
 
 script:
-  - go test -v -covermode=count -coverprofile=profile.cov -race .
-  - go test -v -covermode=count -coverprofile=cryptosigner/profile.cov -race ./cryptosigner
-  - go test -v -covermode=count -coverprofile=cipher/profile.cov -race ./cipher
-  - go test -v -covermode=count -coverprofile=jwt/profile.cov -race ./jwt
-  - go test -v -race ./json  # no coverage for forked encoding/json package
+  - go test -v -covermode=count -coverprofile=profile.cov .
+  - go test -v -covermode=count -coverprofile=cryptosigner/profile.cov ./cryptosigner
+  - go test -v -covermode=count -coverprofile=cipher/profile.cov ./cipher
+  - go test -v -covermode=count -coverprofile=jwt/profile.cov ./jwt
+  - go test -v ./json  # no coverage for forked encoding/json package
   - golangci-lint run
   - cd jose-util && go build && PATH=$PWD:$PATH cram -v jose-util.t
   - cd ..
