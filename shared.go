@@ -452,8 +452,8 @@ func parseCertificateChain(chain []string) ([]*x509.Certificate, error) {
 	return out, nil
 }
 
-func (dst rawHeader) isSet(k HeaderKey) bool {
-	dvr := dst[k]
+func (parsed rawHeader) isSet(k HeaderKey) bool {
+	dvr := parsed[k]
 	if dvr == nil {
 		return false
 	}
@@ -472,17 +472,17 @@ func (dst rawHeader) isSet(k HeaderKey) bool {
 }
 
 // Merge headers from src into dst, giving precedence to headers from l.
-func (dst rawHeader) merge(src *rawHeader) {
+func (parsed rawHeader) merge(src *rawHeader) {
 	if src == nil {
 		return
 	}
 
 	for k, v := range *src {
-		if dst.isSet(k) {
+		if parsed.isSet(k) {
 			continue
 		}
 
-		dst[k] = v
+		parsed[k] = v
 	}
 }
 

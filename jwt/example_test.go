@@ -182,7 +182,7 @@ func ExampleSigned_privateClaims() {
 	}
 
 	fmt.Println(raw)
-	// Ouput: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiY3VzdG9tIjoiY3VzdG9tIGNsYWltIHZhbHVlIiwiaXNzIjoiaXNzdWVyIiwibmJmIjoxNDUxNjA2NDAwLCJzdWIiOiJzdWJqZWN0In0.knXH3ReNJToS5XI7BMCkk80ugpCup3tOy53xq-ga47o
+	// Output: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsibGVlbGEiLCJmcnkiXSwiY3VzdG9tIjoiY3VzdG9tIGNsYWltIHZhbHVlIiwiaXNzIjoiaXNzdWVyIiwibmJmIjoxNDUxNjA2NDAwLCJzdWIiOiJzdWJqZWN0In0.knXH3ReNJToS5XI7BMCkk80ugpCup3tOy53xq-ga47o
 }
 
 func ExampleEncrypted() {

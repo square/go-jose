@@ -200,6 +200,9 @@ func TestRsaPrivateExcessPrimes(t *testing.T) {
 func TestRoundtripEcPublic(t *testing.T) {
 	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
 		jwk, err := fromEcPublicKey(&ecTestKey.PublicKey)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		ec2, err := jwk.ecPublicKey()
 		if err != nil {
@@ -221,6 +224,9 @@ func TestRoundtripEcPublic(t *testing.T) {
 func TestRoundtripEcPrivate(t *testing.T) {
 	for i, ecTestKey := range []*ecdsa.PrivateKey{ecTestKey256, ecTestKey384, ecTestKey521} {
 		jwk, err := fromEcPrivateKey(ecTestKey)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		ec2, err := jwk.ecPrivateKey()
 		if err != nil {
@@ -701,7 +707,9 @@ func TestEd25519Serialization(t *testing.T) {
 	serialized, _ := json.Marshal(jwk)
 
 	var jwk2 JSONWebKey
-	json.Unmarshal(serialized, &jwk2)
+	if err := json.Unmarshal(serialized, &jwk2); err != nil {
+		t.Fatal(err)
+	}
 
 	assert.True(t, bytes.Equal(
 		[]byte(jwk.Key.(ed25519.PrivateKey).Public().(ed25519.PublicKey)),
@@ -773,7 +781,9 @@ func TestJWKSymmetricKey(t *testing.T) {
 	sample2 := `{"kty":"oct","k":"AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow","kid":"HMAC key used in JWS spec Appendix A.1 example"}`
 
 	var jwk1 JSONWebKey
-	json.Unmarshal([]byte(sample1), &jwk1)
+	if err := json.Unmarshal([]byte(sample1), &jwk1); err != nil {
+		t.Fatal(err)
+	}
 
 	if jwk1.Algorithm != "A128KW" {
 		t.Errorf("expected Algorithm to be A128KW, but was '%s'", jwk1.Algorithm)
@@ -784,7 +794,9 @@ func TestJWKSymmetricKey(t *testing.T) {
 	}
 
 	var jwk2 JSONWebKey
-	json.Unmarshal([]byte(sample2), &jwk2)
+	if err := json.Unmarshal([]byte(sample2), &jwk2); err != nil {
+		t.Fatal(err)
+	}
 
 	if jwk2.KeyID != "HMAC key used in JWS spec Appendix A.1 example" {
 		t.Errorf("expected KeyID to be 'HMAC key used in JWS spec Appendix A.1 example', but was '%s'", jwk2.KeyID)
@@ -831,17 +843,17 @@ func TestJWKSymmetricInvalid(t *testing.T) {
 
 func TestJWKIsPublic(t *testing.T) {
 	bigInt := big.NewInt(0)
-	eccPub := ecdsa.PublicKey{elliptic.P256(), bigInt, bigInt}
-	rsaPub := rsa.PublicKey{bigInt, 1}
+	eccPub := ecdsa.PublicKey{Curve: elliptic.P256(), X: bigInt, Y: bigInt}
+	rsaPub := rsa.PublicKey{N: bigInt, E: 1}
 
 	cases := []struct {
 		key              interface{}
 		expectedIsPublic bool
 	}{
 		{&eccPub, true},
-		{&ecdsa.PrivateKey{eccPub, bigInt}, false},
+		{&ecdsa.PrivateKey{PublicKey: eccPub, D: bigInt}, false},
 		{&rsaPub, true},
-		{&rsa.PrivateKey{rsaPub, bigInt, []*big.Int{bigInt, bigInt}, rsa.PrecomputedValues{}}, false},
+		{&rsa.PrivateKey{PublicKey: rsaPub, D: bigInt, Primes: []*big.Int{bigInt, bigInt}}, false},
 		{ed25519PublicKey, true},
 		{ed25519PrivateKey, false},
 	}
@@ -856,8 +868,8 @@ func TestJWKIsPublic(t *testing.T) {
 
 func TestJWKValid(t *testing.T) {
 	bigInt := big.NewInt(0)
-	eccPub := ecdsa.PublicKey{elliptic.P256(), bigInt, bigInt}
-	rsaPub := rsa.PublicKey{bigInt, 1}
+	eccPub := ecdsa.PublicKey{Curve: elliptic.P256(), X: bigInt, Y: bigInt}
+	rsaPub := rsa.PublicKey{N: bigInt, E: 1}
 	edPubEmpty := ed25519.PublicKey([]byte{})
 	edPrivEmpty := ed25519.PublicKey([]byte{})
 
@@ -869,11 +881,11 @@ func TestJWKValid(t *testing.T) {
 		{&ecdsa.PublicKey{}, false},
 		{&eccPub, true},
 		{&ecdsa.PrivateKey{}, false},
-		{&ecdsa.PrivateKey{eccPub, bigInt}, true},
+		{&ecdsa.PrivateKey{PublicKey: eccPub, D: bigInt}, true},
 		{&rsa.PublicKey{}, false},
 		{&rsaPub, true},
 		{&rsa.PrivateKey{}, false},
-		{&rsa.PrivateKey{rsaPub, bigInt, []*big.Int{bigInt, bigInt}, rsa.PrecomputedValues{}}, true},
+		{&rsa.PrivateKey{PublicKey: rsaPub, D: bigInt, Primes: []*big.Int{bigInt, bigInt}}, true},
 		{ed25519PublicKey, true},
 		{ed25519PrivateKey, true},
 		{edPubEmpty, false},
@@ -906,7 +918,9 @@ func TestJWKBufferSizeCheck(t *testing.T) {
 		"x":"m9GSmJ5iGmAYlMlaOJGSFN_CjN9cIn8GGYExP-C0FBiIXlWTNvGN38R9WdrHcppfsKF0FXMOMyutpHIRaiMxYSA",
 		"y":"ZaPcRZ3q_7T3h-Gwz2i-T2JjJXfj6YVGgKHcFz5zqmg"}`
 	var jwk JSONWebKey
-	jwk.UnmarshalJSON([]byte(key))
+	if err := jwk.UnmarshalJSON([]byte(key)); err == nil {
+		t.Fatal("key should be invalid")
+	}
 	jwk.Valid() // true
 	// panic: square/go-jose: invalid call to newFixedSizeBuffer (len(data) > length)
 	// github.com/square/go-jose.newFixedSizeBuffer(0xc420014557, 0x41, 0x41, 0x20, 0x0)

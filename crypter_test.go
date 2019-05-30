@@ -254,7 +254,7 @@ func TestEncrypterWithBrokenRand(t *testing.T) {
 		for _, enc := range encAlgs {
 			for _, key := range generateTestKeys(alg, enc) {
 				for i, getReader := range readers {
-					RandReader = getReader()
+					randReader = getReader()
 					err := RoundtripJWE(alg, enc, NONE, serializer, corrupter, nil, key.enc, key.dec)
 					if err == nil {
 						t.Error("encrypter should fail if rand is broken", i)

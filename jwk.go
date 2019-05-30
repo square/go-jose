@@ -353,7 +353,7 @@ func (k *JSONWebKey) Thumbprint(hash crypto.Hash) ([]byte, error) {
 	}
 
 	h := hash.New()
-	h.Write([]byte(input))
+	_, _ = h.Write([]byte(input))
 	return h.Sum(nil), nil
 }
 
@@ -701,7 +701,7 @@ func dSize(curve elliptic.Curve) int {
 	bitLen := order.BitLen()
 	size := bitLen / 8
 	if bitLen%8 != 0 {
-		size = size + 1
+		size++
 	}
 	return size
 }
