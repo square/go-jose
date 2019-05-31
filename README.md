@@ -23,7 +23,7 @@ US maintained blocked list.
 The implementation follows the
 [JSON Web Encryption](http://dx.doi.org/10.17487/RFC7516) (RFC 7516),
 [JSON Web Signature](http://dx.doi.org/10.17487/RFC7515) (RFC 7515), and
-[JSON Web Token](http://dx.doi.org/10.17487/RFC7519) (RFC 7519).
+[JSON Web Token](http://dx.doi.org/10.17487/RFC7519) (RFC 7519) specifications.
 Tables of supported algorithms are shown below. The library supports both
 the compact and full serialization formats, and has optional support for
 multiple recipients. It also comes with a small command-line utility
