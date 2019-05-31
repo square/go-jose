@@ -118,14 +118,14 @@ func (s *cryptoSigner) SignPayload(payload []byte, alg jose.SignatureAlgorithm) 
 		}
 
 		rBytes := sig.R.Bytes()
-		rBytesPadded := make([]byte, byteLen)
-		copy(rBytesPadded[byteLen-len(rBytes):], rBytes)
+		out = make([]byte, byteLen)
+		copy(out[byteLen-len(rBytes):], rBytes)
 
 		sBytes := sig.S.Bytes()
 		sBytesPadded := make([]byte, byteLen)
 		copy(sBytesPadded[byteLen-len(sBytes):], sBytes)
 
-		out = append(rBytesPadded, sBytesPadded...)
+		out = append(out, sBytesPadded...)
 	case jose.RS256, jose.RS384, jose.RS512:
 		out, err = s.signer.Sign(s.rand, hashed, hash)
 	case jose.PS256, jose.PS384, jose.PS512:

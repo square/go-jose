@@ -24,7 +24,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
 	"sort"
@@ -45,7 +44,7 @@ type testClaims struct {
 type invalidMarshalClaims struct {
 }
 
-var errInvalidMarshalClaims = errors.New("Failed marshaling invalid claims.")
+var errInvalidMarshalClaims = errors.New("failed marshaling invalid claims")
 
 func (c invalidMarshalClaims) MarshalJSON() ([]byte, error) {
 	return nil, errInvalidMarshalClaims
@@ -82,10 +81,10 @@ func TestIntegerAndFloatsNormalize(t *testing.T) {
 	}
 
 	if ni != c.Int {
-		t.Error(fmt.Sprintf("normalize failed to preserve int64 (got %v, wanted %v, type %s)", normalized["int"], c.Int, reflect.TypeOf(normalized["int"])))
+		t.Errorf("normalize failed to preserve int64 (got %v, wanted %v, type %s)", normalized["int"], c.Int, reflect.TypeOf(normalized["int"]))
 	}
 	if nf != c.Float {
-		t.Error(fmt.Sprintf("normalize failed to preserve float64 (got %v, wanted %v, type %s)", normalized["float"], c.Float, reflect.TypeOf(normalized["float"])))
+		t.Errorf("normalize failed to preserve float64 (got %v, wanted %v, type %s)", normalized["float"], c.Float, reflect.TypeOf(normalized["float"]))
 	}
 }
 
@@ -141,7 +140,7 @@ func TestBuilderMergeClaims(t *testing.T) {
 	assert.Equal(t, err, ErrInvalidClaims)
 
 	_, err = Signed(rsaSigner).Claims(&invalidMarshalClaims{}).CompactSerialize()
-	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: failed marshaling invalid claims")
 }
 
 func TestSignedFullSerializeAndToken(t *testing.T) {
@@ -169,9 +168,9 @@ func TestSignedFullSerializeAndToken(t *testing.T) {
 
 	b2 := Signed(rsaSigner).Claims(&invalidMarshalClaims{})
 	_, err = b2.FullSerialize()
-	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: failed marshaling invalid claims")
 	_, err = b2.Token()
-	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: failed marshaling invalid claims")
 }
 
 func TestEncryptedFullSerializeAndToken(t *testing.T) {
@@ -207,9 +206,9 @@ func TestEncryptedFullSerializeAndToken(t *testing.T) {
 	b2 := Encrypted(encrypter).Claims(&invalidMarshalClaims{})
 
 	_, err = b2.FullSerialize()
-	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: failed marshaling invalid claims")
 	_, err = b2.Token()
-	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	require.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: failed marshaling invalid claims")
 }
 
 func TestBuilderSignedAndEncrypted(t *testing.T) {
@@ -269,9 +268,9 @@ func TestBuilderSignedAndEncrypted(t *testing.T) {
 
 	b2 := SignedAndEncrypted(rsaSigner, encrypter).Claims(&invalidMarshalClaims{})
 	_, err = b2.CompactSerialize()
-	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: failed marshaling invalid claims")
 	_, err = b2.FullSerialize()
-	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: Failed marshaling invalid claims.")
+	assert.EqualError(t, err, "json: error calling MarshalJSON for type *jwt.invalidMarshalClaims: failed marshaling invalid claims")
 
 	encrypter2, err := jose.NewEncrypter(jose.A128CBC_HS256, recipient, nil)
 	require.NoError(t, err, "Error creating encrypter.")

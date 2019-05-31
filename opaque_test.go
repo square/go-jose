@@ -113,7 +113,7 @@ func makeOpaqueSigner(t *testing.T, signingKey interface{}, alg SignatureAlgorit
 }
 
 func makeOpaqueVerifier(t *testing.T, verificationKey []interface{}, alg SignatureAlgorithm) *verifyWrapper {
-	var verifiers []payloadVerifier
+	verifiers := []payloadVerifier{}
 	for _, vk := range verificationKey {
 		verifier, err := newVerifier(vk)
 		if err != nil {
