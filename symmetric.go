@@ -35,7 +35,7 @@ import (
 	josecipher "github.com/square/go-jose/cipher"
 )
 
-// Random reader (stubbed out in tests)
+// RandReader is a cryptographically secure random number generator (stubbed out in tests).
 var RandReader = rand.Reader
 
 const (
