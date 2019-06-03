@@ -112,11 +112,10 @@ func (s *Audience) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON converts audience to json representation.
 func (s Audience) MarshalJSON() ([]byte, error) {
-	type Alias Audience
 	if len(s) == 1 {
 		return json.Marshal(s[0])
 	}
-	return json.Marshal((Alias)(s))
+	return json.Marshal([]string(s))
 }
 
 //Contains checks whether a given string is included in the Audience
