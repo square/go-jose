@@ -27,9 +27,9 @@ DER or JWK formats.
 
 ## Examples
 
-## Generate key pair
+### Generate key pair
 
-Generates a key pair, either for signing/verification or encryption/decryption.
+Generates a key pair, either for signing/verification or encryption/decryption. Generated keys will be written to the current directory.
 
     # Generate keys for signing (for RSA-PSS)
     jose-util generate-key --use sig --alg RS256
@@ -93,7 +93,8 @@ Expands a compact message to the full serialization format.
 ### Decode base64
 
 The JOSE format uses url-safe base64 in payloads, but the `base64` utility that ships with
-most Linux distributions (or macOS) only supports the standard base64 encoding. Therefore
-a `b64decode` command is supported in `jose-util` that can decode url-safe base64 data.
+most Linux distributions (or macOS) only supports the standard base64 encoding. To make it easier
+to deal with these payloads a `b64decode` command is available in `jose-util` that can decode
+both regular and url-safe base64 data.
 
     echo "8J-Ukgo" | jose-util b64decode
