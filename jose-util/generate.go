@@ -26,7 +26,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	jose "github.com/square/go-jose"
+	jose "github.com/square/go-jose/v3"
 	"golang.org/x/crypto/ed25519"
 )
 
