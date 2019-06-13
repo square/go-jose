@@ -28,8 +28,8 @@ import (
 	"fmt"
 	"math/big"
 
-	josecipher "github.com/square/go-jose/cipher"
-	"github.com/square/go-jose/json"
+	josecipher "github.com/square/go-jose/v3/cipher"
+	"github.com/square/go-jose/v3/json"
 	"golang.org/x/crypto/ed25519"
 )
 

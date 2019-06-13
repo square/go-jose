@@ -35,7 +35,7 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/square/go-jose/json"
+	"github.com/square/go-jose/v3/json"
 )
 
 // rawJSONWebKey represents a public or private key in JWK format, used for parsing/serializing.

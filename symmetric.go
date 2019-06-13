@@ -32,7 +32,7 @@ import (
 
 	"golang.org/x/crypto/pbkdf2"
 
-	josecipher "github.com/square/go-jose/cipher"
+	josecipher "github.com/square/go-jose/v3/cipher"
 )
 
 // RandReader is a cryptographically secure random number generator (stubbed out in tests).
