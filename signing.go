@@ -34,6 +34,14 @@ type NonceSource interface {
 	Nonce() (string, error)
 }
 
+// Verifier represents logic, based on a cryptographic key, to verify a signed message.
+type Verifier interface {
+	// Verify an individual payload with a signature and algorithm. If you're dealing with
+	// a full message, you probably want to call JSONWebSignature#Verify instead of calling
+	// this directly.
+	VerifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error
+}
+
 // Signer represents a signer which takes a payload and produces a signed JWS object.
 type Signer interface {
 	Sign(payload []byte) (*JSONWebSignature, error)
@@ -103,10 +111,6 @@ type payloadSigner interface {
 	signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error)
 }
 
-type payloadVerifier interface {
-	verifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error
-}
-
 type genericSigner struct {
 	recipients   []recipientSigInfo
 	nonceSource  NonceSource
@@ -151,34 +155,51 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 	return signer, nil
 }
 
-// newVerifier creates a verifier based on the key type
-func newVerifier(verificationKey interface{}) (payloadVerifier, error) {
-	switch verificationKey := verificationKey.(type) {
+func NewRSAVerifier(key *rsa.PublicKey) (Verifier, error) {
+	if key == nil {
+		return nil, ErrInvalidKey
+	}
+	return &rsaEncrypterVerifier{publicKey: key}, nil
+}
+
+func NewECDSAVerifier(key *ecdsa.PublicKey) (Verifier, error) {
+	if key == nil {
+		return nil, ErrInvalidKey
+	}
+	return &ecEncrypterVerifier{publicKey: key}, nil
+}
+
+func NewED25519Verifier(key ed25519.PublicKey) (Verifier, error) {
+	if len(key) == 0 {
+		return nil, ErrInvalidKey
+	}
+	return &edEncrypterVerifier{publicKey: key}, nil
+}
+
+func NewHMACVerifier(key []byte) (Verifier, error) {
+	if len(key) == 0 {
+		return nil, ErrInvalidKey
+	}
+	return &symmetricMac{key: key}, nil
+}
+
+func NewJWKVerifier(key *JSONWebKey) (Verifier, error) {
+	if key == nil {
+		return nil, ErrInvalidKey
+	}
+
+	switch verificationKey := key.Key.(type) {
 	case ed25519.PublicKey:
-		return &edEncrypterVerifier{
-			publicKey: verificationKey,
-		}, nil
+		return NewED25519Verifier(verificationKey)
 	case *rsa.PublicKey:
-		return &rsaEncrypterVerifier{
-			publicKey: verificationKey,
-		}, nil
+		return NewRSAVerifier(verificationKey)
 	case *ecdsa.PublicKey:
-		return &ecEncrypterVerifier{
-			publicKey: verificationKey,
-		}, nil
+		return NewECDSAVerifier(verificationKey)
 	case []byte:
-		return &symmetricMac{
-			key: verificationKey,
-		}, nil
-	case JSONWebKey:
-		return newVerifier(verificationKey.Key)
-	case *JSONWebKey:
-		return newVerifier(verificationKey.Key)
+		return NewHMACVerifier(verificationKey)
+	default:
+		return nil, ErrUnsupportedKeyType
 	}
-	if ov, ok := verificationKey.(OpaqueVerifier); ok {
-		return &opaqueVerifier{verifier: ov}, nil
-	}
-	return nil, ErrUnsupportedKeyType
 }
 
 func (ctx *genericSigner) addRecipient(alg SignatureAlgorithm, signingKey interface{}) error {
@@ -328,8 +349,8 @@ func (ctx *genericSigner) Options() SignerOptions {
 // Be careful when verifying signatures based on embedded JWKs inside the
 // payload header. You cannot assume that the key received in a payload is
 // trusted.
-func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) {
-	err := obj.DetachedVerify(obj.payload, verificationKey)
+func (obj JSONWebSignature) Verify(verifier Verifier) ([]byte, error) {
+	err := obj.DetachedVerify(obj.payload, verifier)
 	if err != nil {
 		return nil, err
 	}
@@ -347,10 +368,9 @@ func (obj JSONWebSignature) UnsafePayloadWithoutVerification() []byte {
 // most cases, you will probably want to use Verify instead. DetachedVerify
 // is only useful if you have a payload and signature that are separated from
 // each other.
-func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey interface{}) error {
-	verifier, err := newVerifier(verificationKey)
-	if err != nil {
-		return err
+func (obj JSONWebSignature) DetachedVerify(payload []byte, verifier Verifier) error {
+	if verifier == nil {
+		return errors.New("square/go-jose: verifier was nil")
 	}
 
 	if len(obj.Signatures) > 1 {
@@ -372,7 +392,7 @@ func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey inter
 
 	input := obj.computeAuthData(payload, &signature)
 	alg := headers.getSignatureAlgorithm()
-	err = verifier.verifyPayload(input, signature.Signature, alg)
+	err = verifier.VerifyPayload(input, signature.Signature, alg)
 	if err == nil {
 		return nil
 	}
@@ -384,8 +404,8 @@ func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey inter
 // returns the index of the signature that was verified, along with the signature
 // object and the payload. We return the signature and index to guarantee that
 // callers are getting the verified value.
-func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signature, []byte, error) {
-	idx, sig, err := obj.DetachedVerifyMulti(obj.payload, verificationKey)
+func (obj JSONWebSignature) VerifyMulti(verifier Verifier) (int, Signature, []byte, error) {
+	idx, sig, err := obj.DetachedVerifyMulti(obj.payload, verifier)
 	if err != nil {
 		return -1, Signature{}, nil, err
 	}
@@ -401,10 +421,9 @@ func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signa
 // DetachedVerifyMulti is only useful if you have a payload and signature that are
 // separated from each other, and the signature can have multiple signers at the
 // same time.
-func (obj JSONWebSignature) DetachedVerifyMulti(payload []byte, verificationKey interface{}) (int, Signature, error) {
-	verifier, err := newVerifier(verificationKey)
-	if err != nil {
-		return -1, Signature{}, err
+func (obj JSONWebSignature) DetachedVerifyMulti(payload []byte, verifier Verifier) (int, Signature, error) {
+	if verifier == nil {
+		return -1, Signature{}, errors.New("square/go-jose: verifier was nil")
 	}
 
 outer:
@@ -423,7 +442,7 @@ outer:
 
 		input := obj.computeAuthData(payload, &signature)
 		alg := headers.getSignatureAlgorithm()
-		err = verifier.verifyPayload(input, signature.Signature, alg)
+		err = verifier.VerifyPayload(input, signature.Signature, alg)
 		if err == nil {
 			return i, signature, nil
 		}

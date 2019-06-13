@@ -639,13 +639,13 @@ func TestDirectEncryptionKeySizeCheck(t *testing.T) {
 
 	// AES-128 with 32-byte key should reject
 	_, err := NewEncrypter(A128GCM, Recipient{Algorithm: DIRECT, Key: key32}, nil)
-	if err != ErrInvalidKeySize {
+	if err != ErrInvalidKey {
 		t.Error("Should reject AES-128 with 32-byte key")
 	}
 
 	// AES-256 with 16-byte key should reject
 	_, err = NewEncrypter(A256GCM, Recipient{Algorithm: DIRECT, Key: key16}, nil)
-	if err != ErrInvalidKeySize {
+	if err != ErrInvalidKey {
 		t.Error("Should reject AES-256 with 16-byte key")
 	}
 }

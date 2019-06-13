@@ -152,7 +152,7 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 			return nil, ErrUnsupportedKeyType
 		}
 		if encrypter.cipher.keySize() != len(rawKey.([]byte)) {
-			return nil, ErrInvalidKeySize
+			return nil, ErrInvalidKey
 		}
 		encrypter.keyGenerator = staticKeyGenerator{
 			key: rawKey.([]byte),

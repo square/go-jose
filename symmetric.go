@@ -454,7 +454,7 @@ func (ctx symmetricMac) signPayload(payload []byte, alg SignatureAlgorithm) (Sig
 }
 
 // Verify the given payload
-func (ctx symmetricMac) verifyPayload(payload []byte, mac []byte, alg SignatureAlgorithm) error {
+func (ctx symmetricMac) VerifyPayload(payload []byte, mac []byte, alg SignatureAlgorithm) error {
 	expected, err := ctx.hmac(payload, alg)
 	if err != nil {
 		return errors.New("square/go-jose: failed to compute hmac")

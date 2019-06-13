@@ -46,10 +46,10 @@ func (sw *signWrapper) SignPayload(payload []byte, alg SignatureAlgorithm) ([]by
 }
 
 type verifyWrapper struct {
-	wrapped []payloadVerifier
+	wrapped []Verifier
 }
 
-var _ = OpaqueVerifier(&verifyWrapper{})
+var _ = Verifier(&verifyWrapper{})
 
 func (vw *verifyWrapper) VerifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
 	if len(vw.wrapped) == 0 {
@@ -57,7 +57,7 @@ func (vw *verifyWrapper) VerifyPayload(payload []byte, signature []byte, alg Sig
 	}
 	var err error
 	for _, v := range vw.wrapped {
-		err = v.verifyPayload(payload, signature, alg)
+		err = v.VerifyPayload(payload, signature, alg)
 		if err == nil {
 			return nil
 		}
@@ -113,9 +113,9 @@ func makeOpaqueSigner(t *testing.T, signingKey interface{}, alg SignatureAlgorit
 }
 
 func makeOpaqueVerifier(t *testing.T, verificationKey []interface{}, alg SignatureAlgorithm) *verifyWrapper {
-	verifiers := []payloadVerifier{}
+	verifiers := []Verifier{}
 	for _, vk := range verificationKey {
-		verifier, err := newVerifier(vk)
+		verifier, err := NewJWKVerifier(&JSONWebKey{Key: vk})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +125,6 @@ func makeOpaqueVerifier(t *testing.T, verificationKey []interface{}, alg Signatu
 }
 
 func TestOpaqueSignerKeyRotation(t *testing.T) {
-
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA}
 
 	serializers := []func(*JSONWebSignature) (string, error){
@@ -176,7 +175,7 @@ func TestOpaqueSignerKeyRotation(t *testing.T) {
 	}
 }
 
-func rtSerialize(t *testing.T, serializer func(*JSONWebSignature) (string, error), sig *JSONWebSignature, vk interface{}) *JSONWebSignature {
+func rtSerialize(t *testing.T, serializer func(*JSONWebSignature) (string, error), sig *JSONWebSignature, vk Verifier) *JSONWebSignature {
 	b, err := serializer(sig)
 	if err != nil {
 		t.Fatal(err)

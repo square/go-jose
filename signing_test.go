@@ -65,7 +65,7 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JSONWebSignature) 
 	// (Maybe) mangle the object
 	corrupter(obj)
 
-	output, err := obj.Verify(verificationKey)
+	output, err := obj.Verify(mustVerifier(verificationKey))
 	if err != nil {
 		return fmt.Errorf("error on verify: %s", err)
 	}
@@ -73,7 +73,7 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JSONWebSignature) 
 	// Check that verify works with embedded keys (if present)
 	for i, sig := range obj.Signatures {
 		if sig.Header.JSONWebKey != nil {
-			_, err = obj.Verify(sig.Header.JSONWebKey)
+			_, err = obj.Verify(mustVerifier(sig.Header.JSONWebKey))
 			if err != nil {
 				return fmt.Errorf("error on verify with embedded key %d: %s", i, err)
 			}
@@ -195,25 +195,19 @@ func TestJWSInvalidKey(t *testing.T) {
 	}
 
 	// Must work with correct key
-	_, err = obj.Verify(verificationKey0)
+	_, err = obj.Verify(mustVerifier(verificationKey0))
 	if err != nil {
 		t.Error("error on verify", err)
 	}
 
 	// Must not work with incorrect key
-	_, err = obj.Verify(verificationKey1)
+	_, err = obj.Verify(mustVerifier(verificationKey1))
 	if err == nil {
 		t.Error("verification should fail with incorrect key")
 	}
 
 	// Must not work with incorrect key
-	_, err = obj.Verify(verificationKey2)
-	if err == nil {
-		t.Error("verification should fail with incorrect key")
-	}
-
-	// Must not work with invalid key
-	_, err = obj.Verify("")
+	_, err = obj.Verify(mustVerifier(verificationKey2))
 	if err == nil {
 		t.Error("verification should fail with incorrect key")
 	}
@@ -256,7 +250,7 @@ func TestMultiRecipientJWS(t *testing.T) {
 		t.Fatal("error on parse: ", err)
 	}
 
-	i, _, output, err := obj.VerifyMulti(&rsaTestKey.PublicKey)
+	i, _, output, err := obj.VerifyMulti(mustVerifier(&rsaTestKey.PublicKey))
 	if err != nil {
 		t.Fatal("error on verify: ", err)
 	}
@@ -269,7 +263,7 @@ func TestMultiRecipientJWS(t *testing.T) {
 		t.Fatal("input/output do not match", output, input)
 	}
 
-	i, _, output, err = obj.VerifyMulti(sharedKey)
+	i, _, output, err = obj.VerifyMulti(mustVerifier(sharedKey))
 	if err != nil {
 		t.Fatal("error on verify: ", err)
 	}
@@ -341,7 +335,7 @@ func TestInvalidJWS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = obj.Verify(&rsaTestKey.PublicKey)
+	_, err = obj.Verify(mustVerifier(&rsaTestKey.PublicKey))
 	if err == nil {
 		t.Error("should not verify message with unknown crit header")
 	}
@@ -350,7 +344,7 @@ func TestInvalidJWS(t *testing.T) {
 	obj.Signatures[0].protected = &rawHeader{}
 	obj.Signatures[0].header = &rawHeader{}
 
-	_, err = obj.Verify(&rsaTestKey.PublicKey)
+	_, err = obj.Verify(mustVerifier(&rsaTestKey.PublicKey))
 	if err == nil {
 		t.Error("should not verify message with missing headers")
 	}
@@ -574,7 +568,7 @@ func TestSignerB64(t *testing.T) {
 		t.Errorf("Error on parse: %s", err)
 	}
 
-	output, err := parsed.Verify(key)
+	output, err := parsed.Verify(mustVerifier(key))
 	if err != nil {
 		t.Errorf("Error on verify: %s", err)
 	}

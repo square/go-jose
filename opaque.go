@@ -66,18 +66,3 @@ func (o *opaqueSigner) signPayload(payload []byte, alg SignatureAlgorithm) (Sign
 		protected: &rawHeader{},
 	}, nil
 }
-
-// OpaqueVerifier is an interface that supports verifying payloads with opaque
-// public key(s). An OpaqueSigner may rotate signing keys transparently to the
-// user of this interface.
-type OpaqueVerifier interface {
-	VerifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error
-}
-
-type opaqueVerifier struct {
-	verifier OpaqueVerifier
-}
-
-func (o *opaqueVerifier) verifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
-	return o.verifier.VerifyPayload(payload, signature, alg)
-}

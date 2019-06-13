@@ -303,7 +303,7 @@ func (ctx rsaDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm
 }
 
 // Verify the given payload
-func (ctx rsaEncrypterVerifier) verifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
+func (ctx rsaEncrypterVerifier) VerifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
 	var hash crypto.Hash
 
 	switch alg {
@@ -483,7 +483,7 @@ func (ctx edDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 	}, nil
 }
 
-func (ctx edEncrypterVerifier) verifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
+func (ctx edEncrypterVerifier) VerifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
 	if alg != EdDSA {
 		return ErrUnsupportedAlgorithm
 	}
@@ -552,7 +552,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 }
 
 // Verify the given payload
-func (ctx ecEncrypterVerifier) verifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
+func (ctx ecEncrypterVerifier) VerifyPayload(payload []byte, signature []byte, alg SignatureAlgorithm) error {
 	var keySize int
 	var hash crypto.Hash
 

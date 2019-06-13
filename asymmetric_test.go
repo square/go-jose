@@ -34,7 +34,7 @@ func TestEd25519(t *testing.T) {
 
 	enc := new(edEncrypterVerifier)
 	enc.publicKey = ed25519PublicKey
-	err = enc.verifyPayload([]byte{}, []byte{}, "XYZ")
+	err = enc.VerifyPayload([]byte{}, []byte{}, "XYZ")
 	if err != ErrUnsupportedAlgorithm {
 		t.Error("should return error on invalid algorithm")
 	}
@@ -53,12 +53,12 @@ func TestEd25519(t *testing.T) {
 	if sig.Signature == nil {
 		t.Error("Check the signature")
 	}
-	err = enc.verifyPayload([]byte("This is a test"), sig.Signature, "EdDSA")
+	err = enc.VerifyPayload([]byte("This is a test"), sig.Signature, "EdDSA")
 	if err != nil {
 		t.Error("should not error trying to verify payload")
 	}
 
-	err = enc.verifyPayload([]byte("This is test number 2"), sig.Signature, "EdDSA")
+	err = enc.VerifyPayload([]byte("This is test number 2"), sig.Signature, "EdDSA")
 	if err == nil {
 		t.Error("should not error trying to verify payload")
 	}
@@ -82,7 +82,7 @@ func TestInvalidAlgorithmsRSA(t *testing.T) {
 		t.Error("should return error on invalid algorithm")
 	}
 
-	err = enc.verifyPayload([]byte{}, []byte{}, "XYZ")
+	err = enc.VerifyPayload([]byte{}, []byte{}, "XYZ")
 	if err != ErrUnsupportedAlgorithm {
 		t.Error("should return error on invalid algorithm")
 	}
@@ -387,7 +387,7 @@ func TestInvalidECPublicKey(t *testing.T) {
 }
 
 func TestInvalidAlgorithmEC(t *testing.T) {
-	err := ecEncrypterVerifier{publicKey: &ecTestKey256.PublicKey}.verifyPayload([]byte{}, []byte{}, "XYZ")
+	err := ecEncrypterVerifier{publicKey: &ecTestKey256.PublicKey}.VerifyPayload([]byte{}, []byte{}, "XYZ")
 	if err != ErrUnsupportedAlgorithm {
 		t.Fatal("should not accept invalid/unsupported algorithm")
 	}

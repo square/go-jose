@@ -17,9 +17,15 @@
 package jose
 
 import (
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
+
+	"golang.org/x/crypto/ed25519"
 )
 
 const trustedCA = `
@@ -79,6 +85,33 @@ C6hJZKsjJkMkBeadlQAlLcjIx1rDV171CKLLTxy/dT5kv4p9UrJlnleyMVG6S/3d
 TEe305AI6A/9MEaRrActBnq6/OviQgBsKAvtTv1FmDbnpZsKeoFuwc3OPdTveQdC
 RA==
 -----END CERTIFICATE-----`
+
+func mustVerifier(key interface{}) Verifier {
+	var verifier Verifier
+	var err error
+	switch key := key.(type) {
+	case JSONWebKey:
+		verifier, err = NewJWKVerifier(&key)
+	case *JSONWebKey:
+		verifier, err = NewJWKVerifier(key)
+	case *rsa.PublicKey:
+		verifier, err = NewRSAVerifier(key)
+	case *ecdsa.PublicKey:
+		verifier, err = NewECDSAVerifier(key)
+	case ed25519.PublicKey:
+		verifier, err = NewED25519Verifier(key)
+	case []byte:
+		verifier, err = NewHMACVerifier(key)
+	case Verifier:
+		verifier = key
+	default:
+		panic(fmt.Errorf("Invalid key: %s", reflect.TypeOf(key)))
+	}
+	if err != nil {
+		panic(fmt.Errorf("Error building verifier: %s", err))
+	}
+	return verifier
+}
 
 func TestEmbeddedHMAC(t *testing.T) {
 	// protected: {"alg":"HS256", "jwk":{"kty":"oct", "k":"MTEx"}}, aka HMAC key.
@@ -223,7 +256,7 @@ func TestVerifyFlattenedWithIncludedUnprotectedKey(t *testing.T) {
 	if sig.Header.JSONWebKey == nil {
 		t.Error("No JWK in signature header.")
 	}
-	payload, err := jws.Verify(sig.Header.JSONWebKey)
+	payload, err := jws.Verify(mustVerifier(sig.Header.JSONWebKey))
 	if err != nil {
 		t.Errorf("Signature did not validate: %v", err)
 	}
@@ -258,12 +291,12 @@ func TestDetachedVerifyJWS(t *testing.T) {
 		}
 		payload := obj.payload
 		obj.payload = nil
-		err = obj.DetachedVerify(payload, rsaPublicKey)
+		err = obj.DetachedVerify(payload, mustVerifier(rsaPublicKey))
 		if err != nil {
 			t.Error("unable to verify message", msg, err)
 			continue
 		}
-		idx, _, err := obj.DetachedVerifyMulti(payload, rsaPublicKey)
+		idx, _, err := obj.DetachedVerifyMulti(payload, mustVerifier(rsaPublicKey))
 		if idx != 0 || err != nil {
 			t.Error("unable to verify message", msg, err)
 			continue
@@ -288,7 +321,7 @@ func TestVerifyFlattenedWithPrivateProtected(t *testing.T) {
 	if sig.Header.JSONWebKey == nil {
 		t.Error("No JWK in signature header.")
 	}
-	payload, err := jws.Verify(sig.Header.JSONWebKey)
+	payload, err := jws.Verify(mustVerifier(sig.Header.JSONWebKey))
 	if err != nil {
 		t.Errorf("Signature did not validate: %v", err)
 	}
@@ -326,7 +359,7 @@ func TestSampleNimbusJWSMessagesRSA(t *testing.T) {
 			t.Error("unable to parse message", msg, err)
 			continue
 		}
-		payload, err := obj.Verify(rsaPublicKey)
+		payload, err := obj.Verify(mustVerifier(rsaPublicKey))
 		if err != nil {
 			t.Error("unable to verify message", msg, err)
 			continue
@@ -366,7 +399,7 @@ func TestSampleNimbusJWSMessagesEC(t *testing.T) {
 			t.Error("unable to parse message", msg, err)
 			continue
 		}
-		payload, err := obj.Verify(ecPublicKeys[i])
+		payload, err := obj.Verify(mustVerifier(ecPublicKeys[i]))
 		if err != nil {
 			t.Error("unable to verify message", msg, err)
 			continue
@@ -393,7 +426,7 @@ func TestSampleNimbusJWSMessagesHMAC(t *testing.T) {
 			t.Error("unable to parse message", msg, err)
 			continue
 		}
-		payload, err := obj.Verify(hmacTestKey)
+		payload, err := obj.Verify(mustVerifier(hmacTestKey))
 		if err != nil {
 			t.Error("unable to verify message", msg, err)
 			continue
