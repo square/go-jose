@@ -54,18 +54,30 @@ func GenerateSigningKey(alg jose.SignatureAlgorithm, bits int) (crypto.PublicKey
 	switch alg {
 	case jose.ES256:
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
 		return key.Public(), key, err
 	case jose.ES384:
 		key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
 		return key.Public(), key, err
 	case jose.ES512:
 		key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
 		return key.Public(), key, err
 	case jose.EdDSA:
 		pub, key, err := ed25519.GenerateKey(rand.Reader)
 		return pub, key, err
 	case jose.RS256, jose.RS384, jose.RS512, jose.PS256, jose.PS384, jose.PS512:
 		key, err := rsa.GenerateKey(rand.Reader, bits)
+		if err != nil {
+			return nil, nil, err
+		}
 		return key.Public(), key, err
 	default:
 		return nil, nil, fmt.Errorf("unknown algorithm %s for signing key", alg)
@@ -83,6 +95,9 @@ func GenerateEncryptionKey(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, c
 			return nil, nil, errors.New("invalid key size for RSA key, 2048 or more is required")
 		}
 		key, err := rsa.GenerateKey(rand.Reader, bits)
+		if err != nil {
+			return nil, nil, err
+		}
 		return key.Public(), key, err
 	case jose.ECDH_ES, jose.ECDH_ES_A128KW, jose.ECDH_ES_A192KW, jose.ECDH_ES_A256KW:
 		var crv elliptic.Curve
@@ -97,6 +112,9 @@ func GenerateEncryptionKey(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, c
 			return nil, nil, errors.New("invalid elliptic curve key size, use one of 256, 384, or 521")
 		}
 		key, err := ecdsa.GenerateKey(crv, rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
 		return key.Public(), key, err
 	default:
 		return nil, nil, fmt.Errorf("unknown algorithm %s for encryption key", alg)
