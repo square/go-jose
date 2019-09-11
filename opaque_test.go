@@ -96,8 +96,29 @@ type keyDecryptWrapper struct {
 
 var _ = OpaqueKeyDecrypter(&keyDecryptWrapper{})
 
-func (kdw *keyDecryptWrapper) DecryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	key, err := kdw.wrapped.decryptKey(headers, recipient, generator)
+func (kdw *keyDecryptWrapper) DecryptKey(encryptedKey []byte, header Header) ([]byte, error) {
+	rawHeader := rawHeader{}
+	rawHeader.set(headerKeyID, header.KeyID)
+	rawHeader.set(headerAlgorithm, header.Algorithm)
+	rawHeader.set(headerNonce, header.Nonce)
+	rawHeader.set(headerJWK, header.JSONWebKey)
+	for k, v := range header.ExtraHeaders {
+		rawHeader.set(k, v)
+	}
+
+	recipient := &recipientInfo{
+		encryptedKey: encryptedKey,
+	}
+
+	var generator randomKeyGenerator
+	cipher := getContentCipher(rawHeader.getEncryption())
+	if cipher != nil {
+		generator = randomKeyGenerator{
+			size: cipher.keySize(),
+		}
+	}
+
+	key, err := kdw.wrapped.decryptKey(rawHeader, recipient, generator)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +282,7 @@ func TestOpaqueKeyRoundtripJWE(t *testing.T) {
 		RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW, A192GCMKW, A256GCMKW,
 		PBES2_HS256_A128KW, PBES2_HS384_A192KW, PBES2_HS512_A256KW,
 	}
-	enc := A256GCM
+	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
 	kid := "test-kid"
 
 	serializers := []func(*JSONWebEncryption) (string, error){
@@ -270,45 +291,47 @@ func TestOpaqueKeyRoundtripJWE(t *testing.T) {
 	}
 
 	for _, alg := range keyAlgs {
-		for _, testKey := range generateTestKeys(alg, enc) {
-			for _, serializer := range serializers {
-				kew := makeOpaqueKeyEncrypter(t, testKey.enc, alg, kid)
-				encrypter, err := NewEncrypter(
-					enc,
-					Recipient{
-						Algorithm: alg,
-						Key:       kew,
-					},
-					&EncrypterOptions{},
-				)
-				if err != nil {
-					t.Fatal(err, alg)
-				}
+		for _, enc := range encAlgs {
+			for _, testKey := range generateTestKeys(alg, enc) {
+				for _, serializer := range serializers {
+					kew := makeOpaqueKeyEncrypter(t, testKey.enc, alg, kid)
+					encrypter, err := NewEncrypter(
+						enc,
+						Recipient{
+							Algorithm: alg,
+							Key:       kew,
+						},
+						&EncrypterOptions{},
+					)
+					if err != nil {
+						t.Fatal(err, alg)
+					}
 
-				jwe, err := encrypter.Encrypt([]byte("foo bar"))
-				if err != nil {
-					t.Fatal(err, alg)
-				}
+					jwe, err := encrypter.Encrypt([]byte("foo bar"))
+					if err != nil {
+						t.Fatal(err, alg)
+					}
 
-				dw := makeOpaqueKeyDecrypter(t, testKey.dec, alg)
-				jwe = jweSerialize(t, serializer, jwe, dw)
-				if jwe.Header.KeyID != kid {
-					t.Errorf("expected jwe kid to equal %s but got %s", kid, jwe.Header.KeyID)
-				}
+					dw := makeOpaqueKeyDecrypter(t, testKey.dec, alg)
+					jwe = jweSerialize(t, serializer, jwe, dw)
+					if jwe.Header.KeyID != kid {
+						t.Errorf("expected jwe kid to equal %s but got %s", kid, jwe.Header.KeyID)
+					}
 
-				out, err := jwe.Decrypt(dw)
-				if err != nil {
-					t.Fatal(err, out)
-				}
-				if string(out) != "foo bar" {
-					t.Errorf("expected decrypted jwe to equal %s but got %s", "foo bar", string(out))
+					out, err := jwe.Decrypt(dw)
+					if err != nil {
+						t.Fatal(err, out)
+					}
+					if string(out) != "foo bar" {
+						t.Errorf("expected decrypted jwe to equal %s but got %s", "foo bar", string(out))
+					}
 				}
 			}
 		}
 	}
 }
 
-func jweSerialize(t *testing.T, serializer func(*JSONWebEncryption) (string, error), jwe *JSONWebEncryption, dk interface{}) *JSONWebEncryption {
+func jweSerialize(t *testing.T, serializer func(*JSONWebEncryption) (string, error), jwe *JSONWebEncryption, d OpaqueKeyDecrypter) *JSONWebEncryption {
 	b, err := serializer(jwe)
 	if err != nil {
 		t.Fatal(err)
@@ -317,7 +340,7 @@ func jweSerialize(t *testing.T, serializer func(*JSONWebEncryption) (string, err
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := jwe.Decrypt(dk); err != nil {
+	if _, err := jwe.Decrypt(d); err != nil {
 		t.Fatal(err)
 	}
 	return jwe
