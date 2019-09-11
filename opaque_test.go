@@ -98,10 +98,23 @@ var _ = OpaqueKeyDecrypter(&keyDecryptWrapper{})
 
 func (kdw *keyDecryptWrapper) DecryptKey(encryptedKey []byte, header Header) ([]byte, error) {
 	rawHeader := rawHeader{}
-	rawHeader.set(headerKeyID, header.KeyID)
-	rawHeader.set(headerAlgorithm, header.Algorithm)
-	rawHeader.set(headerNonce, header.Nonce)
-	rawHeader.set(headerJWK, header.JSONWebKey)
+
+	err := rawHeader.set(headerKeyID, header.KeyID)
+	if err != nil {
+		return nil, err
+	}
+	err = rawHeader.set(headerAlgorithm, header.Algorithm)
+	if err != nil {
+		return nil, err
+	}
+	err = rawHeader.set(headerNonce, header.Nonce)
+	if err != nil {
+		return nil, err
+	}
+	err = rawHeader.set(headerJWK, header.JSONWebKey)
+	if err != nil {
+		return nil, err
+	}
 	for k, v := range header.ExtraHeaders {
 		rawHeader.set(k, v)
 	}
