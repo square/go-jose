@@ -109,8 +109,8 @@ func newOpaqueKeyEncrypter(alg KeyAlgorithm, encrypter OpaqueKeyEncrypter) (reci
 	}
 
 	return recipientKeyInfo{
-		keyID:        encrypter.KeyID(),
-		keyAlg:       alg,
+		keyID:  encrypter.KeyID(),
+		keyAlg: alg,
 		keyEncrypter: &opaqueKeyEncrypter{
 			encrypter: encrypter,
 		},
