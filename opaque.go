@@ -115,14 +115,13 @@ func newOpaqueKeyEncrypter(alg KeyAlgorithm, encrypter OpaqueKeyEncrypter) (reci
 	}, nil
 }
 
-
 func (oke *opaqueKeyEncrypter) encryptKey(cek []byte, alg KeyAlgorithm) (recipientInfo, error) {
 	return oke.encrypter.encryptKey(cek, alg)
 }
 
 //OpaqueKeyDecrypter is an interface that supports decrypting keys with an opaque key.
 type OpaqueKeyDecrypter interface {
-	DecryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error)
+	DecryptKey(encryptedKey []byte, header Header) ([]byte, error)
 }
 
 type opaqueKeyDecrypter struct {
@@ -130,5 +129,14 @@ type opaqueKeyDecrypter struct {
 }
 
 func (okd *opaqueKeyDecrypter) decryptKey(headers rawHeader, recipient *recipientInfo, generator keyGenerator) ([]byte, error) {
-	return okd.decrypter.DecryptKey(headers, recipient, generator)
+	mergedHeaders := rawHeader{}
+	mergedHeaders.merge(&headers)
+	mergedHeaders.merge(recipient.header)
+
+	header, err := mergedHeaders.sanitized()
+	if err != nil {
+		return nil, err
+	}
+
+	return okd.decrypter.DecryptKey(recipient.encryptedKey, header)
 }
