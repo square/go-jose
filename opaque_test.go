@@ -116,7 +116,10 @@ func (kdw *keyDecryptWrapper) DecryptKey(encryptedKey []byte, header Header) ([]
 		return nil, err
 	}
 	for k, v := range header.ExtraHeaders {
-		rawHeader.set(k, v)
+		err = rawHeader.set(k, v)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	recipient := &recipientInfo{
