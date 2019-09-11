@@ -118,12 +118,7 @@ func (kdw *keyDecryptWrapper) DecryptKey(encryptedKey []byte, header Header) ([]
 		}
 	}
 
-	key, err := kdw.wrapped.decryptKey(rawHeader, recipient, generator)
-	if err != nil {
-		return nil, err
-	}
-
-	return key, nil
+	return kdw.wrapped.decryptKey(rawHeader, recipient, generator)
 }
 
 func TestRoundtripsJWSOpaque(t *testing.T) {
@@ -276,7 +271,6 @@ func rtSerialize(t *testing.T, serializer func(*JSONWebSignature) (string, error
 }
 
 func TestOpaqueKeyRoundtripJWE(t *testing.T) {
-
 	keyAlgs := []KeyAlgorithm{
 		ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW, A128KW, A192KW, A256KW,
 		RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW, A192GCMKW, A256GCMKW,
