@@ -20,6 +20,7 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -30,7 +31,6 @@ import (
 
 	josecipher "github.com/square/go-jose/v3/cipher"
 	"github.com/square/go-jose/v3/json"
-	"golang.org/x/crypto/ed25519"
 )
 
 // A generic RSA-based encrypter/verifier
