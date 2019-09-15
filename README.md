@@ -1,4 +1,4 @@
-# Go JOSE 
+# Go JOSE
 
 [![godoc](http://img.shields.io/badge/godoc-jose_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2)
 [![godoc](http://img.shields.io/badge/godoc-jwt_package-blue.svg?style=flat)](https://godoc.org/gopkg.in/square/go-jose.v2/jwt)
@@ -53,7 +53,7 @@ libraries in other languages.
 All new feature development takes place on the `master` branch, which we are
 preparing to release as version 3 soon. Version 2 will continue to receive
 critical bug and security fixes. Note that starting with version 3 we are
-using Go modules for versioning instead of `gopkg.in` as before.
+using Go modules for versioning instead of `gopkg.in` as before. Version 3 also will require Go version 1.13 or higher.
 
 Version 1 (on the `v1` branch) is frozen and not supported anymore.
 
@@ -88,7 +88,7 @@ standard where possible. The Godoc reference has a list of constants.
  Content encryption         | Algorithm identifier(s)
  :------------------------- | :------------------------------
  AES-CBC+HMAC               | A128CBC-HS256, A192CBC-HS384, A256CBC-HS512
- AES-GCM                    | A128GCM, A192GCM, A256GCM 
+ AES-GCM                    | A128GCM, A192GCM, A256GCM
 
  Compression                | Algorithm identifiers(s)
  :------------------------- | -------------------------------
@@ -105,7 +105,7 @@ allows attaching a key id.
  :------------------------- | -------------------------------
  RSA                        | *[rsa.PublicKey](http://golang.org/pkg/crypto/rsa/#PublicKey), *[rsa.PrivateKey](http://golang.org/pkg/crypto/rsa/#PrivateKey)
  ECDH, ECDSA                | *[ecdsa.PublicKey](http://golang.org/pkg/crypto/ecdsa/#PublicKey), *[ecdsa.PrivateKey](http://golang.org/pkg/crypto/ecdsa/#PrivateKey)
- EdDSA<sup>1</sup>          | [ed25519.PublicKey](https://godoc.org/golang.org/x/crypto/ed25519#PublicKey), [ed25519.PrivateKey](https://godoc.org/golang.org/x/crypto/ed25519#PrivateKey)
+ EdDSA<sup>1</sup>          | [ed25519.PublicKey](https://godoc.org/pkg/crypto/ed25519#PublicKey), [ed25519.PrivateKey](https://godoc.org/pkg/crypto/ed25519#PrivateKey)
  AES, HMAC                  | []byte
 
 <sup>1. Only available in version 2 or later of the package</sup>
