@@ -11,4 +11,4 @@ require (
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
-replace github.com/square/go-jose => ../
+replace github.com/square/go-jose/v3 => ../
