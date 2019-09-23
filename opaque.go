@@ -82,7 +82,7 @@ func (o *opaqueVerifier) verifyPayload(payload []byte, signature []byte, alg Sig
 	return o.verifier.VerifyPayload(payload, signature, alg)
 }
 
-//OpaqueKeyEncrypter is an interface that supports encrypting keys with an opaque key.
+// OpaqueKeyEncrypter is an interface that supports encrypting keys with an opaque key.
 type OpaqueKeyEncrypter interface {
 	// KeyID returns the kid
 	KeyID() string
