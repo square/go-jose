@@ -243,7 +243,7 @@ func TestBuilderSignedAndEncrypted(t *testing.T) {
 				ExtraHeaders: map[jose.HeaderKey]interface{}{
 					jose.HeaderType:        "JWT",
 					jose.HeaderContentType: "JWT",
-					"enc": "A128CBC-HS256",
+					"enc":                  "A128CBC-HS256",
 				},
 			}}, jwe.Headers)
 			if jws, err := jwe.Decrypt(testPrivRSAKey1); assert.NoError(t, err) {
