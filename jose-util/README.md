@@ -4,6 +4,13 @@ The `jose-util` command line utility allows for encryption, decryption, signing
 and verification of JOSE messages. Its main purpose is to facilitate dealing
 with JOSE messages when testing or debugging.
 
+## Installation
+
+```
+$ go get -u github.com/square/go-jose/jose-util
+$ go install github.com/square/go-jose/jose-util
+```
+
 ## Usage
 
 The utility includes the subcommands `encrypt`, `decrypt`, `sign`, `verify` and
