@@ -19,6 +19,7 @@ package jose
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -28,8 +29,6 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
-
-	"golang.org/x/crypto/ed25519"
 )
 
 // We generate only a single RSA and EC key for testing, speeds up tests.

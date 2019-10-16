@@ -22,6 +22,7 @@ package cryptosigner
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/asn1"
@@ -29,7 +30,6 @@ import (
 	"math/big"
 
 	"github.com/square/go-jose/v3"
-	"golang.org/x/crypto/ed25519"
 )
 
 // Opaque creates an OpaqueSigner from a "crypto".Signer
