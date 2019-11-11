@@ -22,10 +22,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	jose "github.com/square/go-jose/v3"
 	"golang.org/x/crypto/ed25519"
 )
@@ -122,13 +122,8 @@ func GenerateEncryptionKey(alg jose.KeyAlgorithm, bits int) (crypto.PublicKey, c
 }
 
 func generate() {
-	kid := *generateKeyIdentFlag
-	if kid == "" {
-		kid = uuid.New().String()
-	}
-
-	var pubKey crypto.PrivateKey
-	var privKey crypto.PublicKey
+	var privKey crypto.PrivateKey
+	var pubKey crypto.PublicKey
 	var err error
 
 	switch *generateUseFlag {
@@ -136,11 +131,32 @@ func generate() {
 		pubKey, privKey, err = GenerateSigningKey(jose.SignatureAlgorithm(*generateAlgFlag), *generateKeySizeFlag)
 	case "enc":
 		pubKey, privKey, err = GenerateEncryptionKey(jose.KeyAlgorithm(*generateAlgFlag), *generateKeySizeFlag)
+	default:
+		// According to RFC 7517 section-8.2.  This is unlikely to change in the
+		// near future. If it were, new values could be found in the registry under
+		// "JSON Web Key Use": https://www.iana.org/assignments/jose/jose.xhtml
+		app.FatalIfError(errors.New("invalid key use.  Must be \"sig\" or \"enc\""), "unable to generate key")
 	}
 	app.FatalIfError(err, "unable to generate key")
 
-	pub := jose.JSONWebKey{Key: pubKey, KeyID: kid, Algorithm: *generateAlgFlag, Use: *generateUseFlag}
+	kid := *generateKeyIdentFlag
+
 	priv := jose.JSONWebKey{Key: privKey, KeyID: kid, Algorithm: *generateAlgFlag, Use: *generateUseFlag}
+
+	// Generate a canonical kid based on RFC 7638
+	if kid == "" {
+		thumb, err := priv.Thumbprint(crypto.SHA256)
+		if err != nil {
+			app.FatalIfError(err, "unable to compute thumbprint")
+		}
+		kid = base64.URLEncoding.EncodeToString(thumb)
+		priv.KeyID = kid
+	}
+
+	// I'm not sure why we couldn't use `pub := priv.Public()` here as the private
+	// key should contain the public key.  In case for some reason it doesn't,
+	// this builds a public JWK from scratch.
+	pub := jose.JSONWebKey{Key: pubKey, KeyID: kid, Algorithm: *generateAlgFlag, Use: *generateUseFlag}
 
 	if priv.IsPublic() || !pub.IsPublic() || !priv.Valid() || !pub.Valid() {
 		app.Fatalf("invalid keys were generated")
@@ -151,8 +167,6 @@ func generate() {
 	pubJSON, err := pub.MarshalJSON()
 	app.FatalIfError(err, "failed to marshal public key to JSON")
 
-	// JWK Thumbprint (RFC 7638) is not used for key id because of lack of
-	// canonical representation.
 	name := fmt.Sprintf("jwk-%s-%s", *generateUseFlag, kid)
 	pubFile := fmt.Sprintf("%s-pub.json", name)
 	privFile := fmt.Sprintf("%s-priv.json", name)
