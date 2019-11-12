@@ -40,16 +40,17 @@ import (
 
 // rawJSONWebKey represents a public or private key in JWK format, used for parsing/serializing.
 type rawJSONWebKey struct {
-	Use string      `json:"use,omitempty"`
-	Kty string      `json:"kty,omitempty"`
-	Kid string      `json:"kid,omitempty"`
-	Crv string      `json:"crv,omitempty"`
-	Alg string      `json:"alg,omitempty"`
-	K   *byteBuffer `json:"k,omitempty"`
-	X   *byteBuffer `json:"x,omitempty"`
-	Y   *byteBuffer `json:"y,omitempty"`
-	N   *byteBuffer `json:"n,omitempty"`
-	E   *byteBuffer `json:"e,omitempty"`
+	Kty    string      `json:"kty,omitempty"`
+	Use    string      `json:"use,omitempty"`
+	KeyOps []string    `json:"key_ops,omitempty"`
+	Alg    string      `json:"alg,omitempty"`
+	Kid    string      `json:"kid,omitempty"`
+	Crv    string      `json:"crv,omitempty"`
+	K      *byteBuffer `json:"k,omitempty"`
+	X      *byteBuffer `json:"x,omitempty"`
+	Y      *byteBuffer `json:"y,omitempty"`
+	N      *byteBuffer `json:"n,omitempty"`
+	E      *byteBuffer `json:"e,omitempty"`
 	// -- Following fields are only used for private keys --
 	// RSA uses D, P and Q, while ECDSA uses only D. Fields Dp, Dq, and Qi are
 	// completely optional. Therefore for RSA/ECDSA, D != nil is a contract that
@@ -67,16 +68,22 @@ type rawJSONWebKey struct {
 	X5tSHA256 *byteBuffer `json:"x5t#S256,omitempty"`
 }
 
-// JSONWebKey represents a public or private key in JWK format.
+// JSONWebKey represents a public or private key in JWK format following RFC
+// 7517 https://tools.ietf.org/html/rfc7517. See the JOSE registry for various
+// header values https://www.iana.org/assignments/jose/jose.xhtml.
 type JSONWebKey struct {
 	// Cryptographic key, can be a symmetric or asymmetric key.
 	Key interface{}
-	// Key identifier, parsed from `kid` header.
-	KeyID string
-	// Key algorithm, parsed from `alg` header.
-	Algorithm string
-	// Key use, parsed from `use` header.
+	// Key type, parsed from `kty` header.  Section 4.1
+	KeyType string
+	// Key use, parsed from `use` header. Section 4.2
 	Use string
+	// Key Operations, parsed from `key_ops` header. Section 4.3
+	KeyOps []string
+	// Key algorithm, parsed from `alg` header. Section 4.4
+	Algorithm string
+	// Key identifier, parsed from `kid` header. Ssection 4.5
+	KeyID string
 
 	// X.509 certificate chain, parsed from `x5c` header.
 	Certificates []*x509.Certificate
@@ -119,6 +126,7 @@ func (k JSONWebKey) MarshalJSON() ([]byte, error) {
 	raw.Kid = k.KeyID
 	raw.Alg = k.Algorithm
 	raw.Use = k.Use
+	raw.KeyOps = k.KeyOps
 
 	for _, cert := range k.Certificates {
 		raw.X5c = append(raw.X5c, base64.StdEncoding.EncodeToString(cert.Raw))
@@ -238,7 +246,35 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 		}
 	}
 
-	*k = JSONWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use, Certificates: certs}
+	// key_ops section 4.3
+	var seen []string
+	// Remove any dupicates, "Duplicate key operation values MUST NOT be present in the array".
+	raw.KeyOps = removeDups(raw.KeyOps)
+
+	// Check for invalid key_ops combinations as per section 4.3: Combinations
+	// "sign" with "verify", "encrypt" with "decrypt", and "wrapKey" with
+	// "unwrapKey" are permitted, but other combinations SHOULD NOT be used.
+	for i, op := range raw.KeyOps {
+		seen = append(seen, op)
+		if i == 0 {
+			continue
+		}
+
+		if op == "sign" || op == "verify" {
+			err = invalidComb(seen, []string{"encrypt", "decrypt", "wrapKey", "unwrapKey"}, op)
+		}
+		if op == "encrypt" || op == "decrypt" {
+			err = invalidComb(seen, []string{"sign", "verify", "wrapKey", "unwrapKey"}, op)
+		}
+		if op == "wrapKey" || op == "unwrapKey" {
+			err = invalidComb(seen, []string{"sign", "verify", "encrypt", "decrypt"}, op)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	*k = JSONWebKey{Key: key, KeyID: raw.Kid, KeyType: raw.Kty, Algorithm: raw.Alg, Use: raw.Use, KeyOps: raw.KeyOps, Certificates: certs}
 
 	k.CertificatesURL = raw.X5u
 	k.CertificateThumbprintSHA1 = raw.X5tSHA1.bytes()
@@ -718,4 +754,42 @@ func (key rawJSONWebKey) symmetricKey() ([]byte, error) {
 		return nil, fmt.Errorf("square/go-jose: invalid OCT (symmetric) key, missing k value")
 	}
 	return key.K.bytes(), nil
+}
+
+// Remove duplicates from a slice
+func removeDups(elements []string) []string {
+	// Use map to record duplicates as we find them.
+	encountered := map[string]bool{}
+	result := []string{}
+
+	for v := range elements {
+		if encountered[elements[v]] == true {
+			// Do not add duplicate.
+		} else {
+			encountered[elements[v]] = true
+			result = append(result, elements[v])
+		}
+	}
+	return result
+}
+
+// Invalid combinations checks for invalid key_ops combinations. "seen" are the
+// key_ops already checked, "invalid" are any possible invalid key operations for
+// current key operation
+func invalidComb(seen, invalid []string, op string) error {
+	var bad string
+
+	for _, item := range seen {
+		for _, s := range invalid {
+			if item == s {
+				bad = s
+				break
+			}
+		}
+	}
+
+	if bad != "" {
+		return errors.New("square/go-jose: invalid key_ops combination found: " + bad + " with " + op)
+	}
+	return nil
 }
