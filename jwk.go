@@ -248,7 +248,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 
 	// key_ops section 4.3
 	var seen []string
-	// Remove any dupicates, "Duplicate key operation values MUST NOT be present in the array".
+	// Remove dupicates, "Duplicate key operation values MUST NOT be present...".
 	raw.KeyOps = removeDups(raw.KeyOps)
 
 	// Check for invalid key_ops combinations as per section 4.3: Combinations
@@ -256,19 +256,20 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	// "unwrapKey" are permitted, but other combinations SHOULD NOT be used.
 	for i, op := range raw.KeyOps {
 		seen = append(seen, op)
+
 		if i == 0 {
 			continue
 		}
 
-		if op == "sign" || op == "verify" {
+		switch op {
+		case "sign", "verify":
 			err = invalidComb(seen, []string{"encrypt", "decrypt", "wrapKey", "unwrapKey"}, op)
-		}
-		if op == "encrypt" || op == "decrypt" {
+		case "encrypt", "decrypt":
 			err = invalidComb(seen, []string{"sign", "verify", "wrapKey", "unwrapKey"}, op)
-		}
-		if op == "wrapKey" || op == "unwrapKey" {
+		case "wrapKey", "unwrapKey":
 			err = invalidComb(seen, []string{"sign", "verify", "encrypt", "decrypt"}, op)
 		}
+
 		if err != nil {
 			return err
 		}
@@ -763,7 +764,7 @@ func removeDups(elements []string) []string {
 	result := []string{}
 
 	for v := range elements {
-		if encountered[elements[v]] == true {
+		if encountered[elements[v]] {
 			// Do not add duplicate.
 		} else {
 			encountered[elements[v]] = true
@@ -791,5 +792,6 @@ func invalidComb(seen, invalid []string, op string) error {
 	if bad != "" {
 		return errors.New("square/go-jose: invalid key_ops combination found: " + bad + " with " + op)
 	}
+
 	return nil
 }
