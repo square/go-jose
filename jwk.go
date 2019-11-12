@@ -96,6 +96,40 @@ type JSONWebKey struct {
 	CertificateThumbprintSHA256 []byte
 }
 
+// NewJWK generates a new JWK. "kty is the algorithm for the key (e.g.
+// jose.ES256). "use" is what the key is used for (signing or encryption, "sig"
+// or "enc") "keySize" is for RSA key size (e.g. 2048).  For key types not
+// concerned with size, use 0 A new canonical kid based on RFC 7638 will be
+// generated.  If you don't want this, set it to something else after.
+func NewJWK(kty, use string, keySize int) (PrivateJWK JSONWebKey, err error) {
+	var privKey crypto.PublicKey
+
+	switch use {
+	case "sig":
+		_, privKey, err = GenerateSigningKey(SignatureAlgorithm(kty), keySize)
+	case "enc":
+		_, privKey, err = GenerateEncryptionKey(KeyAlgorithm(kty), keySize)
+	}
+
+	if err != nil {
+		return PrivateJWK, errors.New("unable to generate key")
+	}
+
+	PrivateJWK = JSONWebKey{Key: privKey, KeyID: "", Algorithm: kty, Use: use}
+	thumb, err := PrivateJWK.Thumbprint(crypto.SHA256)
+
+	if err != nil {
+		return PrivateJWK, errors.New("unable to compute thumbprint")
+	}
+	PrivateJWK.KeyID = base64.URLEncoding.EncodeToString(thumb)
+
+	if PrivateJWK.IsPublic() || !PrivateJWK.Valid() {
+		return PrivateJWK, errors.New("invalid keys were generated")
+	}
+
+	return
+}
+
 // MarshalJSON serializes the given key to its JSON representation.
 func (k JSONWebKey) MarshalJSON() ([]byte, error) {
 	var raw *rawJSONWebKey
@@ -772,6 +806,7 @@ func removeDups(elements []string) []string {
 			result = append(result, elements[v])
 		}
 	}
+
 	return result
 }
 
@@ -797,34 +832,6 @@ func invalidComb(seen, invalid []string, op string) error {
 	return nil
 }
 
-// NewJSONWebKey generates a new JWK
-func NewJSONWebKey(kty, use string, keySize int) (PrivateJWK JSONWebKey, err error) {
-	var privKey crypto.PublicKey
-
-	switch use {
-	case "sig":
-		_, privKey, err = GenerateSigningKey(SignatureAlgorithm(kty), keySize)
-	case "enc":
-		_, privKey, err = GenerateEncryptionKey(KeyAlgorithm(kty), keySize)
-	}
-	if err != nil {
-		return PrivateJWK, errors.New("unable to generate key")
-	}
-
-	PrivateJWK = JSONWebKey{Key: privKey, KeyID: "", Algorithm: kty, Use: use}
-	thumb, err := PrivateJWK.Thumbprint(crypto.SHA256)
-	if err != nil {
-		return PrivateJWK, errors.New("unable to compute thumbprint")
-	}
-	PrivateJWK.KeyID = base64.URLEncoding.EncodeToString(thumb)
-
-	if PrivateJWK.IsPublic() || !PrivateJWK.Valid() {
-		return PrivateJWK, errors.New("invalid keys were generated")
-	}
-
-	return
-}
-
 // GenerateSigningKey generates a keypair for corresponding SignatureAlgorithm.
 func GenerateSigningKey(alg SignatureAlgorithm, bits int) (crypto.PublicKey, crypto.PrivateKey, error) {
 	switch alg {
@@ -832,7 +839,7 @@ func GenerateSigningKey(alg SignatureAlgorithm, bits int) (crypto.PublicKey, cry
 		keylen := map[SignatureAlgorithm]int{
 			ES256: 256,
 			ES384: 384,
-			ES512: 521, // sic!
+			ES512: 512,
 			EdDSA: 256,
 		}
 		if bits != 0 && bits != keylen[alg] {
