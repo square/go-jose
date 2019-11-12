@@ -21,6 +21,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -794,4 +795,123 @@ func invalidComb(seen, invalid []string, op string) error {
 	}
 
 	return nil
+}
+
+// NewJSONWebKey generates a new JWK
+func NewJSONWebKey(kty, use string, keySize int) (PrivateJWK JSONWebKey, err error) {
+	var privKey crypto.PublicKey
+
+	switch use {
+	case "sig":
+		_, privKey, err = GenerateSigningKey(SignatureAlgorithm(kty), keySize)
+	case "enc":
+		_, privKey, err = GenerateEncryptionKey(KeyAlgorithm(kty), keySize)
+	}
+	if err != nil {
+		return PrivateJWK, errors.New("unable to generate key")
+	}
+
+	PrivateJWK = JSONWebKey{Key: privKey, KeyID: "", Algorithm: kty, Use: use}
+	thumb, err := PrivateJWK.Thumbprint(crypto.SHA256)
+	if err != nil {
+		return PrivateJWK, errors.New("unable to compute thumbprint")
+	}
+	PrivateJWK.KeyID = base64.URLEncoding.EncodeToString(thumb)
+
+	if PrivateJWK.IsPublic() || !PrivateJWK.Valid() {
+		return PrivateJWK, errors.New("invalid keys were generated")
+	}
+
+	return
+}
+
+// GenerateSigningKey generates a keypair for corresponding SignatureAlgorithm.
+func GenerateSigningKey(alg SignatureAlgorithm, bits int) (crypto.PublicKey, crypto.PrivateKey, error) {
+	switch alg {
+	case ES256, ES384, ES512, EdDSA:
+		keylen := map[SignatureAlgorithm]int{
+			ES256: 256,
+			ES384: 384,
+			ES512: 521, // sic!
+			EdDSA: 256,
+		}
+		if bits != 0 && bits != keylen[alg] {
+			return nil, nil, errors.New("invalid elliptic curve key size, this algorithm does not support arbitrary size")
+		}
+	case RS256, RS384, RS512, PS256, PS384, PS512:
+		if bits == 0 {
+			bits = 2048
+		}
+		if bits < 2048 {
+			return nil, nil, errors.New("invalid key size for RSA key, 2048 or more is required")
+		}
+	}
+	switch alg {
+	case ES256:
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+		return key.Public(), key, err
+	case ES384:
+		key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+		return key.Public(), key, err
+	case ES512:
+		key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+		return key.Public(), key, err
+	case EdDSA:
+		pub, key, err := ed25519.GenerateKey(rand.Reader)
+		return pub, key, err
+	case RS256, RS384, RS512, PS256, PS384, PS512:
+		key, err := rsa.GenerateKey(rand.Reader, bits)
+		if err != nil {
+			return nil, nil, err
+		}
+		return key.Public(), key, err
+	default:
+		return nil, nil, fmt.Errorf("unknown algorithm %s for signing key", alg)
+	}
+}
+
+// GenerateEncryptionKey generates a keypair for corresponding KeyAlgorithm.
+func GenerateEncryptionKey(alg KeyAlgorithm, bits int) (crypto.PublicKey, crypto.PrivateKey, error) {
+	switch alg {
+	case RSA1_5, RSA_OAEP, RSA_OAEP_256:
+		if bits == 0 {
+			bits = 2048
+		}
+		if bits < 2048 {
+			return nil, nil, errors.New("invalid key size for RSA key, 2048 or more is required")
+		}
+		key, err := rsa.GenerateKey(rand.Reader, bits)
+		if err != nil {
+			return nil, nil, err
+		}
+		return key.Public(), key, err
+	case ECDH_ES, ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW:
+		var crv elliptic.Curve
+		switch bits {
+		case 0, 256:
+			crv = elliptic.P256()
+		case 384:
+			crv = elliptic.P384()
+		case 521:
+			crv = elliptic.P521()
+		default:
+			return nil, nil, errors.New("invalid elliptic curve key size, use one of 256, 384, or 521")
+		}
+		key, err := ecdsa.GenerateKey(crv, rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+		return key.Public(), key, err
+	default:
+		return nil, nil, fmt.Errorf("unknown algorithm %s for encryption key", alg)
+	}
 }
