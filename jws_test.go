@@ -649,3 +649,50 @@ func TestDetachedCompactSerialization(t *testing.T) {
 		t.Fatalf("got '%s', expected '%s'", ser, msg)
 	}
 }
+
+func TestKeyOps(t *testing.T) {
+	var jwk JSONWebKey
+
+	// Test combinations. From section 4.3: `... the combinations "sign" with
+	// "verify", "encrypt" with "decrypt", and "wrapKey" with "unwrapKey" are
+	// permitted, but other combinations SHOULD NOT be used.`
+	failures := [][]byte{
+		// "sign" and "encrypt" are an invalid combo and should throw error
+		[]byte(`{"use":"sig","kty":"EC","key_ops":["sign","encrypt"], 
+	"kid":"2y3Ad8XtVAbBo_6lHwSkh0zDpeUg6lIZBWzePTEmkYM=","crv":"P-256",
+	"alg":"ES256","x":"ZGXCzHpSTEBgOfLNQNS02l6rAp4h7OJ_BPh5nG2NSIc",
+	"y":"OwknoOkKLQe1olL0yNpChe_Rze2_67kZH038jHKi8po"}`),
+		// "sign" and "wrapKey" are an invalid combo and should throw error
+		[]byte(`{"use":"sig","kty":"EC","key_ops":["sign","wrapKey"], 
+	"kid":"2y3Ad8XtVAbBo_6lHwSkh0zDpeUg6lIZBWzePTEmkYM=","crv":"P-256",
+	"alg":"ES256","x":"ZGXCzHpSTEBgOfLNQNS02l6rAp4h7OJ_BPh5nG2NSIc",
+	"y":"OwknoOkKLQe1olL0yNpChe_Rze2_67kZH038jHKi8po"}`),
+		// "encrypt" and "wrapKey" are an invalid combo and should throw error
+		[]byte(`{"use":"sig","kty":"EC","key_ops":["encrypt","wrapKey"], 
+	"kid":"2y3Ad8XtVAbBo_6lHwSkh0zDpeUg6lIZBWzePTEmkYM=","crv":"P-256",
+	"alg":"ES256","x":"ZGXCzHpSTEBgOfLNQNS02l6rAp4h7OJ_BPh5nG2NSIc",
+	"y":"OwknoOkKLQe1olL0yNpChe_Rze2_67kZH038jHKi8po"}`),
+	}
+
+	for i := range failures {
+		err := jwk.UnmarshalJSON(failures[i])
+		if err == nil {
+			t.Error(err)
+		}
+	}
+
+	// Valid key
+	key := []byte(`{"use":"sig","kty":"EC","key_ops":["sign"], 
+	"kid":"2y3Ad8XtVAbBo_6lHwSkh0zDpeUg6lIZBWzePTEmkYM=","crv":"P-256",
+	"alg":"ES256","x":"ZGXCzHpSTEBgOfLNQNS02l6rAp4h7OJ_BPh5nG2NSIc",
+	"y":"OwknoOkKLQe1olL0yNpChe_Rze2_67kZH038jHKi8po"}`)
+
+	err := jwk.UnmarshalJSON(key)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if jwk.KeyOps[0] != "sign" {
+		t.Error("Key ops are not being unmarshalled.")
+	}
+}
