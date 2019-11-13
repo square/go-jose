@@ -31,7 +31,7 @@ script:
   - go test -v -covermode=count -coverprofile=jwt/profile.cov ./jwt
   - go test -v ./json  # no coverage for forked encoding/json package
   - golangci-lint run
-  - cd jose-util && go build && PATH=$PWD:$PATH cram -v jose-util.t
+  - cd jose-util && go build && PATH=$PWD:$PATH cram -v jose-util.t # cram tests jose-util
   - cd ..
 
 after_success:
