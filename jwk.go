@@ -121,6 +121,7 @@ func NewJWK(kty, use string, keySize int) (privateJWK JSONWebKey, err error) {
 	if err != nil {
 		return privateJWK, errors.New("unable to compute thumbprint")
 	}
+
 	privateJWK.KeyID = base64.URLEncoding.EncodeToString(thumb)
 
 	if privateJWK.IsPublic() || !privateJWK.Valid() {
@@ -853,6 +854,7 @@ func GenerateSigningKey(alg SignatureAlgorithm, bits int) (crypto.PublicKey, cry
 			return nil, nil, errors.New("invalid key size for RSA key, 2048 or more is required")
 		}
 	}
+
 	switch alg {
 	case ES256:
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
