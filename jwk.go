@@ -764,13 +764,12 @@ func removeDups(elements []string) []string {
 	result := []string{}
 
 	for v := range elements {
-		if encountered[elements[v]] {
-			// Do not add duplicate.
-		} else {
+		if !encountered[elements[v]] {
 			encountered[elements[v]] = true
 			result = append(result, elements[v])
 		}
 	}
+
 	return result
 }
 
