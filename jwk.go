@@ -99,9 +99,9 @@ type JSONWebKey struct {
 // NewJWK generates a new JWK. "kty is the algorithm for the key (e.g.
 // jose.ES256). "use" is what the key is used for (signing or encryption, "sig"
 // or "enc") "keySize" is for RSA key size (e.g. 2048).  For key types not
-// concerned with size, use 0 A new canonical kid based on RFC 7638 will be
+// concerned with size, use 0. A new canonical kid based on RFC 7638 will be
 // generated.  If you don't want this, set it to something else after.
-func NewJWK(kty, use string, keySize int) (PrivateJWK JSONWebKey, err error) {
+func NewJWK(kty, use string, keySize int) (privateJWK JSONWebKey, err error) {
 	var privKey crypto.PublicKey
 
 	switch use {
@@ -112,19 +112,19 @@ func NewJWK(kty, use string, keySize int) (PrivateJWK JSONWebKey, err error) {
 	}
 
 	if err != nil {
-		return PrivateJWK, errors.New("unable to generate key")
+		return privateJWK, errors.New("unable to generate key")
 	}
 
-	PrivateJWK = JSONWebKey{Key: privKey, KeyID: "", Algorithm: kty, Use: use}
-	thumb, err := PrivateJWK.Thumbprint(crypto.SHA256)
+	privateJWK = JSONWebKey{Key: privKey, KeyID: "", Algorithm: kty, Use: use}
+	thumb, err := privateJWK.Thumbprint(crypto.SHA256)
 
 	if err != nil {
-		return PrivateJWK, errors.New("unable to compute thumbprint")
+		return privateJWK, errors.New("unable to compute thumbprint")
 	}
-	PrivateJWK.KeyID = base64.URLEncoding.EncodeToString(thumb)
+	privateJWK.KeyID = base64.URLEncoding.EncodeToString(thumb)
 
-	if PrivateJWK.IsPublic() || !PrivateJWK.Valid() {
-		return PrivateJWK, errors.New("invalid keys were generated")
+	if privateJWK.IsPublic() || !privateJWK.Valid() {
+		return privateJWK, errors.New("invalid keys were generated")
 	}
 
 	return
