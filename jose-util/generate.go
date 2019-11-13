@@ -146,9 +146,8 @@ func generate() {
 	// Generate a canonical kid based on RFC 7638
 	if kid == "" {
 		thumb, err := priv.Thumbprint(crypto.SHA256)
-		if err != nil {
-			app.FatalIfError(err, "unable to compute thumbprint")
-		}
+		app.FatalIfError(err, "unable to compute thumbprint")
+
 		kid = base64.URLEncoding.EncodeToString(thumb)
 		priv.KeyID = kid
 	}
