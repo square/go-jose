@@ -507,7 +507,7 @@ func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm)
 		expectedBitSize = 384
 		hash = crypto.SHA384
 	case ES512:
-		expectedBitSize = 521
+		expectedBitSize = 512
 		hash = crypto.SHA512
 	}
 
