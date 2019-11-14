@@ -25,7 +25,7 @@ signature algorithm (e.g. `PS256`).
 Input and output files can be specified via the `--in` and `--out` flags.
 Either flag can be omitted, in which case `jose-util` uses stdin/stdout for
 input/output respectively. By default each command will output a compact
-message, but it's possible to get the full serialization by supplying the
+message, but it's possible to get the JSON Serialization by supplying the
 `--full` flag.
 
 Keys are specified via the `--key` flag. Supported key types are naked RSA/EC
@@ -94,8 +94,8 @@ Reads a signed message (JWS), verifies it, and extracts the payload.
 
 Expands a compact message to the JWE/JWS JSON Serialization format.
 
-    jose-util expand --format JWE   # Expands a compact JWE to full format
-    jose-util expand --format JWS   # Expands a compact JWS to full format
+    jose-util expand --format JWE   # Expands a compact JWE to JWE JSON Serialization
+    jose-util expand --format JWS   # Expands a compact JWS to JWS JSON Serialization
 
 ### Decode base64
 

@@ -104,7 +104,7 @@ func (obj JSONWebEncryption) computeAuthData() []byte {
 	return output
 }
 
-// ParseEncrypted parses an encrypted message in compact or full serialization format.
+// ParseEncrypted parses an encrypted message in compact or JWE JSON Serialization format.
 func ParseEncrypted(input string) (*JSONWebEncryption, error) {
 	input = stripWhitespace(input)
 	if strings.HasPrefix(input, "{") {

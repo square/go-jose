@@ -39,7 +39,7 @@ var (
 	encryptCommand  = app.Command("encrypt", "Encrypt a plaintext, output ciphertext")
 	encryptAlgFlag  = encryptCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
 	encryptEncFlag  = encryptCommand.Flag("enc", "Content encryption algorithm (e.g. A128GCM)").Required().String()
-	encryptFullFlag = encryptCommand.Flag("full", "Use full serialization format (instead of compact)").Bool()
+	encryptFullFlag = encryptCommand.Flag("full", "Use JSON Serialization format (instead of compact)").Bool()
 
 	// Decrypt
 	decryptCommand = app.Command("decrypt", "Decrypt a ciphertext, output plaintext")
@@ -47,7 +47,7 @@ var (
 	// Sign
 	signCommand  = app.Command("sign", "Sign a payload, output signed message")
 	signAlgFlag  = signCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
-	signFullFlag = signCommand.Flag("full", "Use full serialization format (instead of compact)").Bool()
+	signFullFlag = signCommand.Flag("full", "Use JSON Serialization format (instead of compact)").Bool()
 
 	// Verify
 	verifyCommand = app.Command("verify", "Verify a signed message, output payload")

@@ -87,7 +87,7 @@ Sign and verify a test message (EC).
   > jose-util verify --key ec.pub
   Lorem ipsum dolor sit amet
 
-Expand a compact message to full format.
+Expand a compact message to JSON format.
 
   $ echo "eyJhbGciOiJFUzM4NCJ9.TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQK.QPU35XY913Im7ZEaN2yHykfbtPqjHZvYp-lV8OcTAJZs67bJFSdTSkQhQWE9ch6tvYrj_7py6HKaWVFLll_s_Rm6bmwq3JszsHrIvFFm1NydruYHhvAnx7rjYiqwOu0W" |
   > jose-util expand --format JWS
