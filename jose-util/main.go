@@ -53,7 +53,7 @@ var (
 	verifyCommand = app.Command("verify", "Verify a signed message, output payload")
 
 	// Expand
-	expandCommand    = app.Command("expand", "Expand JOSE object to full serialization format")
+	expandCommand    = app.Command("expand", "Expand JOSE object to JSON Serialization format")
 	expandFormatFlag = expandCommand.Flag("format", "Type of message to expand (JWS or JWE, defaults to JWE)").String()
 
 	// Base64-decode
