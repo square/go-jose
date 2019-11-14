@@ -321,7 +321,7 @@ func TestVectorsJWE(t *testing.T) {
 
 	serialized = object.FullSerialize()
 	if serialized != expectedFull {
-		t.Error("Full serialization is not what we expected")
+		t.Error("JSON serialization is not what we expected")
 	}
 }
 
