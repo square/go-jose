@@ -496,24 +496,24 @@ func (ctx edEncrypterVerifier) verifyPayload(payload []byte, signature []byte, a
 
 // Sign the given payload
 func (ctx ecDecrypterSigner) signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error) {
-	var expectedBitSize int
+	var expectedCurve int
 	var hash crypto.Hash
 
 	switch alg {
 	case ES256:
-		expectedBitSize = 256
+		expectedCurve = 256
 		hash = crypto.SHA256
 	case ES384:
-		expectedBitSize = 384
+		expectedCurve = 384
 		hash = crypto.SHA384
 	case ES512:
-		expectedBitSize = 512
+		expectedCurve = 521 // Curve P-521
 		hash = crypto.SHA512
 	}
 
 	curveBits := ctx.privateKey.Curve.Params().BitSize
-	if expectedBitSize != curveBits {
-		return Signature{}, fmt.Errorf("square/go-jose: expected %d bit key, got %d bits instead", expectedBitSize, curveBits)
+	if expectedCurve != curveBits {
+		return Signature{}, fmt.Errorf("square/go-jose: expected %d bit key, got %d bits instead", expectedCurve, curveBits)
 	}
 
 	hasher := hash.New()
