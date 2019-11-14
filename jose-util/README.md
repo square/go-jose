@@ -92,7 +92,7 @@ Reads a signed message (JWS), verifies it, and extracts the payload.
 
 ### Expand
 
-Expands a compact message to the full serialization format.
+Expands a compact message to the JWE/JWS JSON Serialization format.
 
     jose-util expand --format JWE   # Expands a compact JWE to full format
     jose-util expand --format JWS   # Expands a compact JWS to full format

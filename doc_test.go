@@ -50,7 +50,7 @@ func Example_jWE() {
 		panic(err)
 	}
 
-	// Serialize the encrypted object using the full serialization format.
+	// Serialize the encrypted object using the JWS JSON Serialization format.
 	// Alternatively you can also use the compact format here by calling
 	// object.CompactSerialize() instead.
 	serialized := object.FullSerialize()
@@ -96,7 +96,7 @@ func Example_jWS() {
 		panic(err)
 	}
 
-	// Serialize the encrypted object using the full serialization format.
+	// Serialize the signed object using the JWS JSON Serialization format.
 	// Alternatively you can also use the compact format here by calling
 	// object.CompactSerialize() instead.
 	serialized := object.FullSerialize()
