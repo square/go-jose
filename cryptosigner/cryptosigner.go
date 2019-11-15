@@ -56,7 +56,7 @@ func (s *cryptoSigner) Algs() []jose.SignatureAlgorithm {
 		return []jose.SignatureAlgorithm{jose.EdDSA}
 	case *ecdsa.PublicKey:
 		// This could be more precise
-		return []jose.SignatureAlgorithm{jose.ES256, jose.ES384, jose.ES512}
+		return []jose.SignatureAlgorithm{jose.ES256, jose.ES256K, jose.ES384, jose.ES512}
 	case *rsa.PublicKey:
 		return []jose.SignatureAlgorithm{jose.RS256, jose.RS384, jose.RS512, jose.PS256, jose.PS384, jose.PS512}
 	default:
@@ -68,7 +68,7 @@ func (s *cryptoSigner) SignPayload(payload []byte, alg jose.SignatureAlgorithm) 
 	var hash crypto.Hash
 	switch alg {
 	case jose.EdDSA:
-	case jose.RS256, jose.PS256, jose.ES256:
+	case jose.RS256, jose.PS256, jose.ES256, jose.ES256K:
 		hash = crypto.SHA256
 	case jose.RS384, jose.PS384, jose.ES384:
 		hash = crypto.SHA384
@@ -94,10 +94,10 @@ func (s *cryptoSigner) SignPayload(payload []byte, alg jose.SignatureAlgorithm) 
 	switch alg {
 	case jose.EdDSA:
 		out, err = s.signer.Sign(s.rand, payload, crypto.Hash(0))
-	case jose.ES256, jose.ES384, jose.ES512:
+	case jose.ES256, jose.ES256K, jose.ES384, jose.ES512:
 		var byteLen int
 		switch alg {
-		case jose.ES256:
+		case jose.ES256, jose.ES256K:
 			byteLen = 32
 		case jose.ES384:
 			byteLen = 48

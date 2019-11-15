@@ -80,7 +80,7 @@ standard where possible. The Godoc reference has a list of constants.
  RSASSA-PKCS#1v1.5          | RS256, RS384, RS512
  RSASSA-PSS                 | PS256, PS384, PS512
  HMAC                       | HS256, HS384, HS512
- ECDSA                      | ES256, ES384, ES512
+ ECDSA                      | ES256, ES256K, ES384, ES512
  Ed25519                    | EdDSA<sup>2</sup>
 
 <sup>2. Only available in version 2 of the package</sup>

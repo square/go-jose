@@ -65,7 +65,7 @@ var (
 	generateAlgFlag = generateCommand.Flag("alg", "Desired key pair algorithm (alg header)").Required().Enum(
 		// For signing
 		string(jose.EdDSA),
-		string(jose.ES256), string(jose.ES384), string(jose.ES512),
+		string(jose.ES256), string(jose.ES256K), string(jose.ES384), string(jose.ES512),
 		string(jose.RS256), string(jose.RS384), string(jose.RS512),
 		string(jose.PS256), string(jose.PS384), string(jose.PS512),
 		// For encryption
