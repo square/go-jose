@@ -32,6 +32,14 @@ Keys are specified via the `--key` flag. Supported key types are naked RSA/EC
 keys and X.509 certificates with embedded RSA/EC keys. Keys must be in PEM,
 DER or JWK formats.
 
+
+## Testing
+
+`cram` is used for testing.  This can be installed with pip or `sudo apt install
+python-cram` See the travis file for how this is used in testing. For example,
+`go build && PATH=$PWD:$PATH cram -v jose-util.t`
+
+
 ## Examples
 
 ### Generate key pair

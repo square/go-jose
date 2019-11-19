@@ -1,3 +1,6 @@
+This is a cram test file.  See the travis file for how this is used in testing. 
+For example, `go build && PATH=$PWD:$PATH cram -v jose-util.t`
+
 Set up static test keys.
 
   $ cat > rsa.pub <<EOF
