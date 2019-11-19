@@ -25,7 +25,7 @@ The implementation follows the
 [JSON Web Signature](http://dx.doi.org/10.17487/RFC7515) (RFC 7515), and
 [JSON Web Token](http://dx.doi.org/10.17487/RFC7519) (RFC 7519) specifications.
 Tables of supported algorithms are shown below. The library supports both
-the compact and full serialization formats, and has optional support for
+the compact and JWS/JWE JSON Serialization formats, and has optional support for
 multiple recipients. It also comes with a small command-line utility
 ([`jose-util`](https://github.com/square/go-jose/tree/master/jose-util))
 for dealing with JOSE messages in a shell.

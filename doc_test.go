@@ -50,7 +50,7 @@ func Example_jWE() {
 		panic(err)
 	}
 
-	// Serialize the encrypted object using the full serialization format.
+	// Serialize the encrypted object using the JWE JSON Serialization format.
 	// Alternatively you can also use the compact format here by calling
 	// object.CompactSerialize() instead.
 	serialized := object.FullSerialize()
@@ -96,7 +96,7 @@ func Example_jWS() {
 		panic(err)
 	}
 
-	// Serialize the encrypted object using the full serialization format.
+	// Serialize the signed object using the JWS JSON Serialization format.
 	// Alternatively you can also use the compact format here by calling
 	// object.CompactSerialize() instead.
 	serialized := object.FullSerialize()
@@ -193,7 +193,7 @@ func ExampleEncrypter_encrypt() {
 func ExampleEncrypter_encryptWithAuthData() {
 	// Encrypt a plaintext in order to get an encrypted JWE object. Also attach
 	// some additional authenticated data (AAD) to the object. Note that objects
-	// with attached AAD can only be represented using full serialization.
+	// with attached AAD can only be represented using JWE JSON Serialization.
 	var plaintext = []byte("This is a secret message")
 	var aad = []byte("This is authenticated, but public data")
 
