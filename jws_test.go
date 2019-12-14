@@ -18,8 +18,11 @@ package jose
 
 import (
 	"crypto/x509"
+	"encoding/base64"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const trustedCA = `
@@ -646,4 +649,40 @@ func TestDetachedCompactSerialization(t *testing.T) {
 	if ser != msg {
 		t.Fatalf("got '%s', expected '%s'", ser, msg)
 	}
+}
+
+func TestJWSComputeAuthDataBase64(t *testing.T) {
+	jws := JSONWebSignature{}
+
+	_, err := jws.computeAuthData([]byte{0x01}, &Signature{
+		original: &rawSignatureInfo{
+			Protected: newBuffer([]byte("{!invalid-json}")),
+		},
+	})
+	// Invalid header, should return error
+	assert.NotNil(t, err)
+
+	payload := []byte{0x01}
+	encodedPayload := base64.RawURLEncoding.EncodeToString(payload)
+
+	b64TrueHeader := newBuffer([]byte(`{"alg":"RSA-OAEP","enc":"A256GCM","b64":true}`))
+	b64FalseHeader := newBuffer([]byte(`{"alg":"RSA-OAEP","enc":"A256GCM","b64":false}`))
+
+	data, err := jws.computeAuthData(payload, &Signature{
+		original: &rawSignatureInfo{
+			Protected: b64TrueHeader,
+		},
+	})
+	assert.Nil(t, err)
+	// Payload should be b64 encoded
+	assert.Len(t, data, len(b64TrueHeader.base64())+len(encodedPayload)+1)
+
+	data, err = jws.computeAuthData(payload, &Signature{
+		original: &rawSignatureInfo{
+			Protected: b64FalseHeader,
+		},
+	})
+	assert.Nil(t, err)
+	// Payload should *not* be b64 encoded
+	assert.Len(t, data, len(b64FalseHeader.base64())+len(payload)+1)
 }
