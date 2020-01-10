@@ -66,7 +66,7 @@ func (vw *verifyWrapper) VerifyPayload(payload []byte, signature []byte, alg Sig
 }
 
 func TestRoundtripsJWSOpaque(t *testing.T) {
-	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA}
+	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES256K, ES384, ES512, EdDSA}
 
 	serializers := []func(*JSONWebSignature) (string, error){
 		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },
@@ -126,7 +126,7 @@ func makeOpaqueVerifier(t *testing.T, verificationKey []interface{}, alg Signatu
 
 func TestOpaqueSignerKeyRotation(t *testing.T) {
 
-	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA}
+	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES256K, ES384, ES512, EdDSA}
 
 	serializers := []func(*JSONWebSignature) (string, error){
 		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },

@@ -26,6 +26,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/decred/dcrd/dcrec/secp256k1/v2"
+
 	"github.com/square/go-jose/v3/json"
 )
 
@@ -94,7 +96,7 @@ func RoundtripJWS(sigAlg SignatureAlgorithm, serializer func(*JSONWebSignature) 
 
 func TestRoundtripsJWS(t *testing.T) {
 	// Test matrix
-	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512, EdDSA}
+	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES256K, ES384, ES512, EdDSA}
 
 	serializers := []func(*JSONWebSignature) (string, error){
 		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },
@@ -117,7 +119,7 @@ func TestRoundtripsJWS(t *testing.T) {
 
 func TestRoundtripsJWSCorruptSignature(t *testing.T) {
 	// Test matrix
-	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES384, ES512, EdDSA}
+	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, HS256, HS384, HS512, ES256, ES256K, ES384, ES512, EdDSA}
 
 	serializers := []func(*JSONWebSignature) (string, error){
 		func(obj *JSONWebSignature) (string, error) { return obj.CompactSerialize() },
@@ -296,6 +298,10 @@ func GenerateSigningTestKey(sigAlg SignatureAlgorithm) (sig, ver interface{}) {
 		ver = sig
 	case ES256:
 		key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		sig = key
+		ver = &key.PublicKey
+	case ES256K:
+		key, _ := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 		sig = key
 		ver = &key.PublicKey
 	case ES384:
