@@ -35,10 +35,9 @@ script:
 - go test ./cipher -v -covermode=count -coverprofile=cipher/profile.cov
 - go test ./jwt -v -covermode=count -coverprofile=jwt/profile.cov
 - go test ./json -v # no coverage for forked encoding/json package
-- cd jose-util && go build && PATH=$PWD:$PATH cram -v jose-util.t
+- cd jose-util && go build && PATH=$PWD:$PATH cram -v jose-util.t # cram tests jose-util
 - cd ..
 
 after_success:
 - gocovmerge *.cov */*.cov > merged.coverprofile
 - $HOME/gopath/bin/goveralls -coverprofile merged.coverprofile -service=travis-ci
-

@@ -1,4 +1,7 @@
-Set up test keys.
+This is a cram test file.  See the travis file for how this is used in testing.
+For example, `go build && PATH=$PWD:$PATH cram -v jose-util.t`
+
+Set up static test keys.
 
   $ cat > rsa.pub <<EOF
   > -----BEGIN PUBLIC KEY-----
@@ -61,28 +64,28 @@ Set up test keys.
 
 Encrypt and then decrypt a test message (RSA).
 
-  $ echo "Lorem ipsum dolor sit amet" | 
+  $ echo "Lorem ipsum dolor sit amet" |
   > jose-util encrypt --alg RSA-OAEP --enc A128GCM --key rsa.pub |
   > jose-util decrypt --key rsa.key
   Lorem ipsum dolor sit amet
 
 Encrypt and then decrypt a test message (EC).
 
-  $ echo "Lorem ipsum dolor sit amet" | 
+  $ echo "Lorem ipsum dolor sit amet" |
   > jose-util encrypt --alg ECDH-ES+A128KW --enc A128GCM --key ec.pub |
   > jose-util decrypt --key ec.key
   Lorem ipsum dolor sit amet
 
 Sign and verify a test message (RSA).
 
-  $ echo "Lorem ipsum dolor sit amet" | 
+  $ echo "Lorem ipsum dolor sit amet" |
   > jose-util sign --alg PS256 --key rsa.key |
   > jose-util verify --key rsa.pub
   Lorem ipsum dolor sit amet
 
 Sign and verify a test message (EC).
 
-  $ echo "Lorem ipsum dolor sit amet" | 
+  $ echo "Lorem ipsum dolor sit amet" |
   > jose-util sign --alg ES384 --key ec.key |
   > jose-util verify --key ec.pub
   Lorem ipsum dolor sit amet
