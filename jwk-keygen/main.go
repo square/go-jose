@@ -22,7 +22,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base32"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -149,29 +149,39 @@ func main() {
 	app.Version("v2")
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	if *kidRand {
-		if *kid == "" {
-			b := make([]byte, 5)
-			_, err := rand.Read(b)
-			app.FatalIfError(err, "can't Read() crypto/rand")
-			*kid = base32.StdEncoding.EncodeToString(b)
-		} else {
-			app.FatalUsage("can't combine --kid and --kid-rand")
-		}
-	}
-
-	var privKey crypto.PublicKey
-	var pubKey crypto.PrivateKey
+	var privKey crypto.PrivateKey
+	var pubKey crypto.PublicKey
 	var err error
 	switch *use {
 	case "sig":
 		pubKey, privKey, err = KeygenSig(jose.SignatureAlgorithm(*alg), *bits)
 	case "enc":
 		pubKey, privKey, err = KeygenEnc(jose.KeyAlgorithm(*alg), *bits)
+	default:
+		// According to RFC 7517 section-8.2.  This is unlikely to change in the
+		// near future. If it were, new values could be found in the registry under
+		// "JSON Web Key Use": https://www.iana.org/assignments/jose/jose.xhtml
+		app.FatalIfError(errors.New("invalid key use.  Must be \"sig\" or \"enc\""), "unable to generate key")
 	}
 	app.FatalIfError(err, "unable to generate key")
 
 	priv := jose.JSONWebKey{Key: privKey, KeyID: *kid, Algorithm: *alg, Use: *use}
+
+	if *kidRand {
+		// Generate a canonical kid based on RFC 7638
+		if *kid == "" {
+			thumb, err := priv.Thumbprint(crypto.SHA256)
+			app.FatalIfError(err, "unable to compute thumbprint")
+			*kid = base64.URLEncoding.EncodeToString(thumb)
+			priv.KeyID = *kid
+		} else {
+			app.FatalUsage("can't combine --kid and --kid-rand")
+		}
+	}
+
+	// I'm not sure why we couldn't use `pub := priv.Public()` here as the private
+	// key should contain the public key.  In case for some reason it doesn't,
+	// this builds a public JWK from scratch.
 	pub := jose.JSONWebKey{Key: pubKey, KeyID: *kid, Algorithm: *alg, Use: *use}
 
 	if priv.IsPublic() || !pub.IsPublic() || !priv.Valid() || !pub.Valid() {
@@ -189,8 +199,6 @@ func main() {
 		fmt.Printf("==> jwk_%s <==\n", *alg)
 		fmt.Println(string(privJS))
 	} else {
-		// JWK Thumbprint (RFC7638) is not used for key id because of
-		// lack of canonical representation.
 		fname := fmt.Sprintf("jwk_%s_%s_%s", *use, *alg, *kid)
 		err = writeNewFile(fname+".pub", pubJS, 0444)
 		app.FatalIfError(err, "can't write public key to file %s.pub", fname)
