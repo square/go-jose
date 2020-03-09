@@ -15,6 +15,7 @@ linters:
     - nakedret
     - scopelint
     - unparam
+    - funlen # added in 1.18 (requires go-jose changes before it can be enabled)
 
 linters-settings:
   gocyclo:
