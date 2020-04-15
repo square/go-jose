@@ -19,6 +19,7 @@ package main
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -27,7 +28,6 @@ import (
 	"fmt"
 
 	jose "github.com/square/go-jose/v3"
-	"golang.org/x/crypto/ed25519"
 )
 
 // GenerateSigningKey generates a keypair for corresponding SignatureAlgorithm.
