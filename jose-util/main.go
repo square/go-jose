@@ -23,8 +23,10 @@ import (
 	"io"
 	"os"
 
-	jose "github.com/square/go-jose/v3"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
+
+	jose "github.com/square/go-jose/v3"
+	generator "github.com/square/go-jose/jose-util/generator"
 )
 
 var (
@@ -98,7 +100,7 @@ func main() {
 	case base64DecodeCommand.FullCommand():
 		in := inputStream(*inFile)
 		out := outputStream(*outFile)
-		io.Copy(out, base64.NewDecoder(base64.RawStdEncoding, Base64Reader{bufio.NewReader(in)}))
+		io.Copy(out, base64.NewDecoder(base64.RawStdEncoding, generator.Base64Reader{In: bufio.NewReader(in)}))
 		defer in.Close()
 		defer out.Close()
 	default:
