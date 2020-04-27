@@ -98,6 +98,38 @@ func (so *SignerOptions) WithBase64(b64 bool) *SignerOptions {
 	return so
 }
 
+// VerifierOptions represents options that can be set when verifying a signature.
+type VerifierOptions struct {
+
+	// Headers whose validation is deferred to the calling application.
+	// By including a header in this map, we can verify signatures with a critical
+	// header even though this package doesn't recognize or validate the header.
+	DeferredHeaders map[string]bool
+}
+
+// A VerifierOption is a functional option that modifies the verifier options.
+type VerifierOption func(opts *VerifierOptions)
+
+func applyVerifierOptions(setters ...VerifierOption) *VerifierOptions {
+	var opts VerifierOptions
+	for _, setter := range setters {
+		setter(&opts)
+	}
+	return &opts
+}
+
+// WithDeferred adds a header to the set of deferred headers.
+// Only use this if the header is validated outside of the jose package after
+// the call to Verify.
+func WithDeferred(header string) VerifierOption {
+	return func(opts *VerifierOptions) {
+		if opts.DeferredHeaders == nil {
+			opts.DeferredHeaders = make(map[string]bool)
+		}
+		opts.DeferredHeaders[header] = true
+	}
+}
+
 type payloadSigner interface {
 	signPayload(payload []byte, alg SignatureAlgorithm) (Signature, error)
 }
@@ -327,12 +359,20 @@ func (ctx *genericSigner) Options() SignerOptions {
 // Be careful when verifying signatures based on embedded JWKs inside the
 // payload header. You cannot assume that the key received in a payload is
 // trusted.
-func (obj JSONWebSignature) Verify(verificationKey interface{}) ([]byte, error) {
-	err := obj.DetachedVerify(obj.payload, verificationKey)
+func (obj JSONWebSignature) Verify(verificationKey interface{}, setters ...VerifierOption) ([]byte, error) {
+	err := obj.DetachedVerify(obj.payload, verificationKey, setters...)
 	if err != nil {
 		return nil, err
 	}
 	return obj.payload, nil
+}
+
+// Verifier is partial application of Verify, where the verifier options are fixed.
+// In most cases, you will probably want to use Verify instead.
+func (obj JSONWebSignature) Verifier(setters ...VerifierOption) func(k interface{}) ([]byte, error) {
+	return func(k interface{}) ([]byte, error) {
+		return obj.Verify(k, setters...)
+	}
 }
 
 // UnsafePayloadWithoutVerification returns the payload without
@@ -346,7 +386,9 @@ func (obj JSONWebSignature) UnsafePayloadWithoutVerification() []byte {
 // most cases, you will probably want to use Verify instead. DetachedVerify
 // is only useful if you have a payload and signature that are separated from
 // each other.
-func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey interface{}) error {
+func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey interface{}, setters ...VerifierOption) error {
+	opts := applyVerifierOptions(setters...)
+
 	verifier, err := newVerifier(verificationKey)
 	if err != nil {
 		return err
@@ -364,7 +406,7 @@ func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey inter
 	}
 
 	for _, name := range critical {
-		if !supportedCritical[name] {
+		if !supportedCritical[name] && !opts.DeferredHeaders[name] {
 			return ErrCryptoFailure
 		}
 	}
@@ -387,8 +429,8 @@ func (obj JSONWebSignature) DetachedVerify(payload []byte, verificationKey inter
 // returns the index of the signature that was verified, along with the signature
 // object and the payload. We return the signature and index to guarantee that
 // callers are getting the verified value.
-func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signature, []byte, error) {
-	idx, sig, err := obj.DetachedVerifyMulti(obj.payload, verificationKey)
+func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}, setters ...VerifierOption) (int, Signature, []byte, error) {
+	idx, sig, err := obj.DetachedVerifyMulti(obj.payload, verificationKey, setters...)
 	if err != nil {
 		return -1, Signature{}, nil, err
 	}
@@ -404,7 +446,9 @@ func (obj JSONWebSignature) VerifyMulti(verificationKey interface{}) (int, Signa
 // DetachedVerifyMulti is only useful if you have a payload and signature that are
 // separated from each other, and the signature can have multiple signers at the
 // same time.
-func (obj JSONWebSignature) DetachedVerifyMulti(payload []byte, verificationKey interface{}) (int, Signature, error) {
+func (obj JSONWebSignature) DetachedVerifyMulti(payload []byte, verificationKey interface{}, setters ...VerifierOption) (int, Signature, error) {
+	opts := applyVerifierOptions(setters...)
+
 	verifier, err := newVerifier(verificationKey)
 	if err != nil {
 		return -1, Signature{}, err
@@ -419,7 +463,7 @@ outer:
 		}
 
 		for _, name := range critical {
-			if !supportedCritical[name] {
+			if !supportedCritical[name] && !opts.DeferredHeaders[name] {
 				continue outer
 			}
 		}

@@ -191,7 +191,7 @@ func (b *signedBuilder) Token() (*JSONWebToken, error) {
 		h[i] = v.Header
 	}
 
-	return b.builder.token(sig.Verify, h)
+	return b.builder.token(sig.Verifier(), h)
 }
 
 func (b *signedBuilder) CompactSerialize() (string, error) {

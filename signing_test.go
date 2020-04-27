@@ -594,3 +594,28 @@ func BenchmarkParseSigned(b *testing.B) {
 		}
 	}
 }
+
+// Test that unknown critical headers are allowed if the calling code promises to verify them
+func TestDeferredCritical(t *testing.T) {
+	opts := &SignerOptions{}
+
+	signer, err := NewSigner(SigningKey{PS256, rsaTestKey}, opts.WithCritical("exp").WithHeader("exp", 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	obj, err := signer.Sign([]byte("Lorem ipsum dolor sit amet"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = obj.Verify(&rsaTestKey.PublicKey, WithDeferred("exp"))
+	if err != nil {
+		t.Error("should verify message with deferred critical header")
+	}
+
+	_, err = obj.Verify(&rsaTestKey.PublicKey)
+	if err == nil {
+		t.Error("should not verify message with unknown crit header")
+	}
+}
