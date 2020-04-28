@@ -16,7 +16,11 @@
 
 package main
 
-import jose "github.com/square/go-jose/v3"
+import (
+	"errors"
+
+	jose "github.com/square/go-jose/v3"
+)
 
 func encrypt() {
 	pub, err := LoadPublicKey(keyBytes())
@@ -59,8 +63,7 @@ func sign() {
 	signingKey, err := LoadPrivateKey(keyBytes())
 	app.FatalIfError(err, "unable to read private key")
 
-	alg := jose.SignatureAlgorithm(*signAlgFlag)
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: signingKey}, nil)
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: checkAlg(signingKey), Key: signingKey}, nil)
 	app.FatalIfError(err, "unable to make signer")
 
 	obj, err := signer.Sign(readInput(*inFile))
@@ -73,8 +76,19 @@ func sign() {
 		msg, err = obj.CompactSerialize()
 		app.FatalIfError(err, "unable to serialize message")
 	}
-
 	writeOutput(*outFile, []byte(msg))
+}
+
+func checkAlg(signingKey interface{}) (jose.SignatureAlgorithm) {
+	switch signingKey := signingKey.(type) {
+	case *jose.JSONWebKey:
+		return jose.SignatureAlgorithm(signingKey.Algorithm)
+	default:
+		if *signAlgFlag == "" {
+			app.FatalIfError(errors.New("not provided alg"), "try --help")
+		}
+		return jose.SignatureAlgorithm(*signAlgFlag)
+	}
 }
 
 func verify() {

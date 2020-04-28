@@ -46,7 +46,7 @@ var (
 
 	// Sign
 	signCommand  = app.Command("sign", "Sign a payload, output signed message")
-	signAlgFlag  = signCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").Required().String()
+	signAlgFlag  = signCommand.Flag("alg", "Key management algorithm (e.g. RSA-OAEP)").String()
 	signFullFlag = signCommand.Flag("full", "Use JSON Serialization format (instead of compact)").Bool()
 
 	// Verify
