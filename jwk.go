@@ -27,6 +27,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -145,9 +146,12 @@ func (k JSONWebKey) MarshalJSON() ([]byte, error) {
 	if len(k.Certificates) > 0 {
 		expectedSHA1 := sha1.Sum(k.Certificates[0].Raw)
 		expectedSHA256 := sha256.Sum256(k.Certificates[0].Raw)
-		if !bytes.Equal(k.CertificateThumbprintSHA1, expectedSHA1[:]) ||
-			!bytes.Equal(k.CertificateThumbprintSHA256, expectedSHA256[:]) {
-			return nil, errors.New("square/go-jose: invalid SHA-1 or SHA-256 thumbprint, does not match cert chain")
+
+		if len(k.CertificateThumbprintSHA1) > 0 && !bytes.Equal(k.CertificateThumbprintSHA1, expectedSHA1[:]) {
+			return nil, errors.New("square/go-jose: invalid SHA-1 thumbprint, does not match cert chain")
+		}
+		if len(k.CertificateThumbprintSHA256) > 0 && !bytes.Equal(k.CertificateThumbprintSHA256, expectedSHA256[:]) {
+			return nil, errors.New("square/go-jose: invalid or SHA-256 thumbprint, does not match cert chain")
 		}
 	}
 
@@ -240,8 +244,28 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	*k = JSONWebKey{Key: key, KeyID: raw.Kid, Algorithm: raw.Alg, Use: raw.Use, Certificates: certs}
 
 	k.CertificatesURL = raw.X5u
-	k.CertificateThumbprintSHA1 = raw.X5tSHA1.bytes()
-	k.CertificateThumbprintSHA256 = raw.X5tSHA256.bytes()
+
+	// x5t parameters are base64url-encoded SHA thumbprints
+	// See RFC 7517, Section 4.8, https://tools.ietf.org/html/rfc7517#section-4.8
+	x5tSHA1bytes, err := base64.RawURLEncoding.DecodeString(string(raw.X5tSHA1.bytes()))
+	if err != nil {
+		return errors.New("square/go-jose: invalid JWK, x5t header has invalid encoding")
+	}
+
+	fmt.Printf("#### %x\n", x5tSHA1bytes)
+	hx, err := hex.DecodeString(string(x5tSHA1bytes))
+	if err == nil {
+		x5tSHA1bytes = hx
+	}
+	fmt.Printf("#### %x\n", x5tSHA1bytes)
+
+	k.CertificateThumbprintSHA1 = x5tSHA1bytes
+
+	x5tSHA256bytes, err := base64.RawURLEncoding.DecodeString(string(raw.X5tSHA256.bytes()))
+	if err != nil {
+		return errors.New("square/go-jose: invalid JWK, x5t#S256 header has invalid encoding")
+	}
+	k.CertificateThumbprintSHA256 = x5tSHA256bytes
 
 	x5tSHA1Len := len(k.CertificateThumbprintSHA1)
 	x5tSHA256Len := len(k.CertificateThumbprintSHA256)
