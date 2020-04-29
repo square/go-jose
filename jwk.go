@@ -130,13 +130,13 @@ func (k JSONWebKey) MarshalJSON() ([]byte, error) {
 		if x5tSHA1Len != sha1.Size {
 			return nil, fmt.Errorf("square/go-jose: invalid SHA-1 thumbprint (must be %d bytes, not %d)", sha1.Size, x5tSHA1Len)
 		}
-		raw.X5tSHA1 = newFixedSizeBuffer(k.CertificateThumbprintSHA1, sha1.Size)
+		raw.X5tSHA1 = newBuffer([]byte(base64.RawURLEncoding.EncodeToString(k.CertificateThumbprintSHA1)))
 	}
 	if x5tSHA256Len > 0 {
 		if x5tSHA256Len != sha256.Size {
 			return nil, fmt.Errorf("square/go-jose: invalid SHA-256 thumbprint (must be %d bytes, not %d)", sha256.Size, x5tSHA256Len)
 		}
-		raw.X5tSHA256 = newFixedSizeBuffer(k.CertificateThumbprintSHA256, sha256.Size)
+		raw.X5tSHA256 = newBuffer([]byte(base64.RawURLEncoding.EncodeToString(k.CertificateThumbprintSHA256)))
 	}
 
 	// If cert chain is attached (as opposed to being behind a URL), check the
