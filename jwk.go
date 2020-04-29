@@ -253,8 +253,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if len(x5tSHA1bytes) > sha1.Size {
-		hx, err := hex.DecodeString(string(x5tSHA1bytes))
-		if err == nil {
+		if hx, err := hex.DecodeString(string(x5tSHA1bytes)); err == nil {
 			x5tSHA1bytes = hx
 		}
 	}
@@ -267,8 +266,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if len(x5tSHA256bytes) > sha256.Size {
-		hx256, err := hex.DecodeString(string(x5tSHA256bytes))
-		if err == nil {
+		if hx256, err := hex.DecodeString(string(x5tSHA256bytes)); err == nil {
 			x5tSHA256bytes = hx256
 		}
 	}

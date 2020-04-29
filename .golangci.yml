@@ -48,3 +48,5 @@ issues:
     - path: _test\.go
       linters:
         - scopelint
+    - path: jwk.go
+        - gocyclo
