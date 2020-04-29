@@ -252,12 +252,10 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 		return errors.New("square/go-jose: invalid JWK, x5t header has invalid encoding")
 	}
 
-	fmt.Printf("#### %x\n", x5tSHA1bytes)
 	hx, err := hex.DecodeString(string(x5tSHA1bytes))
 	if err == nil {
 		x5tSHA1bytes = hx
 	}
-	fmt.Printf("#### %x\n", x5tSHA1bytes)
 
 	k.CertificateThumbprintSHA1 = x5tSHA1bytes
 

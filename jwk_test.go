@@ -32,6 +32,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/square/go-jose/v3/json"
@@ -252,6 +254,7 @@ func TestRoundtripX509(t *testing.T) {
 	x5tSHA1 := sha1.Sum(testCertificates[0].Raw)
 	x5tSHA256 := sha256.Sum256(testCertificates[0].Raw)
 
+	// Add test without base64
 	jwk := JSONWebKey{
 		Key:                         testCertificates[0].PublicKey,
 		KeyID:                       "bar",
@@ -262,24 +265,19 @@ func TestRoundtripX509(t *testing.T) {
 	}
 
 	jsonbar, err := jwk.MarshalJSON()
-	if err != nil {
-		t.Error("problem marshaling", err)
-	}
+	require.NoError(t, err)
 
 	var jwk2 JSONWebKey
 	err = jwk2.UnmarshalJSON(jsonbar)
-	if err != nil {
-		t.Fatal("problem unmarshalling", err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(testCertificates, jwk2.Certificates) {
 		t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
 	}
 
 	jsonbar2, err := jwk2.MarshalJSON()
-	if err != nil {
-		t.Error("problem marshaling", err)
-	}
+	require.NoError(t, err)
+
 	if !bytes.Equal(jsonbar, jsonbar2) {
 		t.Error("roundtrip should not lose information")
 	}
