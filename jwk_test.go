@@ -340,7 +340,7 @@ func TestRoundtripX509Hex(t *testing.T) {
 }`
 
 	// json output
-	var _ = `{
+	var output = `{
 	"kty":"RSA",
 	"kid":"bar",
 	"alg":"foo",
@@ -358,8 +358,13 @@ func TestRoundtripX509Hex(t *testing.T) {
 	err := jwk2.UnmarshalJSON([]byte(hexJWK))
 	require.NoError(t, err)
 
-	_, err = jwk2.MarshalJSON()
+	js, err := jwk2.MarshalJSON()
 	require.NoError(t, err)
+
+	var j1, j2 map[string]interface{}
+	require.NoError(t, json.Unmarshal(js, &j1))
+	require.NoError(t, json.Unmarshal([]byte(output), &j2))
+	require.Empty(t, cmp.Diff(j1, j2))
 }
 
 func TestInvalidThumbprintsX509(t *testing.T) {

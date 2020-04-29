@@ -252,7 +252,11 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 		return errors.New("square/go-jose: invalid JWK, x5t header has invalid encoding")
 	}
 
-	if len(x5tSHA1bytes) > sha1.Size {
+	// RFC 7517, Section 4.8 is ambiguous as to whether the digest output should be byte or hex,
+	// for this reason, after base64 decoding, if the size is sha1.Size it's likely that the value is a byte encoded
+	// checksum so we skip this. Otherwise if the checksum was hex encoded we expect a 40 byte sized array so we'll
+	// try to hex decode it. When Marshalling this value we'll always use a base64 encoded version of byte format checksum.
+	if len(x5tSHA1bytes) == 2*sha1.Size {
 		if hx, err := hex.DecodeString(string(x5tSHA1bytes)); err == nil {
 			x5tSHA1bytes = hx
 		}
@@ -265,7 +269,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 		return errors.New("square/go-jose: invalid JWK, x5t#S256 header has invalid encoding")
 	}
 
-	if len(x5tSHA256bytes) > sha256.Size {
+	if len(x5tSHA256bytes) == 2*sha256.Size {
 		if hx256, err := hex.DecodeString(string(x5tSHA256bytes)); err == nil {
 			x5tSHA256bytes = hx256
 		}
