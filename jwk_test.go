@@ -283,6 +283,71 @@ func TestRoundtripX509(t *testing.T) {
 	}
 }
 
+func TestRoundtripX509OptionalFields(t *testing.T) {
+	x5tSHA1 := sha1.Sum(testCertificates[0].Raw)
+	x5tSHA256 := sha256.Sum256(testCertificates[0].Raw)
+
+	jwk := JSONWebKey{
+		Key:                         testCertificates[0].PublicKey,
+		KeyID:                       "bar",
+		Algorithm:                   "foo",
+		Certificates:                testCertificates,
+		CertificateThumbprintSHA1:   x5tSHA1[:],
+		CertificateThumbprintSHA256: x5tSHA256[:],
+	}
+
+	jsonFullJWK, err := jwk.MarshalJSON()
+	require.NoError(t, err)
+
+	cases := []struct {
+		name string
+		jwk  JSONWebKey
+	}{
+		{
+			name: "no x5t",
+			jwk: JSONWebKey{
+				Key:                         testCertificates[0].PublicKey,
+				KeyID:                       "bar",
+				Algorithm:                   "foo",
+				Certificates:                testCertificates,
+				CertificateThumbprintSHA1:   x5tSHA1[:],
+				CertificateThumbprintSHA256: x5tSHA256[:],
+			},
+		},
+		{
+			name: "no x5t254",
+			jwk: JSONWebKey{
+				Key:                         testCertificates[0].PublicKey,
+				KeyID:                       "bar",
+				Algorithm:                   "foo",
+				Certificates:                testCertificates,
+				CertificateThumbprintSHA1:   x5tSHA1[:],
+				CertificateThumbprintSHA256: x5tSHA256[:],
+			},
+		},
+	}
+
+	for _, c := range cases {
+		jsonbar, err := c.jwk.MarshalJSON()
+		require.NoError(t, err)
+
+		var jwk2 JSONWebKey
+		err = jwk2.UnmarshalJSON(jsonbar)
+		require.NoError(t, err)
+
+		if !reflect.DeepEqual(testCertificates, jwk2.Certificates) {
+			t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
+		}
+
+		jsonbar2, err := jwk2.MarshalJSON()
+		require.NoError(t, err)
+
+		if !bytes.Equal(jsonFullJWK, jsonbar2) {
+			t.Error("roundtrip should not lose information")
+		}
+	}
+}
+
 func TestInvalidThumbprintsX509(t *testing.T) {
 	// Too short
 	jwk := JSONWebKey{
