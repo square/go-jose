@@ -32,11 +32,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/square/go-jose/v3/json"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test chain of two X.509 certificates
@@ -254,57 +254,12 @@ func TestRoundtripX509(t *testing.T) {
 	x5tSHA1 := sha1.Sum(testCertificates[0].Raw)
 	x5tSHA256 := sha256.Sum256(testCertificates[0].Raw)
 
-	// Add test without base64
-	jwk := JSONWebKey{
-		Key:                         testCertificates[0].PublicKey,
-		KeyID:                       "bar",
-		Algorithm:                   "foo",
-		Certificates:                testCertificates,
-		CertificateThumbprintSHA1:   x5tSHA1[:],
-		CertificateThumbprintSHA256: x5tSHA256[:],
-	}
-
-	jsonbar, err := jwk.MarshalJSON()
-	require.NoError(t, err)
-
-	var jwk2 JSONWebKey
-	err = jwk2.UnmarshalJSON(jsonbar)
-	require.NoError(t, err)
-
-	if !reflect.DeepEqual(testCertificates, jwk2.Certificates) {
-		t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
-	}
-
-	jsonbar2, err := jwk2.MarshalJSON()
-	require.NoError(t, err)
-
-	if !bytes.Equal(jsonbar, jsonbar2) {
-		t.Error("roundtrip should not lose information")
-	}
-}
-
-func TestRoundtripX509OptionalFields(t *testing.T) {
-	x5tSHA1 := sha1.Sum(testCertificates[0].Raw)
-	x5tSHA256 := sha256.Sum256(testCertificates[0].Raw)
-
-	jwk := JSONWebKey{
-		Key:                         testCertificates[0].PublicKey,
-		KeyID:                       "bar",
-		Algorithm:                   "foo",
-		Certificates:                testCertificates,
-		CertificateThumbprintSHA1:   x5tSHA1[:],
-		CertificateThumbprintSHA256: x5tSHA256[:],
-	}
-
-	jsonFullJWK, err := jwk.MarshalJSON()
-	require.NoError(t, err)
-
 	cases := []struct {
 		name string
 		jwk  JSONWebKey
 	}{
 		{
-			name: "no x5t",
+			name: "all fields",
 			jwk: JSONWebKey{
 				Key:                         testCertificates[0].PublicKey,
 				KeyID:                       "bar",
@@ -315,37 +270,96 @@ func TestRoundtripX509OptionalFields(t *testing.T) {
 			},
 		},
 		{
-			name: "no x5t254",
+			name: "no optional x5ts",
+			jwk: JSONWebKey{
+				Key:          testCertificates[0].PublicKey,
+				KeyID:        "bar",
+				Algorithm:    "foo",
+				Certificates: testCertificates,
+			},
+		},
+		{
+			name: "no x5t",
+			jwk: JSONWebKey{
+				Key:                       testCertificates[0].PublicKey,
+				KeyID:                     "bar",
+				Algorithm:                 "foo",
+				Certificates:              testCertificates,
+				CertificateThumbprintSHA1: x5tSHA1[:],
+			},
+		},
+		{
+			name: "no x5t25",
 			jwk: JSONWebKey{
 				Key:                         testCertificates[0].PublicKey,
 				KeyID:                       "bar",
 				Algorithm:                   "foo",
 				Certificates:                testCertificates,
-				CertificateThumbprintSHA1:   x5tSHA1[:],
 				CertificateThumbprintSHA256: x5tSHA256[:],
 			},
 		},
 	}
 
 	for _, c := range cases {
-		jsonbar, err := c.jwk.MarshalJSON()
-		require.NoError(t, err)
+		t.Run(c.name, func(t *testing.T) {
+			jsonbar, err := c.jwk.MarshalJSON()
+			require.NoError(t, err)
 
-		var jwk2 JSONWebKey
-		err = jwk2.UnmarshalJSON(jsonbar)
-		require.NoError(t, err)
+			var jwk2 JSONWebKey
+			err = jwk2.UnmarshalJSON(jsonbar)
+			require.NoError(t, err)
 
-		if !reflect.DeepEqual(testCertificates, jwk2.Certificates) {
-			t.Error("Certificates not equal", jwk.Certificates, jwk2.Certificates)
-		}
+			if !reflect.DeepEqual(testCertificates, jwk2.Certificates) {
+				t.Error("Certificates not equal", c.jwk.Certificates, jwk2.Certificates)
+			}
 
-		jsonbar2, err := jwk2.MarshalJSON()
-		require.NoError(t, err)
+			jsonbar2, err := jwk2.MarshalJSON()
+			require.NoError(t, err)
 
-		if !bytes.Equal(jsonFullJWK, jsonbar2) {
-			t.Error("roundtrip should not lose information")
-		}
+			require.Empty(t, cmp.Diff(jsonbar, jsonbar2))
+			if !bytes.Equal(jsonbar, jsonbar2) {
+				t.Error("roundtrip should not lose information")
+			}
+		})
 	}
+}
+
+func TestRoundtripX509Hex(t *testing.T) {
+	var hexJWK = `{
+   "kty":"RSA",
+   "kid":"bar",
+   "alg":"foo",
+   "n":"u7LUr30Mhrh8N79-H4rKiHQ123q6xaBZPYbf1nV4GM19rizSnbEfyebG1kpfCv-XY6c499XiM6lOvcPL-0goTOcfW6Lg7AAR895GbnMeXEmnxICaI8rAZHK6t1WPmiWp82y_qhK2F_pYUaT3GSuiTFiMGq_GNwdpWuMlsInnnMNv1nxFbxtDPwzmCp0fEBxbH5d1EtXZwTPOHMyj8rfa-NIA5Nl4h_5RrbOWveKwBr26_CDAratJgOWh9xcd5g0ot_uDGcMoAgB6xeTuYklfaxCPptvu49kvoxw1J71fp6nKW_ZuhDRAp2F_BQ9inKpTo05sPLJg8tPTdjaeouOuJQ",
+   "e":"AQAB",
+   "x5c":[
+      "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"
+	],
+	"x5t": "MDYxMjU0ZmRmNzIwZjJjMGU0YmQzZjMzMzlhMmZlNTM1MGExNWRlMQ",
+	"x5t#S256": "MjAzMjRhNGI5MmYxMjI2OGVmOWFlMDI1ZmQ1Yzc5ZDE1OGZmNzQ1NzQwMDkyMTk2ZTgzNTNjMDAzMTUxNzUxMQ"
+}`
+
+	// json output
+	var _ = `{
+	"kty":"RSA",
+	"kid":"bar",
+	"alg":"foo",
+	"n":"u7LUr30Mhrh8N79-H4rKiHQ123q6xaBZPYbf1nV4GM19rizSnbEfyebG1kpfCv-XY6c499XiM6lOvcPL-0goTOcfW6Lg7AAR895GbnMeXEmnxICaI8rAZHK6t1WPmiWp82y_qhK2F_pYUaT3GSuiTFiMGq_GNwdpWuMlsInnnMNv1nxFbxtDPwzmCp0fEBxbH5d1EtXZwTPOHMyj8rfa-NIA5Nl4h_5RrbOWveKwBr26_CDAratJgOWh9xcd5g0ot_uDGcMoAgB6xeTuYklfaxCPptvu49kvoxw1J71fp6nKW_ZuhDRAp2F_BQ9inKpTo05sPLJg8tPTdjaeouOuJQ",
+	"e":"AQAB",
+	"x5c":[
+		"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"
+	],
+	"x5t":"BhJU_fcg8sDkvT8zOaL-U1ChXeE",
+	"x5t#S256":"IDJKS5LxImjvmuAl_Vx50Vj_dFdACSGW6DU8ADFRdRE"
+	}`
+
+	var jwk2 JSONWebKey
+	err := jwk2.UnmarshalJSON([]byte(hexJWK))
+	require.NoError(t, err)
+
+	_, err = jwk2.MarshalJSON()
+	require.NoError(t, err)
 }
 
 func TestInvalidThumbprintsX509(t *testing.T) {
