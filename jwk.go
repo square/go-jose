@@ -281,7 +281,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 		return errors.New("square/go-jose: invalid JWK, x5t header is of incorrect size")
 	}
 	if x5tSHA256Len > 0 && x5tSHA256Len != sha256.Size {
-		return errors.New("square/go-jose: invalid JWK, x5t256 header is of incorrect size")
+		return errors.New("square/go-jose: invalid JWK, x5t#S256 header is of incorrect size")
 	}
 
 	// If certificate chain *and* thumbprints are set, verify correctness.
