@@ -281,21 +281,21 @@ func TestRoundtripX509(t *testing.T) {
 		{
 			name: "no x5t",
 			jwk: JSONWebKey{
-				Key:                       testCertificates[0].PublicKey,
-				KeyID:                     "bar",
-				Algorithm:                 "foo",
-				Certificates:              testCertificates,
-				CertificateThumbprintSHA1: x5tSHA1[:],
-			},
-		},
-		{
-			name: "no x5t25",
-			jwk: JSONWebKey{
 				Key:                         testCertificates[0].PublicKey,
 				KeyID:                       "bar",
 				Algorithm:                   "foo",
 				Certificates:                testCertificates,
 				CertificateThumbprintSHA256: x5tSHA256[:],
+			},
+		},
+		{
+			name: "no x5t#S256",
+			jwk: JSONWebKey{
+				Key:                       testCertificates[0].PublicKey,
+				KeyID:                     "bar",
+				Algorithm:                 "foo",
+				Certificates:              testCertificates,
+				CertificateThumbprintSHA1: x5tSHA1[:],
 			},
 		},
 	}
