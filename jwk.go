@@ -259,7 +259,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	if len(x5tSHA1bytes) == 2*sha1.Size {
 		hx, err := hex.DecodeString(string(x5tSHA1bytes))
 		if err != nil {
-			return fmt.Errorf("unable to hex decode x5t, %w", err)
+			return fmt.Errorf("square/go-jose: invalid JWK, unable to hex decode x5t: %w", err)
 
 		}
 		x5tSHA1bytes = hx
@@ -275,7 +275,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 	if len(x5tSHA256bytes) == 2*sha256.Size {
 		hx256, err := hex.DecodeString(string(x5tSHA256bytes))
 		if err != nil {
-			return fmt.Errorf("unable to hex decode x5t#S256, %w", err)
+			return fmt.Errorf("square/go-jose: invalid JWK, unable to hex decode x5t#S256: %w", err)
 		}
 		x5tSHA256bytes = hx256
 	}
