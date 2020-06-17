@@ -47,6 +47,8 @@ func (e Expected) WithTime(t time.Time) Expected {
 
 // Validate checks claims in a token against expected values.
 // A default leeway value of one minute is used to compare time values.
+// Set e.Time to the current time, otherwise the Expiry, IssuedAt and
+// NotBefore claims will be ignored.
 //
 // The default leeway will cause the token to be deemed valid until one
 // minute after the expiration time. If you're a server application that
