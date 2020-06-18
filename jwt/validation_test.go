@@ -75,6 +75,8 @@ func TestExpiryAndNotBefore(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, err, ErrExpired)
 	}
+	// some error is okay (leeway)
+	assert.NoError(t, c.Validate(Expected{Time: now.Add(DefaultLeeway)}))
 
 	// expired - no leeway
 	assert.NoError(t, c.ValidateWithLeeway(Expected{Time: now}, 0))
@@ -89,6 +91,8 @@ func TestExpiryAndNotBefore(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, err, ErrNotValidYet)
 	}
+	// some error is okay (leeway)
+	assert.NoError(t, c.Validate(Expected{Time: twelveHoursAgo.Add(-DefaultLeeway)}))
 }
 
 func TestIssuedInFuture(t *testing.T) {
