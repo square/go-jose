@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package main
+package generator
 
 import "io"
 
@@ -23,11 +23,11 @@ import "io"
 // to read any base64-encoded data as input, whether padded, unpadded, standard or
 // url-safe.
 type Base64Reader struct {
-	in io.Reader
+	In io.Reader
 }
 
 func (r Base64Reader) Read(p []byte) (n int, err error) {
-	n, err = r.in.Read(p)
+	n, err = r.In.Read(p)
 
 	for i := 0; i < n; i++ {
 		switch p[i] {

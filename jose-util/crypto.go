@@ -16,10 +16,13 @@
 
 package main
 
-import jose "github.com/square/go-jose/v3"
+import (
+	jose "github.com/square/go-jose/v3"
+	"github.com/square/go-jose/jose-util/generator"
+)
 
 func encrypt() {
-	pub, err := LoadPublicKey(keyBytes())
+	pub, err := generator.LoadPublicKey(keyBytes())
 	app.FatalIfError(err, "unable to read public key")
 
 	alg := jose.KeyAlgorithm(*encryptAlgFlag)
@@ -43,7 +46,7 @@ func encrypt() {
 }
 
 func decrypt() {
-	priv, err := LoadPrivateKey(keyBytes())
+	priv, err := generator.LoadPrivateKey(keyBytes())
 	app.FatalIfError(err, "unable to read private key")
 
 	obj, err := jose.ParseEncrypted(string(readInput(*inFile)))
@@ -56,7 +59,7 @@ func decrypt() {
 }
 
 func sign() {
-	signingKey, err := LoadPrivateKey(keyBytes())
+	signingKey, err := generator.LoadPrivateKey(keyBytes())
 	app.FatalIfError(err, "unable to read private key")
 
 	alg := jose.SignatureAlgorithm(*signAlgFlag)
@@ -78,7 +81,7 @@ func sign() {
 }
 
 func verify() {
-	verificationKey, err := LoadPublicKey(keyBytes())
+	verificationKey, err := generator.LoadPublicKey(keyBytes())
 	app.FatalIfError(err, "unable to read public key")
 
 	obj, err := jose.ParseSigned(string(readInput(*inFile)))
