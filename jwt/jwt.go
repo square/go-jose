@@ -99,7 +99,7 @@ func ParseSigned(s string) (*JSONWebToken, error) {
 	}
 
 	return &JSONWebToken{
-		payload:           sig.Verify,
+		payload:           sig.Verifier(),
 		unverifiedPayload: sig.UnsafePayloadWithoutVerification,
 		Headers:           headers,
 	}, nil
