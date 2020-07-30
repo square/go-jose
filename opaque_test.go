@@ -65,6 +65,78 @@ func (vw *verifyWrapper) VerifyPayload(payload []byte, signature []byte, alg Sig
 	return err
 }
 
+type keyEncryptWrapper struct {
+	kid     string
+	wrapped keyEncrypter
+	algs    []KeyAlgorithm
+}
+
+var _ = OpaqueKeyEncrypter(&keyEncryptWrapper{})
+
+func (kew *keyEncryptWrapper) KeyID() string {
+	return kew.kid
+}
+
+func (kew *keyEncryptWrapper) Algs() []KeyAlgorithm {
+	return kew.algs
+}
+
+func (kew *keyEncryptWrapper) encryptKey(cek []byte, alg KeyAlgorithm) (recipientInfo, error) {
+	info, err := kew.wrapped.encryptKey(cek, alg)
+	if err != nil {
+		return recipientInfo{}, err
+	}
+
+	return info, nil
+}
+
+type keyDecryptWrapper struct {
+	wrapped keyDecrypter
+}
+
+var _ = OpaqueKeyDecrypter(&keyDecryptWrapper{})
+
+func (kdw *keyDecryptWrapper) DecryptKey(encryptedKey []byte, header Header) ([]byte, error) {
+	rawHeader := rawHeader{}
+
+	err := rawHeader.set(headerKeyID, header.KeyID)
+	if err != nil {
+		return nil, err
+	}
+	err = rawHeader.set(headerAlgorithm, header.Algorithm)
+	if err != nil {
+		return nil, err
+	}
+	err = rawHeader.set(headerNonce, header.Nonce)
+	if err != nil {
+		return nil, err
+	}
+	err = rawHeader.set(headerJWK, header.JSONWebKey)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range header.ExtraHeaders {
+		err = rawHeader.set(k, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	recipient := &recipientInfo{
+		encryptedKey: encryptedKey,
+	}
+
+	var generator randomKeyGenerator
+	cipher := getContentCipher(rawHeader.getEncryption())
+	if cipher != nil {
+		generator = randomKeyGenerator{
+			size: cipher.keySize(),
+		}
+	}
+
+	return kdw.wrapped.decryptKey(rawHeader, recipient, generator)
+}
+
 func TestRoundtripsJWSOpaque(t *testing.T) {
 	sigAlgs := []SignatureAlgorithm{RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA}
 
@@ -122,6 +194,29 @@ func makeOpaqueVerifier(t *testing.T, verificationKey []interface{}, alg Signatu
 		verifiers = append(verifiers, verifier)
 	}
 	return &verifyWrapper{wrapped: verifiers}
+}
+
+func makeOpaqueKeyEncrypter(t *testing.T, signingKey interface{}, alg KeyAlgorithm, kid string) *keyEncryptWrapper {
+	rki, err := makeJWERecipient(alg, signingKey)
+	if err != nil {
+		t.Fatal(err, alg)
+	}
+	return &keyEncryptWrapper{
+		wrapped: rki.keyEncrypter,
+		algs:    []KeyAlgorithm{alg},
+		kid:     kid,
+	}
+}
+
+func makeOpaqueKeyDecrypter(t *testing.T, decryptionKey interface{}, alg KeyAlgorithm) *keyDecryptWrapper {
+	kd, err := newDecrypter(decryptionKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return &keyDecryptWrapper{
+		wrapped: kd,
+	}
 }
 
 func TestOpaqueSignerKeyRotation(t *testing.T) {
@@ -189,4 +284,74 @@ func rtSerialize(t *testing.T, serializer func(*JSONWebSignature) (string, error
 		t.Fatal(err)
 	}
 	return sig
+}
+
+func TestOpaqueKeyRoundtripJWE(t *testing.T) {
+	keyAlgs := []KeyAlgorithm{
+		ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW, A128KW, A192KW, A256KW,
+		RSA1_5, RSA_OAEP, RSA_OAEP_256, A128GCMKW, A192GCMKW, A256GCMKW,
+		PBES2_HS256_A128KW, PBES2_HS384_A192KW, PBES2_HS512_A256KW,
+	}
+	encAlgs := []ContentEncryption{A128GCM, A192GCM, A256GCM, A128CBC_HS256, A192CBC_HS384, A256CBC_HS512}
+	kid := "test-kid"
+
+	serializers := []func(*JSONWebEncryption) (string, error){
+		func(obj *JSONWebEncryption) (string, error) { return obj.CompactSerialize() },
+		func(obj *JSONWebEncryption) (string, error) { return obj.FullSerialize(), nil },
+	}
+
+	for _, alg := range keyAlgs {
+		for _, enc := range encAlgs {
+			for _, testKey := range generateTestKeys(alg, enc) {
+				for _, serializer := range serializers {
+					kew := makeOpaqueKeyEncrypter(t, testKey.enc, alg, kid)
+					encrypter, err := NewEncrypter(
+						enc,
+						Recipient{
+							Algorithm: alg,
+							Key:       kew,
+						},
+						&EncrypterOptions{},
+					)
+					if err != nil {
+						t.Fatal(err, alg)
+					}
+
+					jwe, err := encrypter.Encrypt([]byte("foo bar"))
+					if err != nil {
+						t.Fatal(err, alg)
+					}
+
+					dw := makeOpaqueKeyDecrypter(t, testKey.dec, alg)
+					jwe = jweSerialize(t, serializer, jwe, dw)
+					if jwe.Header.KeyID != kid {
+						t.Errorf("expected jwe kid to equal %s but got %s", kid, jwe.Header.KeyID)
+					}
+
+					out, err := jwe.Decrypt(dw)
+					if err != nil {
+						t.Fatal(err, out)
+					}
+					if string(out) != "foo bar" {
+						t.Errorf("expected decrypted jwe to equal %s but got %s", "foo bar", string(out))
+					}
+				}
+			}
+		}
+	}
+}
+
+func jweSerialize(t *testing.T, serializer func(*JSONWebEncryption) (string, error), jwe *JSONWebEncryption, d OpaqueKeyDecrypter) *JSONWebEncryption {
+	b, err := serializer(jwe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwe, err = ParseEncrypted(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := jwe.Decrypt(d); err != nil {
+		t.Fatal(err)
+	}
+	return jwe
 }
