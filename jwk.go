@@ -406,7 +406,7 @@ func (k *JSONWebKey) IsPublic() bool {
 	}
 }
 
-// Public creates JSONWebKey with corresponding publik key if JWK represents asymmetric private key.
+// Public creates JSONWebKey with corresponding public key if JWK represents asymmetric private key.
 func (k *JSONWebKey) Public() JSONWebKey {
 	if k.IsPublic() {
 		return *k
