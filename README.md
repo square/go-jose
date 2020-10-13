@@ -44,16 +44,16 @@ libraries in other languages.
 
     import "gopkg.in/square/go-jose.v2"
 
-[Version 3](https://github.com/square/go-jose)
-([branch](https://github.com/square/go-jose/tree/master),
-[doc](https://godoc.org/github.com/square/go-jose)) is the under development/unstable version (not released yet):
+[Version 3](https://github.com/go-jose/go-jose)
+([branch](https://github.com/go-jose/go-jose/tree/master),
+[doc](https://godoc.org/github.com/go-jose/go-jose)) is the under development/unstable version (not released yet):
 
-    import "github.com/square/go-jose/v3"
+    import "github.com/go-jose/go-jose/v3"
 
 All new feature development takes place on the `master` branch, which we are
-preparing to release as version 3 soon. Version 2 will continue to receive
-critical bug and security fixes. Note that starting with version 3 we are
-using Go modules for versioning instead of `gopkg.in` as before. Version 3 also will require Go version 1.13 or higher.
+preparing to release as version 3 when it's ready. Version 2 will continue to
+receive critical bug and security fixes. Note that starting with version 3 we
+are using Go modules for versioning instead of `gopkg.in` as before. 
 
 Version 1 (on the `v1` branch) is frozen and not supported anymore.
 
