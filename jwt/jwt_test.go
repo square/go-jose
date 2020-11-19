@@ -81,12 +81,19 @@ func TestDecodeTokenWithJWKS(t *testing.T) {
 	tok, err := ParseSigned(rsaSignedTokenWithKid)
 	if assert.NoError(t, err, "Error parsing signed token.") {
 		cl := make(map[string]interface{})
+		expected := map[string]interface{}{
+			"sub":    "subject",
+			"iss":    "issuer",
+			"scopes": []interface{}{"s1", "s2"},
+		}
+
 		if assert.NoError(t, tok.Claims(jwks, &cl)) {
-			assert.Equal(t, map[string]interface{}{
-				"sub":    "subject",
-				"iss":    "issuer",
-				"scopes": []interface{}{"s1", "s2"},
-			}, cl)
+			assert.Equal(t, expected, cl)
+		}
+
+		cl = make(map[string]interface{})
+		if assert.NoError(t, tok.Claims(*jwks, &cl)) {
+			assert.Equal(t, expected, cl)
 		}
 	}
 }
