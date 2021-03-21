@@ -63,7 +63,7 @@ func Example_jWE() {
 	}
 
 	// Now we can decrypt and get back our original plaintext. An error here
-	// would indicate the the message failed to decrypt, e.g. because the auth
+	// would indicate that the message failed to decrypt, e.g. because the auth
 	// tag was broken or the message was tampered with.
 	decrypted, err := object.Decrypt(privateKey)
 	if err != nil {
@@ -109,7 +109,7 @@ func Example_jWS() {
 	}
 
 	// Now we can verify the signature on the payload. An error here would
-	// indicate the the message failed to verify, e.g. because the signature was
+	// indicate that the message failed to verify, e.g. because the signature was
 	// broken or the message was tampered with.
 	output, err := object.Verify(&privateKey.PublicKey)
 	if err != nil {
