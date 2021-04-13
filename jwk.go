@@ -238,7 +238,7 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 
 	if certPub != nil && keyPub != nil {
 		if !reflect.DeepEqual(certPub, keyPub) {
-			return errors.New("square/go-jose: invalid JWK, public keys in key and x5c fields to not match")
+			return errors.New("square/go-jose: invalid JWK, public keys in key and x5c fields do not match")
 		}
 	}
 
