@@ -37,7 +37,7 @@ import (
 var (
 	app = kingpin.New("jwk-keygen", "A command-line utility to generate public/pirvate keypairs in JWK format.")
 
-	use = app.Flag("use", "Desrired key use").Required().Enum("enc", "sig")
+	use = app.Flag("use", "Desired key use").Required().Enum("enc", "sig")
 	alg = app.Flag("alg", "Generate key to be used for ALG").Required().Enum(
 		// `sig`
 		string(jose.ES256), string(jose.ES384), string(jose.ES512), string(jose.EdDSA),

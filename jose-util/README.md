@@ -17,7 +17,7 @@ signature algorithm (e.g. `PS256`).
 
 Input and output files can be specified via the `--in` and `--out` flags.
 Either flag can be omitted, in which case `jose-util` uses stdin/stdout for
-input/output respectively. By default each command will output a compact
+input/output respectively. By default, each command will output a compact
 message, but it's possible to get the full serialization by supplying the
 `--full` flag.
 
