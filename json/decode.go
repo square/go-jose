@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -739,19 +740,34 @@ func (d *decodeState) literal(v reflect.Value) {
 // depending on d.numberDecodeType.
 func (d *decodeState) convertNumber(s string) (interface{}, error) {
 	switch d.numberType {
+
 	case UnmarshalJSONNumber:
 		return Number(s), nil
 	case UnmarshalIntOrFloat:
-		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+		v, err := strconv.ParseInt(s, 10, 64)
+		if err == nil {
 			return v, nil
 		}
+
+		// tries to parse integer number in scientific notation
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return nil, &UnmarshalTypeError{"number " + s, reflect.TypeOf(0.0), int64(d.off)}
+		}
+
+		// if it has no decimal value use int64
+		if fi, fd := math.Modf(f); fd == 0.0 {
+			return int64(fi), nil
+		}
+		return f, nil
+	default:
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return nil, &UnmarshalTypeError{"number " + s, reflect.TypeOf(0.0), int64(d.off)}
+		}
+		return f, nil
 	}
 
-	f, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return nil, &UnmarshalTypeError{"number " + s, reflect.TypeOf(0.0), int64(d.off)}
-	}
-	return f, nil
 }
 
 var numberType = reflect.TypeOf(Number(""))
