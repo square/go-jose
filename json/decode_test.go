@@ -203,11 +203,11 @@ type S13 struct {
 }
 
 type unmarshalTest struct {
-	in        string
-	ptr       interface{}
-	out       interface{}
-	err       error
-	useNumber bool
+	in         string
+	ptr        interface{}
+	out        interface{}
+	err        error
+	numberType NumberUnmarshalType
 }
 
 type XYZ struct {
@@ -225,10 +225,15 @@ var unmarshalTests = []unmarshalTest{
 	{in: `1`, ptr: new(int), out: 1},
 	{in: `1.2`, ptr: new(float64), out: 1.2},
 	{in: `-5`, ptr: new(int16), out: int16(-5)},
-	{in: `2`, ptr: new(Number), out: Number("2"), useNumber: true},
+	{in: `2`, ptr: new(Number), out: Number("2"), numberType: UnmarshalJSONNumber},
 	{in: `2`, ptr: new(Number), out: Number("2")},
 	{in: `2`, ptr: new(interface{}), out: float64(2.0)},
-	{in: `2`, ptr: new(interface{}), out: Number("2"), useNumber: true},
+	{in: `2`, ptr: new(interface{}), out: Number("2"), numberType: UnmarshalJSONNumber},
+	{in: `2`, ptr: new(interface{}), out: int64(2), numberType: UnmarshalIntOrFloat},
+	{in: `2.1`, ptr: new(interface{}), out: float64(2.1), numberType: UnmarshalIntOrFloat},
+	{in: `1.5e2`, ptr: new(interface{}), out: int64(150), numberType: UnmarshalIntOrFloat},
+	{in: `9223372036854775807`, ptr: new(interface{}), out: int64(9223372036854775807), numberType: UnmarshalIntOrFloat},
+	{in: `9007199254740992.000000`, ptr: new(interface{}), out: int64(9007199254740992), numberType: UnmarshalIntOrFloat},
 	{in: `"a\u1234"`, ptr: new(string), out: "a\u1234"},
 	{in: `"http:\/\/"`, ptr: new(string), out: "http://"},
 	{in: `"g-clef: \uD834\uDD1E"`, ptr: new(string), out: "g-clef: \U0001D11E"},
@@ -237,9 +242,9 @@ var unmarshalTests = []unmarshalTest{
 	{in: `{"X": [1,2,3], "Y": 4}`, ptr: new(T), out: T{Y: 4}, err: &UnmarshalTypeError{"array", reflect.TypeOf(""), 7}},
 	{in: `{"x": 1}`, ptr: new(tx), out: tx{}},
 	{in: `{"F1":1,"F2":2,"F3":3}`, ptr: new(V), out: V{F1: float64(1), F2: int32(2), F3: Number("3")}},
-	{in: `{"F1":1,"F2":2,"F3":3}`, ptr: new(V), out: V{F1: Number("1"), F2: int32(2), F3: Number("3")}, useNumber: true},
+	{in: `{"F1":1,"F2":2,"F3":3}`, ptr: new(V), out: V{F1: Number("1"), F2: int32(2), F3: Number("3")}, numberType: UnmarshalJSONNumber},
 	{in: `{"k1":1,"k2":"s","k3":[1,2.0,3e-3],"k4":{"kk1":"s","kk2":2}}`, ptr: new(interface{}), out: ifaceNumAsFloat64},
-	{in: `{"k1":1,"k2":"s","k3":[1,2.0,3e-3],"k4":{"kk1":"s","kk2":2}}`, ptr: new(interface{}), out: ifaceNumAsNumber, useNumber: true},
+	{in: `{"k1":1,"k2":"s","k3":[1,2.0,3e-3],"k4":{"kk1":"s","kk2":2}}`, ptr: new(interface{}), out: ifaceNumAsNumber, numberType: UnmarshalJSONNumber},
 
 	// raw values with whitespace
 	{in: "\n true ", ptr: new(bool), out: true},
@@ -258,7 +263,7 @@ var unmarshalTests = []unmarshalTest{
 	// syntax errors
 	{in: `{"X": "foo", "Y"}`, err: &SyntaxError{"invalid character '}' after object key", 17}},
 	{in: `[1, 2, 3+]`, err: &SyntaxError{"invalid character '+' after array element", 9}},
-	{in: `{"X":12x}`, err: &SyntaxError{"invalid character 'x' after object key:value pair", 8}, useNumber: true},
+	{in: `{"X":12x}`, err: &SyntaxError{"invalid character 'x' after object key:value pair", 8}, numberType: UnmarshalJSONNumber},
 
 	// raw value errors
 	{in: "\x01 42", err: &SyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
@@ -535,9 +540,7 @@ func TestUnmarshal(t *testing.T) {
 		// v = new(right-type)
 		v := reflect.New(reflect.TypeOf(tt.ptr).Elem())
 		dec := NewDecoder(bytes.NewReader(in))
-		if tt.useNumber {
-			dec.UseNumber()
-		}
+		dec.SetNumberType(tt.numberType)
 		if err := dec.Decode(v.Interface()); !reflect.DeepEqual(err, tt.err) {
 			t.Errorf("#%d: %v, want %v", i, err, tt.err)
 			continue
@@ -562,9 +565,7 @@ func TestUnmarshal(t *testing.T) {
 			}
 			vv := reflect.New(reflect.TypeOf(tt.ptr).Elem())
 			dec = NewDecoder(bytes.NewReader(enc))
-			if tt.useNumber {
-				dec.UseNumber()
-			}
+			dec.SetNumberType(tt.numberType)
 			if err := dec.Decode(vv.Interface()); err != nil {
 				t.Errorf("#%d: error re-unmarshaling %#q: %v", i, enc, err)
 				continue
