@@ -150,12 +150,13 @@ func parseSignedFull(input string) (*JSONWebSignature, error) {
 
 // sanitized produces a cleaned-up JWS object from the raw JSON.
 func (parsed *rawJSONWebSignature) sanitized() (*JSONWebSignature, error) {
-	if parsed.Payload == nil {
-		return nil, fmt.Errorf("square/go-jose: missing payload in JWS message")
+	var parsedPayload []byte
+	if parsed.Payload != nil {
+		parsedPayload = parsed.Payload.bytes()
 	}
 
 	obj := &JSONWebSignature{
-		payload:    parsed.Payload.bytes(),
+		payload:    parsedPayload,
 		Signatures: make([]Signature, len(parsed.Signatures)),
 	}
 
