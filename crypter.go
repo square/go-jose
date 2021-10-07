@@ -58,12 +58,13 @@ type keyDecrypter interface {
 
 // A generic encrypter based on the given key encrypter and content cipher.
 type genericEncrypter struct {
-	contentAlg     ContentEncryption
-	compressionAlg CompressionAlgorithm
-	cipher         contentCipher
-	recipients     []recipientKeyInfo
-	keyGenerator   keyGenerator
-	extraHeaders   map[HeaderKey]interface{}
+	contentAlg         ContentEncryption
+	compressionAlg     CompressionAlgorithm
+	cipher             contentCipher
+	recipients         []recipientKeyInfo
+	keyGenerator       keyGenerator
+	extraHeaders       map[HeaderKey]interface{}
+	unprotectedHeaders map[HeaderKey]interface{}
 }
 
 type recipientKeyInfo struct {
@@ -80,6 +81,10 @@ type EncrypterOptions struct {
 	// of a JWS object. Some specifications which make use of JWS like to insert
 	// additional values here. All values must be JSON-serializable.
 	ExtraHeaders map[HeaderKey]interface{}
+	// Optional map of additional keys to be inserted into the unprotected header
+	// of a JWS object. Some specifications which make use of JWS like to insert
+	// additional values here. All values must be JSON-serializable.
+	UnprotectedHeaders map[HeaderKey]interface{}
 }
 
 // WithHeader adds an arbitrary value to the ExtraHeaders map, initializing it
@@ -89,6 +94,16 @@ func (eo *EncrypterOptions) WithHeader(k HeaderKey, v interface{}) *EncrypterOpt
 		eo.ExtraHeaders = map[HeaderKey]interface{}{}
 	}
 	eo.ExtraHeaders[k] = v
+	return eo
+}
+
+// WithUnprotectedHeader adds an arbitrary value to the UnprotectedHeaders map, initializing it
+// if necessary. It returns itself and so can be used in a fluent style.
+func (eo *EncrypterOptions) WithUnprotectedHeader(k HeaderKey, v interface{}) *EncrypterOptions {
+	if eo.UnprotectedHeaders == nil {
+		eo.UnprotectedHeaders = map[HeaderKey]interface{}{}
+	}
+	eo.UnprotectedHeaders[k] = v
 	return eo
 }
 
@@ -128,6 +143,7 @@ func NewEncrypter(enc ContentEncryption, rcpt Recipient, opts *EncrypterOptions)
 	if opts != nil {
 		encrypter.compressionAlg = opts.Compression
 		encrypter.extraHeaders = opts.ExtraHeaders
+		encrypter.unprotectedHeaders = opts.UnprotectedHeaders
 	}
 
 	if encrypter.cipher == nil {
@@ -323,6 +339,8 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 		return nil, err
 	}
 
+	obj.unprotected = &rawHeader{}
+
 	obj.recipients = make([]recipientInfo, len(ctx.recipients))
 
 	if len(ctx.recipients) == 0 {
@@ -381,6 +399,14 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 			return nil, err
 		}
 		(*obj.protected)[k] = makeRawMessage(b)
+	}
+
+	for k, v := range ctx.unprotectedHeaders {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		(*obj.unprotected)[k] = makeRawMessage(b)
 	}
 
 	authData := obj.computeAuthData()

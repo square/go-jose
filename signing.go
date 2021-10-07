@@ -55,6 +55,11 @@ type SignerOptions struct {
 	// of a JWS object. Some specifications which make use of JWS like to insert
 	// additional values here. All values must be JSON-serializable.
 	ExtraHeaders map[HeaderKey]interface{}
+
+	// Optional map of additional keys to be inserted into the unprotected header
+	// of a JWS object. Some specifications which make use of JWS like to insert
+	// additional values here. All values must be JSON-serializable.
+	UnprotectedHeaders map[HeaderKey]interface{}
 }
 
 // WithHeader adds an arbitrary value to the ExtraHeaders map, initializing it
@@ -64,6 +69,16 @@ func (so *SignerOptions) WithHeader(k HeaderKey, v interface{}) *SignerOptions {
 		so.ExtraHeaders = map[HeaderKey]interface{}{}
 	}
 	so.ExtraHeaders[k] = v
+	return so
+}
+
+// WithUnprotectedHeader adds an arbitrary value to the UnprotectedHeaders map,
+// initializing it if necessary. It returns itself and so can be used in a fluent style.
+func (so *SignerOptions) WithUnprotectedHeader(k HeaderKey, v interface{}) *SignerOptions {
+	if so.UnprotectedHeaders == nil {
+		so.UnprotectedHeaders = map[HeaderKey]interface{}{}
+	}
+	so.UnprotectedHeaders[k] = v
 	return so
 }
 
@@ -108,10 +123,11 @@ type payloadVerifier interface {
 }
 
 type genericSigner struct {
-	recipients   []recipientSigInfo
-	nonceSource  NonceSource
-	embedJWK     bool
-	extraHeaders map[HeaderKey]interface{}
+	recipients         []recipientSigInfo
+	nonceSource        NonceSource
+	embedJWK           bool
+	extraHeaders       map[HeaderKey]interface{}
+	unprotectedHeaders map[HeaderKey]interface{}
 }
 
 type recipientSigInfo struct {
@@ -139,6 +155,7 @@ func NewMultiSigner(sigs []SigningKey, opts *SignerOptions) (Signer, error) {
 		signer.nonceSource = opts.NonceSource
 		signer.embedJWK = opts.EmbedJWK
 		signer.extraHeaders = opts.ExtraHeaders
+		signer.unprotectedHeaders = opts.UnprotectedHeaders
 	}
 
 	for _, sig := range sigs {
@@ -307,6 +324,20 @@ func (ctx *genericSigner) Sign(payload []byte) (*JSONWebSignature, error) {
 			}
 			(*signatureInfo.protected)[k] = makeRawMessage(b)
 		}
+
+		unprotected := map[HeaderKey]interface{}{}
+		for k, v := range ctx.unprotectedHeaders {
+			unprotected[k] = v
+		}
+		signatureInfo.header = &rawHeader{}
+		for k, v := range unprotected {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return nil, fmt.Errorf("square/go-jose: Error marshalling item %#v: %v", k, err)
+			}
+			(*signatureInfo.header)[k] = makeRawMessage(b)
+		}
+
 		obj.Signatures[i] = signatureInfo
 	}
 
