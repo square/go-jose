@@ -44,6 +44,17 @@ func TestFieldsMatch(t *testing.T) {
 		assert.NoError(t, c.Validate(v))
 	}
 
+	claimsWithSingleAudience := Claims{
+		Issuer:   "issuer",
+		Subject:  "subject",
+		Audience: []string{"a1"},
+		ID:       "42",
+	}
+
+	for _, v := range valid {
+		assert.NoError(t, claimsWithSingleAudience.Validate(v))
+	}
+
 	invalid := []struct {
 		Expected Expected
 		Error    error
