@@ -1098,3 +1098,19 @@ func TestJWKPaddingY(t *testing.T) {
 		t.Errorf("Expected key to be invalid, but it was valid.")
 	}
 }
+
+func TestPaddedKey(t *testing.T) {
+	key := `{
+      "kty": "RSA",
+      "e": "AQAB",
+      "x5t": "wCAFGcBT8CeA4U2mYa4z3xg0-Zw=",
+      "kid": "SIGNING_KEY",
+      "x5c": [
+        "MIIDQzCCAiugAwIBAgIGAU+7bWHIMA0GCSqGSIb3DQEBCwUAMFExGzAZBgNVBAoTEk9yYWNsZSBDb3Jwb3JhdGlvbjEhMB8GA1UECxMYaWRlbnRpdHkub3JhY2xlY2xvdWQuY29tMQ8wDQYDVQQDEwZHbG9iYWwwHhcNMTUwOTExMDgwMjMxWhcNMjUwOTExMDgwMjMxWjBRMRswGQYDVQQKExJPcmFjbGUgQ29ycG9yYXRpb24xITAfBgNVBAsTGGlkZW50aXR5Lm9yYWNsZWNsb3VkLmNvbTEPMA0GA1UEAxMGR2xvYmFsMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxWVFlx+E925RYQjPnKpKtHLqUonJMI1/xyM1f4Orly9RzpcaXX7ajEkgMAzffL3rsvBQkPLmO0vHIHs4KNdWoVUmbLZerjDdfLZQl3FZuXcZKXtzVOLyBVt2SNp/k23VgyGN7+8tiAJWC9SFIPBdWD8U2dxqM9izSEn9pvoMyR5iyaEoZepazJQPLysrF23g1/gI8Bo2EUAHdO5atfGfT2YQbZPSOBWiq09QYwMRBuI0Ye0TI3GwYs1x3/2LoporOj+fkYCl4ki4JK2ifwk+TA5o29cdNSuSoA7rTZL3u+dNw0c6OPxvnW6LtCn4RpieZTh7W2sYLg8ozBwd3PHNTwIDAQABoyEwHzAdBgNVHQ4EFgQUi9Fzo9g57klDG3Kv0nK+8IhbtrIwDQYJKoZIhvcNAQELBQADggEBAKx9sZvbGiQnbO/BfgdlXwloqwjZHT3Byr91Pqp0zXrdg/QaUMIOiJQ8A85d5ptccpgNrYzIukSdFUzRP0kugyNzdFXBZ9/muhSkiFBdfBBdEwqXprdZBHcwWng9t2iww4tvzVhw06ZcIYyGUo8/e8erXmiOt9WeFhi7utQg+gyKw01RvaP73ApCpMuQjxTh7QgQNh02Xo+1QStYLFGcv+ZqHhTZwqOndZiQ68t7JcbGaZmNMxKwR4Z1go+RZ+4Ffa8d9rH1OiXWNB6ukGawQdcfZWNlUWcA7ntRSCfKP5UeDcNpHBDCVZSTvnpAEB42jiTuRuWfuA5Lq0rTDxapmzI="
+      ],
+      "alg": "RS256",
+      "n": "xWVFlx-E925RYQjPnKpKtHLqUonJMI1_xyM1f4Orly9RzpcaXX7ajEkgMAzffL3rsvBQkPLmO0vHIHs4KNdWoVUmbLZerjDdfLZQl3FZuXcZKXtzVOLyBVt2SNp_k23VgyGN7-8tiAJWC9SFIPBdWD8U2dxqM9izSEn9pvoMyR5iyaEoZepazJQPLysrF23g1_gI8Bo2EUAHdO5atfGfT2YQbZPSOBWiq09QYwMRBuI0Ye0TI3GwYs1x3_2LoporOj-fkYCl4ki4JK2ifwk-TA5o29cdNSuSoA7rTZL3u-dNw0c6OPxvnW6LtCn4RpieZTh7W2sYLg8ozBwd3PHNTw"
+    }`
+	var jwk JSONWebKey
+	require.NoError(t, jwk.UnmarshalJSON([]byte(key)))
+}
