@@ -1,5 +1,17 @@
-# Go JOSE
+# Go JOSE v1/v2 (DEPRECATED)
 
-This repo contains v1 and v2 of the go-jose library, which are still useable but not actively developed anymore.
+This repository is **DEPRECATED**.
 
-You can find v3 of this library here: https://github.com/go-jose/go-jose
+It will be placed in an archived state on **February 27th, 20223**.
+
+## What should I use instead?
+
+Development of Go JOSE has continued in a [new organization]:
+
+  https://github.com/go-jose/go-jose
+
+We strongly encourage users of `square/go-jose` to migrate to v3 of
+`go-jose/go-jose`. No support, security fixes or updates will be delivered to
+the v1/v2 branches in the Square repository.
+
+[new organization]: https://github.com/go-jose
