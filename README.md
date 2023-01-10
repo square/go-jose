@@ -2,7 +2,7 @@
 
 This repository is **DEPRECATED**.
 
-It will be placed in an archived state on **February 27th, 20223**.
+It will be placed in an archived state on **February 27th, 2023**.
 
 ## What should I use instead?
 
